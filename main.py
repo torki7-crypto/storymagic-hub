@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 app = FastAPI(title="StoryMagic Platform")
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY, "").strip()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
 @app.get("/", response_class=HTMLResponse)
 def serve_home():
