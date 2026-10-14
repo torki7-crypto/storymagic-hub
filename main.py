@@ -16,32 +16,36 @@ def serve_home():
 
 @app.post("/api/generate")
 def generate_story(
-    hero_name: str = Form("Алиса"),
+    hero_name: str = Form("Alice"),
     age: int = Form(7),
-    theme: str = Form("Приключения в зачарованном лесу"),
-    style: str = Form("Watercolor storybook")
+    theme: str = Form("Adventures in an enchanted forest"),
+    style: str = Form("Watercolor storybook"),
+    lang: str = Form("en")
 ):
     if not GEMINI_API_KEY:
         return JSONResponse(
             status_code=400,
-            content={"error": "GEMINI_API_KEY не задан в переменных Railway!"}
+            content={"error": "GEMINI_API_KEY is not configured in Railway variables!"}
         )
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
 
-    prompt = f"""
-    Ты профессиональный автор детских книг.
-    Напиши добрую иллюстрированную сказку для ребёнка по имени {hero_name} (возраст: {age} лет).
-    Тема: "{theme}".
-    Стиль иллюстраций: {style}.
-    Сказка должна состоять ровно из 5 страниц.
+    lang_instruction = "на русском языке" if lang == "ru" else "in English"
 
-    Верни ответ СТРОГО в формате чистого JSON-массива:
+    prompt = f"""
+    You are a professional children's book author.
+    Write a heartwarming illustrated story for a child named {hero_name} (age: {age} years old).
+    Theme: "{theme}".
+    Illustration style: {style}.
+    The story must contain exactly 5 pages.
+    Story text language: write {lang_instruction}.
+
+    Return strictly a raw JSON array format:
     [
       {{
         "page_number": 1,
-        "text": "Текст первой страницы (2-3 предложения на русском)...",
+        "text": "Story text for page 1 (2-4 clear sentences {lang_instruction})...",
         "image_prompt": "Children book illustration of {hero_name}, {style}, vibrant colors, cute storybook art"
       }}
     ]
@@ -62,7 +66,7 @@ def generate_story(
 
         candidates = res_json.get("candidates")
         if not candidates:
-            return JSONResponse(status_code=500, content={"error": f"Нет ответа: {res_json}"})
+            return JSONResponse(status_code=500, content={"error": f"No response: {res_json}"})
 
         raw_text = candidates[0]["content"]["parts"][0]["text"].strip()
         if raw_text.startswith("```json"):
@@ -75,8 +79,10 @@ def generate_story(
         pages = json.loads(raw_text.strip())
 
         for p in pages:
-            encoded_prompt = urllib.parse.quote(p.get("image_prompt", f"cute storybook {hero_name}"))
-            p["image_url"] = f"https://gen.pollinations.ai/image/{encoded_prompt}?width=800&height=600&model=flux"
+            clean_prompt = p.get("image_prompt", f"cute storybook {hero_name} illustration")
+            encoded_prompt = urllib.parse.quote(clean_prompt)
+            p["image_url"] = f"[https://gen.pollinations.ai/image/](https://gen.pollinations.ai/image/){encoded_prompt}?width=800&height=800&model=flux"
+
         return {"success": True, "pages": pages}
 
     except Exception as e:
