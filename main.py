@@ -76,8 +76,7 @@ def generate_story(
 
         for p in pages:
             encoded_prompt = urllib.parse.quote(p.get("image_prompt", f"cute storybook {hero_name}"))
-            p["image_url"] = f"[https://image.pollinations.ai/prompt/](https://image.pollinations.ai/prompt/){encoded_prompt}?width=800&height=600&nologo=true"
-
+            p["image_url"] = f"https://gen.pollinations.ai/image/{encoded_prompt}?width=800&height=600&model=flux"
         return {"success": True, "pages": pages}
 
     except Exception as e:
