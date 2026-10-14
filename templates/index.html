@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StoryMagic — Персональные сказки для детей</title>
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@400;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@400;600;700;800&family=Lora:ital,wght@0,500;0,600;1,400&display=swap');
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
         font-family: 'Nunito', sans-serif;
-        background: linear-gradient(135deg, #150f24, #2c1a42, #180d2c);
+        background: linear-gradient(135deg, #130d24, #27163d, #140b26);
         color: #fff;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
     }
 
-    /* Верхняя панель */
+    /* Шапка */
     header {
         background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(16px);
@@ -50,25 +50,26 @@
     .nav-tabs {
         display: flex;
         gap: 8px;
-        background: rgba(0, 0, 0, 0.3);
-        padding: 4px;
-        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.35);
+        padding: 5px;
+        border-radius: 14px;
     }
     .tab-btn {
         background: transparent;
         border: none;
         color: #d1c4e9;
-        padding: 8px 16px;
-        border-radius: 8px;
+        padding: 8px 18px;
+        border-radius: 10px;
         cursor: pointer;
         font-weight: 600;
         font-size: 0.9em;
         transition: 0.2s;
     }
-    .tab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+    .tab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
     .tab-btn.active {
         background: linear-gradient(135deg, #ff6b8b, #ff8e53);
         color: #fff;
+        box-shadow: 0 4px 12px rgba(255, 107, 139, 0.35);
     }
 
     .header-actions {
@@ -76,32 +77,35 @@
         align-items: center;
         gap: 12px;
     }
-    .lang-btn {
+    .lang-badge {
         background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.25);
         color: #fff;
-        padding: 6px 12px;
-        border-radius: 8px;
+        padding: 7px 14px;
+        border-radius: 10px;
         cursor: pointer;
-        font-weight: 700;
+        font-weight: 800;
         font-size: 0.85em;
+        transition: 0.2s;
     }
+    .lang-badge:hover { background: rgba(255, 255, 255, 0.2); }
+
     .pay-btn {
         background: linear-gradient(135deg, #a18cd1, #fbc2eb);
-        color: #2b1055;
+        color: #240e48;
         border: none;
-        padding: 7px 16px;
+        padding: 8px 18px;
         border-radius: 10px;
         font-weight: 800;
         cursor: pointer;
         font-size: 0.85em;
+        box-shadow: 0 4px 12px rgba(161, 140, 209, 0.3);
     }
 
-    /* Основная зона контента */
     main {
         flex: 1;
         padding: 20px 28px;
-        max-width: 1300px;
+        max-width: 1400px;
         margin: 0 auto;
         width: 100%;
     }
@@ -109,15 +113,15 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Страница: О проекте / Главная */
+    /* Главная */
     .hero-box {
         text-align: center;
-        max-width: 800px;
+        max-width: 860px;
         margin: 30px auto;
     }
     .hero-box h1 {
         font-family: 'Comfortaa', cursive;
-        font-size: 2.4em;
+        font-size: 2.5em;
         margin-bottom: 16px;
         background: linear-gradient(90deg, #ff9a9e, #fad0c4);
         -webkit-background-clip: text;
@@ -126,7 +130,7 @@
     .hero-box p {
         font-size: 1.15em;
         line-height: 1.6;
-        color: #e0d4f7;
+        color: #ded1f7;
         margin-bottom: 28px;
     }
     .steps-grid {
@@ -138,30 +142,29 @@
     .step-card {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.12);
-        padding: 24px;
-        border-radius: 16px;
+        padding: 26px 20px;
+        border-radius: 18px;
         text-align: center;
     }
     .step-icon { font-size: 2.2em; margin-bottom: 12px; }
-    .step-card h3 { margin-bottom: 8px; font-size: 1.1em; }
-    .step-card p { font-size: 0.9em; color: #bcaaa4; }
+    .step-card h3 { margin-bottom: 8px; font-size: 1.15em; color: #fff; }
+    .step-card p { font-size: 0.9em; color: #bcaaa4; line-height: 1.45; }
 
-    /* Страница: Генератор */
+    /* Генератор: 2 колонки */
     .app-grid {
         display: grid;
-        grid-template-columns: 320px 1fr;
-        gap: 20px;
-        height: calc(100vh - 130px);
+        grid-template-columns: 310px 1fr;
+        gap: 22px;
+        align-items: stretch;
     }
     .panel-card {
-        background: rgba(255, 255, 255, 0.07);
-        backdrop-filter: blur(14px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 22px;
         padding: 20px;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
     }
     .input-group { margin-bottom: 12px; }
     .input-label {
@@ -169,122 +172,161 @@
         font-size: 0.8em;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 4px;
+        margin-bottom: 5px;
         color: #f1e4ff;
     }
     .custom-input, .custom-select {
         width: 100%;
-        padding: 9px 12px;
+        padding: 10px 14px;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.22);
-        border-radius: 10px;
+        border-radius: 12px;
         color: #fff;
-        font-size: 0.9em;
+        font-size: 0.95em;
         outline: none;
     }
-    .custom-select option { background: #2b1d3d; color: #fff; }
+    .custom-select option { background: #241438; color: #fff; }
 
     .magic-btn {
         width: 100%;
-        padding: 12px;
+        padding: 13px;
         border: none;
-        border-radius: 12px;
+        border-radius: 14px;
         font-family: 'Comfortaa', cursive;
-        font-size: 1em;
+        font-size: 1.05em;
         font-weight: 700;
         color: #fff;
         background: linear-gradient(135deg, #ff6b8b, #ff8e53);
         cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
         margin-top: 6px;
     }
+    .magic-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(255, 107, 139, 0.4); }
+
     .status-msg {
-        margin-top: 8px;
-        font-size: 0.8em;
+        margin-top: 10px;
+        font-size: 0.85em;
         text-align: center;
         color: #a1c4fd;
-        min-height: 18px;
+        min-height: 20px;
     }
 
-    /* Книжная сцена */
-    .book-area {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        gap: 12px;
+    /* Настоящий книжный разворот: слева картинка, справа большой читаемый текст */
+    .book-spread {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        height: 520px;
+        background: rgba(14, 9, 26, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        padding: 16px;
+        margin-bottom: 12px;
     }
-    .viewer-box {
+
+    .book-left-img {
         position: relative;
-        flex: 1;
-        min-height: 0;
-        background: #0d0819;
+        background: #090511;
         border-radius: 16px;
         overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .viewer-box img {
+    .book-left-img img {
         width: 100%;
         height: 100%;
-        object-fit: contain;
-        background: #000;
+        object-fit: cover;
     }
-    .slide-arrow {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: #fff;
-        font-size: 1.4em;
-        cursor: pointer;
-        z-index: 5;
-    }
-    .arrow-left { left: 14px; }
-    .arrow-right { right: 14px; }
 
-    .text-card {
-        height: 110px;
-        background: rgba(255, 255, 255, 0.06);
-        border-radius: 14px;
-        padding: 12px 18px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
+    .book-right-page {
+        background: #fbf7ee;
+        color: #2b1f1d;
+        border-radius: 16px;
+        padding: 30px 34px;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: space-between;
+        box-shadow: inset 4px 0 16px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.25);
+        border-left: 4px solid #e2d7c5;
     }
-    .page-indicator { font-size: 0.8em; color: #ff9a9e; font-weight: 700; margin-bottom: 4px; }
-    .page-story-text { font-size: 1.05em; line-height: 1.45; color: #f7f3ff; overflow-y: auto; }
 
-    /* Панель коммерческих действий под книгой */
+    .book-header-line {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px dashed #d5c7b3;
+        padding-bottom: 10px;
+    }
+    .book-badge {
+        font-family: 'Comfortaa', cursive;
+        font-size: 0.95em;
+        font-weight: 700;
+        color: #b24867;
+    }
+
+    .book-body-text {
+        font-family: 'Lora', Georgia, serif;
+        font-size: 1.3em;
+        line-height: 1.75;
+        color: #261d1a;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        padding: 16px 0;
+        letter-spacing: 0.2px;
+    }
+
+    .book-nav-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px dashed #d5c7b3;
+        padding-top: 12px;
+    }
+
+    .turn-btn {
+        background: #2b1f1d;
+        color: #fff;
+        border: none;
+        padding: 9px 18px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9em;
+        transition: 0.2s;
+    }
+    .turn-btn:hover { background: #ff6b8b; }
+
+    /* Панель коммерческих действий */
     .action-bar {
         display: flex;
-        gap: 10px;
+        gap: 12px;
     }
     .action-btn {
         flex: 1;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 9px;
-        border-radius: 10px;
+        padding: 11px;
+        border-radius: 12px;
         color: #fff;
         font-weight: 700;
-        font-size: 0.85em;
+        font-size: 0.9em;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 8px;
         transition: 0.2s;
     }
     .action-btn:hover { background: rgba(255, 255, 255, 0.16); }
     .btn-order { background: linear-gradient(135deg, #11998e, #38ef7d); color: #082918; border: none; }
 
-    /* Страница «Просмотренные книги» */
+    /* Библиотека */
     .library-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -300,10 +342,10 @@
         transition: transform 0.2s;
     }
     .book-item-card:hover { transform: translateY(-4px); }
-    .book-item-thumb { width: 100%; height: 160px; object-fit: cover; }
-    .book-item-info { padding: 12px; }
-    .book-item-title { font-weight: 700; font-size: 0.95em; margin-bottom: 4px; }
-    .book-item-meta { font-size: 0.8em; color: #b39ddb; }
+    .book-item-thumb { width: 100%; height: 180px; object-fit: cover; }
+    .book-item-info { padding: 14px; }
+    .book-item-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; }
+    .book-item-meta { font-size: 0.85em; color: #b39ddb; }
 
     /* Модальное окно оплаты */
     .modal-overlay {
@@ -346,168 +388,182 @@
         text-align: center;
     }
     .pricing-tier.featured { border-color: #ff6b8b; background: rgba(255, 107, 139, 0.1); }
-    .price-val { font-size: 1.5em; font-weight: 800; margin: 8px 0; color: #fecfef; }
+    .price-val { font-size: 1.6em; font-weight: 800; margin: 8px 0; color: #fecfef; }
 </style>
 </head>
 <body>
 
-    <!-- Шапка -->
+    <!-- Шапка сайта -->
     <header>
         <div class="brand" onclick="switchTab('about')">
             <span style="font-size: 1.6em;">✨</span>
-            <div>
-                <div class="brand-title">StoryMagic</div>
-            </div>
+            <div class="brand-title">StoryMagic</div>
         </div>
 
         <nav class="nav-tabs">
-            <button class="tab-btn active" id="tabNav-about" onclick="switchTab('about')">Главная</button>
-            <button class="tab-btn" id="tabNav-create" onclick="switchTab('create')">Создать сказку</button>
-            <button class="tab-btn" id="tabNav-library" onclick="switchTab('library')">Просмотренные книжки</button>
-            <button class="tab-btn" id="tabNav-order" onclick="switchTab('order')">Заказать печать</button>
+            <button class="tab-btn active" id="nav-about" onclick="switchTab('about')">Главная</button>
+            <button class="tab-btn" id="nav-create" onclick="switchTab('create')">Создать сказку</button>
+            <button class="tab-btn" id="nav-library" onclick="switchTab('library')">Просмотренные книжки</button>
+            <button class="tab-btn" id="nav-order" onclick="switchTab('order')">Заказать печать</button>
         </nav>
 
         <div class="header-actions">
-            <button class="lang-btn" id="langSwitch" onclick="toggleLanguage()">RU / EN</button>
-            <button class="pay-btn" onclick="openPaymentModal()">💎 Пополнить</button>
+            <button class="lang-badge" id="langBtn" onclick="toggleLanguage()">🇬🇧 EN</button>
+            <button class="pay-btn" id="btn-topup" onclick="openPaymentModal()">💎 Пополнить</button>
         </div>
     </header>
 
     <main>
         
-        <!-- 1. Вкладка: О сервисе / Главная -->
+        <!-- 1. Главная / О сервисе -->
         <div id="tab-about" class="tab-content active">
             <div class="hero-box">
-                <h1 id="txt-hero-title">Персональные книги для каждого ребенка</h1>
-                <p id="txt-hero-desc">Превратите вашего ребенка в главного героя волшебного приключения. Искусственный интеллект адаптирует сюжет, возрастные акценты и генерирует уникальные иллюстрации в реальном времени.</p>
-                <button class="magic-btn" style="max-width: 280px; margin: 0 auto; display: block;" onclick="switchTab('create')">🚀 Начать создание</button>
+                <h1 id="hero-title">Персональные книги для каждого ребенка</h1>
+                <p id="hero-desc">Превратите вашего ребенка в главного героя волшебного приключения. Искусственный интеллект адаптирует сюжет, возрастные акценты и генерирует уникальные иллюстрации в реальном времени.</p>
+                <button class="magic-btn" id="hero-cta" style="max-width: 280px; margin: 0 auto; display: block;" onclick="switchTab('create')">🚀 Начать создание</button>
             </div>
 
             <div class="steps-grid">
                 <div class="step-card">
                     <div class="step-icon">✍️</div>
-                    <h3 id="txt-step1-t">1. Персонализация</h3>
-                    <p id="txt-step1-d">Укажите имя, возраст и любимый сюжет ребенка.</p>
+                    <h3 id="step1-title">1. Персонализация</h3>
+                    <p id="step1-desc">Укажите имя, возраст и любимый сюжет сказки.</p>
                 </div>
                 <div class="step-card">
                     <div class="step-icon">🎨</div>
-                    <h3 id="txt-step2-t">2. Генерация книги</h3>
-                    <p id="txt-step2-d">Gemini пишет терапевтическую сказку, а нейросеть рисует иллюстрации.</p>
+                    <h3 id="step2-title">2. Генерация книги</h3>
+                    <p id="step2-desc">Нейросеть сочиняет сказку и рисует иллюстрации для каждого разворота.</p>
                 </div>
                 <div class="step-card">
-                    <div class="step-icon">📦</div>
-                    <h3 id="txt-step3-t">3. Читайте или закажите</h3>
-                    <p id="txt-step3-d">Слушайте аудиосказку, скачивайте в ePub или закажите в переплете.</p>
+                    <div class="step-icon">📖</div>
+                    <h3 id="step3-title">3. Читайте или закажите</h3>
+                    <p id="step3-desc">Читайте в удобном книжном развороте, слушайте аудиосказку или оформите печать.</p>
                 </div>
             </div>
         </div>
 
-        <!-- 2. Вкладка: Создание сказки -->
+        <!-- 2. Генератор сказки -->
         <div id="tab-create" class="tab-content">
             <div class="app-grid">
                 
+                <!-- Левая колонка параметров -->
                 <div class="panel-card">
-                    <h2 style="font-family:'Comfortaa', cursive; font-size:1.2em; margin-bottom:12px;" id="txt-form-title">Параметры книги</h2>
+                    <h2 style="font-family:'Comfortaa', cursive; font-size:1.2em; margin-bottom:14px;" id="lbl-form-title">Параметры книги</h2>
                     
                     <div class="input-group">
-                        <label class="input-label" id="txt-lbl-name">Имя героя</label>
+                        <label class="input-label" id="lbl-hero-name">Имя героя</label>
                         <input type="text" id="heroName" class="custom-input" value="Алиса">
                     </div>
                     <div class="input-group">
-                        <label class="input-label" id="txt-lbl-age">Возраст</label>
+                        <label class="input-label" id="lbl-hero-age">Возраст</label>
                         <input type="number" id="childAge" class="custom-input" value="7">
                     </div>
                     <div class="input-group">
-                        <label class="input-label" id="txt-lbl-theme">Сюжет / Тема</label>
+                        <label class="input-label" id="lbl-story-theme">Сюжет / Тема</label>
                         <input type="text" id="storyTheme" class="custom-input" value="Приключения в зачарованном лесу с волшебным котом">
                     </div>
                     <div class="input-group">
-                        <label class="input-label" id="txt-lbl-style">Стиль графики</label>
+                        <label class="input-label" id="lbl-art-style">Стиль графики</label>
                         <select id="artStyle" class="custom-select">
-                            <option value="Watercolor children book illustration" selected>Акварель</option>
-                            <option value="Pixar 3D cute animated render">3D Мультфильм</option>
-                            <option value="Classic pencil gouache fairy tale">Сказка гуашью</option>
+                            <option value="Watercolor children book illustration" id="opt-style1" selected>Акварель / Сказка</option>
+                            <option value="Pixar 3D cute animated render" id="opt-style2">3D Мультфильм</option>
+                            <option value="Classic pencil gouache fairy tale" id="opt-style3">Классическая гуашь</option>
                         </select>
                     </div>
 
-                    <button class="magic-btn" onclick="generateStory()" id="txt-btn-generate">🪄 Создать сказку</button>
+                    <button class="magic-btn" onclick="generateStory()" id="btn-create-story">🪄 Создать сказку</button>
                     <div id="statusMsg" class="status-msg"></div>
                 </div>
 
-                <div class="panel-card book-area">
-                    <div class="viewer-box">
-                        <button class="slide-arrow arrow-left" onclick="prevSlide()">❮</button>
-                        <img id="currentImage" src="https://picsum.photos/seed/magic/800/600" alt="Иллюстрация">
-                        <button class="slide-arrow arrow-right" onclick="nextSlide()">❯</button>
+                <!-- Правая колонка: книжный разворот -->
+                <div class="panel-card" style="padding: 16px;">
+                    
+                    <div class="book-spread">
+                        <!-- Левая страница: иллюстрация -->
+                        <div class="book-left-img">
+                            <img id="currentImage" src="https://picsum.photos/seed/magictale/800/800" alt="Иллюстрация">
+                        </div>
+
+                        <!-- Правая страница: крупный текст книги -->
+                        <div class="book-right-page">
+                            <div class="book-header-line">
+                                <span class="book-badge" id="pageBadge">Обложка</span>
+                                <span style="font-size:0.85em; color:#8d7b68;" id="book-brand-lbl">StoryMagic Kids</span>
+                            </div>
+
+                            <div class="book-body-text" id="currentText">
+                                Заполните параметры слева и нажмите «Создать сказку». Книга развернётся здесь в формате настоящего книжного разворота с крупным и удобным для чтения шрифтом.
+                            </div>
+
+                            <div class="book-nav-footer">
+                                <button class="turn-btn" onclick="prevSlide()" id="btn-prev">❮ Назад</button>
+                                <span id="pageCounter" style="font-weight:700; color:#5c4d3c;">1 / 1</span>
+                                <button class="turn-btn" onclick="nextSlide()" id="btn-next">Вперед ❯</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="text-card">
-                        <div id="pageBadge" class="page-indicator">Обложка</div>
-                        <div id="currentText" class="page-story-text">Заполните данные и нажмите «Создать сказку». Готовая книга появится здесь.</div>
-                    </div>
-
-                    <!-- Панель действий: Аудио, Скачать, Заказать -->
+                    <!-- Панель действий -->
                     <div class="action-bar">
-                        <button class="action-btn" onclick="toggleAudioStory()">🎧 <span id="txt-btn-audio">Аудиосказка</span></button>
-                        <button class="action-btn" onclick="downloadEpub()">📥 <span id="txt-btn-download">Скачать ePub</span></button>
-                        <button class="action-btn btn-order" onclick="switchTab('order')">🚚 <span id="txt-btn-order">Заказать книжку</span></button>
+                        <button class="action-btn" onclick="toggleAudioStory()">🎧 <span id="btn-audio-lbl">Аудиосказка</span></button>
+                        <button class="action-btn" onclick="printBook()">📥 <span id="btn-print-lbl">Печать / Сохранить</span></button>
+                        <button class="action-btn btn-order" onclick="switchTab('order')">🚚 <span id="btn-order-lbl">Заказать книжку</span></button>
                     </div>
+
                 </div>
 
             </div>
         </div>
 
-        <!-- 3. Вкладка: Просмотренные книги (Библиотека) -->
+        <!-- 3. Библиотека созданных книг -->
         <div id="tab-library" class="tab-content">
-            <h2 style="font-family:'Comfortaa', cursive;" id="txt-lib-title">📚 Ваши созданные книги</h2>
-            <p style="color:#bcaaa4; font-size:0.9em; margin-bottom:16px;" id="txt-lib-desc">История всех книг, сгенерированных на этом устройстве.</p>
-            <div id="libraryContainer" class="library-grid">
-                <!-- Заполняется автоматически через JavaScript -->
-            </div>
+            <h2 style="font-family:'Comfortaa', cursive;" id="lib-title">📚 Ваши созданные книги</h2>
+            <p style="color:#bcaaa4; font-size:0.95em; margin-bottom:18px;" id="lib-desc">История всех книг, сгенерированных на этом устройстве.</p>
+            <div id="libraryContainer" class="library-grid"></div>
         </div>
 
-        <!-- 4. Вкладка: Заказать печать -->
+        <!-- 4. Заказ печатной книги -->
         <div id="tab-order" class="tab-content">
-            <div class="hero-box" style="text-align:left; max-width:600px;">
-                <h2 style="font-family:'Comfortaa', cursive; margin-bottom:12px;">🚚 Заказ настоящей книги в твердом переплете</h2>
-                <p style="color:#d1c4e9; font-size:0.95em; margin-bottom:20px;">Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим прямо до двери.</p>
+            <div class="hero-box" style="text-align:left; max-width:620px;">
+                <h2 style="font-family:'Comfortaa', cursive; margin-bottom:12px;" id="order-title">🚚 Заказ книги в твердом переплете</h2>
+                <p style="color:#ded1f7; font-size:1em; margin-bottom:20px;" id="order-desc">Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим прямо до вашей двери.</p>
                 
                 <div class="input-group">
-                    <label class="input-label">Адрес доставки</label>
-                    <input type="text" class="custom-input" placeholder="Улица, дом, квартира, почтовый индекс">
+                    <label class="input-label" id="lbl-order-addr">Адрес доставки</label>
+                    <input type="text" class="custom-input" placeholder="Улица, дом, квартира, индекс">
                 </div>
                 <div class="input-group">
-                    <label class="input-label">Тип обложки</label>
+                    <label class="input-label" id="lbl-order-type">Тип переплета</label>
                     <select class="custom-select">
-                        <option>Твердый матовый переплет — £14.99</option>
-                        <option>Премиум глянец с золотым тиснением — £19.99</option>
+                        <option id="opt-order-hard">Твердый матовый переплет — £14.99</option>
+                        <option id="opt-order-prem">Премиум глянец с тиснением — £19.99</option>
                     </select>
                 </div>
-                <button class="magic-btn" onclick="openPaymentModal()" style="margin-top:14px;">Перейти к оплате</button>
+                <button class="magic-btn" onclick="openPaymentModal()" style="margin-top:16px;" id="btn-order-pay">Перейти к оплате</button>
             </div>
         </div>
 
     </main>
 
-    <!-- Всплывающее окно оплаты -->
+    <!-- Модальное окно тарифов / оплаты -->
     <div id="paymentModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-close" onclick="closePaymentModal()">✕</div>
-            <h2 style="font-family:'Comfortaa', cursive; margin-bottom:6px;">Выберите тариф</h2>
-            <p style="font-size:0.85em; color:#bbb;">Пополните баланс для генерации историй и аудиосказок</p>
+            <h2 style="font-family:'Comfortaa', cursive; margin-bottom:6px;" id="pay-title">Выберите тариф</h2>
+            <p style="font-size:0.85em; color:#ccc;" id="pay-subtitle">Пополните баланс для генерации книг и озвучки</p>
 
             <div class="pricing-grid">
                 <div class="pricing-tier">
-                    <h3>Старт</h3>
+                    <h3 id="plan1-title">Старт</h3>
                     <div class="price-val">£4.99</div>
-                    <p style="font-size:0.8em; color:#ccc;">5 персональных сказок + озвучка</p>
-                    <button class="magic-btn" style="margin-top:12px; padding:8px;" onclick="alert('Переход на шлюз Stripe...')">Купить</button>
+                    <p style="font-size:0.8em; color:#ccc;" id="plan1-desc">5 персональных сказок + аудио</p>
+                    <button class="magic-btn" style="margin-top:12px; padding:8px;" onclick="alert('Stripe Checkout...')" id="plan1-btn">Купить</button>
                 </div>
                 <div class="pricing-tier featured">
-                    <h3>Безлимит</h3>
+                    <h3 id="plan2-title">Безлимит</h3>
                     <div class="price-val">£12.99</div>
-                    <p style="font-size:0.8em; color:#ccc;">Неограниченно сказок + экспорт ePub/PDF</p>
-                    <button class="magic-btn" style="margin-top:12px; padding:8px;" onclick="alert('Переход на шлюз Stripe...')">Выбрать</button>
+                    <p style="font-size:0.8em; color:#ccc;" id="plan2-desc">Неограниченно сказок + экспорт</p>
+                    <button class="magic-btn" style="margin-top:12px; padding:8px;" onclick="alert('Stripe Checkout...')" id="plan2-btn">Выбрать</button>
                 </div>
             </div>
         </div>
@@ -519,23 +575,194 @@
     var currentLang = 'ru';
     var isSpeaking = false;
 
-    // Переключение вкладок
+    // Полный словарь для двух языков
+    var dictionary = {
+        ru: {
+            langBtn: '🇬🇧 EN',
+            navAbout: 'Главная',
+            navCreate: 'Создать сказку',
+            navLibrary: 'Просмотренные книжки',
+            navOrder: 'Заказать печать',
+            btnTopup: '💎 Пополнить',
+            heroTitle: 'Персональные книги для каждого ребенка',
+            heroDesc: 'Превратите вашего ребенка в главного героя волшебного приключения. Искусственный интеллект адаптирует сюжет, возрастные акценты и генерирует уникальные иллюстрации в реальном времени.',
+            heroCta: '🚀 Начать создание',
+            step1Title: '1. Персонализация',
+            step1Desc: 'Укажите имя, возраст и любимый сюжет сказки.',
+            step2Title: '2. Генерация книги',
+            step2Desc: 'Нейросеть сочиняет сказку и рисует иллюстрации для каждого разворота.',
+            step3Title: '3. Читайте или закажите',
+            step3Desc: 'Читайте в удобном книжном развороте, слушайте аудиосказку или оформите печать.',
+            lblFormTitle: 'Параметры книги',
+            lblHeroName: 'Имя героя',
+            lblHeroAge: 'Возраст',
+            lblStoryTheme: 'Сюжет / Тема',
+            lblArtStyle: 'Стиль графики',
+            optStyle1: 'Акварель / Сказка',
+            optStyle2: '3D Мультфильм',
+            optStyle3: 'Классическая гуашь',
+            btnCreateStory: '🪄 Создать сказку',
+            badgeCover: 'Обложка',
+            badgePage: 'Страница',
+            btnPrev: '❮ Назад',
+            btnNext: 'Вперед ❯',
+            btnAudioLbl: 'Аудиосказка',
+            btnPrintLbl: 'Печать / Сохранить',
+            btnOrderLbl: 'Заказать книжку',
+            libTitle: '📚 Ваши созданные книги',
+            libDesc: 'История всех книг, сгенерированных на этом устройстве.',
+            libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
+            orderTitle: '🚚 Заказ книги в твердом переплете',
+            orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим прямо до вашей двери.',
+            lblOrderAddr: 'Адрес доставки',
+            lblOrderType: 'Тип переплета',
+            optOrderHard: 'Твердый матовый переплет — £14.99',
+            optOrderPrem: 'Премиум глянец с тиснением — £19.99',
+            btnOrderPay: 'Перейти к оплате',
+            payTitle: 'Выберите тариф',
+            paySubtitle: 'Пополните баланс для генерации книг и озвучки',
+            plan1Title: 'Старт',
+            plan1Desc: '5 персональных сказок + аудио',
+            plan1Btn: 'Купить',
+            plan2Title: 'Безлимит',
+            plan2Desc: 'Неограниченно сказок + экспорт',
+            plan2Btn: 'Выбрать',
+            statusGen: '✨ Сочиняем сказку и иллюстрации...',
+            statusDone: '🎉 Готово!'
+        },
+        en: {
+            langBtn: '🇷🇺 RU',
+            navAbout: 'Home',
+            navCreate: 'Create Story',
+            navLibrary: 'My Books',
+            navOrder: 'Order Hardcover',
+            btnTopup: '💎 Top Up',
+            heroTitle: 'Personalized Books for Every Child',
+            heroDesc: 'Turn your child into the hero of their own magical adventure. Artificial intelligence crafts heartfelt stories and stunning illustrations in real time.',
+            heroCta: '🚀 Start Creating',
+            step1Title: '1. Personalize',
+            step1Desc: 'Enter character name, age, and favorite story theme.',
+            step2Title: '2. Story Generation',
+            step2Desc: 'AI creates tailored narrative and beautiful illustrations for every spread.',
+            step3Title: '3. Read or Order',
+            step3Desc: 'Read in an interactive book spread, listen to audio, or order print copies.',
+            lblFormTitle: 'Book Settings',
+            lblHeroName: 'Hero Name',
+            lblHeroAge: 'Age',
+            lblStoryTheme: 'Story Theme',
+            lblArtStyle: 'Art Style',
+            optStyle1: 'Watercolor / Fairy Tale',
+            optStyle2: '3D Animation',
+            optStyle3: 'Classic Gouache',
+            btnCreateStory: '🪄 Generate Book',
+            badgeCover: 'Cover',
+            badgePage: 'Page',
+            btnPrev: '❮ Back',
+            btnNext: 'Next ❯',
+            btnAudioLbl: 'Audio Story',
+            btnPrintLbl: 'Print / Save PDF',
+            btnOrderLbl: 'Order Hardcover',
+            libTitle: '📚 Your Created Books',
+            libDesc: 'History of all stories created on this device.',
+            libEmpty: 'No stories saved yet. Create your first book!',
+            orderTitle: '🚚 Order a Printed Hardcover Book',
+            orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.',
+            lblOrderAddr: 'Delivery Address',
+            lblOrderType: 'Cover Type',
+            optOrderHard: 'Matte Hardcover — £14.99',
+            optOrderPrem: 'Premium Gloss with Foil — £19.99',
+            btnOrderPay: 'Proceed to Payment',
+            payTitle: 'Choose Your Plan',
+            paySubtitle: 'Add credits for book generation and voice narration',
+            plan1Title: 'Starter',
+            plan1Desc: '5 personalized stories + audio',
+            plan1Btn: 'Buy Now',
+            plan2Title: 'Unlimited',
+            plan2Desc: 'Unlimited stories + exports',
+            plan2Btn: 'Select Plan',
+            statusGen: '✨ Writing story and illustrations...',
+            statusDone: '🎉 Done!'
+        }
+    };
+
+    function toggleLanguage() {
+        currentLang = currentLang === 'ru' ? 'en' : 'ru';
+        var d = dictionary[currentLang];
+
+        document.getElementById('langBtn').innerText = d.langBtn;
+        document.getElementById('nav-about').innerText = d.navAbout;
+        document.getElementById('nav-create').innerText = d.navCreate;
+        document.getElementById('nav-library').innerText = d.navLibrary;
+        document.getElementById('nav-order').innerText = d.navOrder;
+        document.getElementById('btn-topup').innerText = d.btnTopup;
+
+        document.getElementById('hero-title').innerText = d.heroTitle;
+        document.getElementById('hero-desc').innerText = d.heroDesc;
+        document.getElementById('hero-cta').innerText = d.heroCta;
+
+        document.getElementById('step1-title').innerText = d.step1Title;
+        document.getElementById('step1-desc').innerText = d.step1Desc;
+        document.getElementById('step2-title').innerText = d.step2Title;
+        document.getElementById('step2-desc').innerText = d.step2Desc;
+        document.getElementById('step3-title').innerText = d.step3Title;
+        document.getElementById('step3-desc').innerText = d.step3Desc;
+
+        document.getElementById('lbl-form-title').innerText = d.lblFormTitle;
+        document.getElementById('lbl-hero-name').innerText = d.lblHeroName;
+        document.getElementById('lbl-hero-age').innerText = d.lblHeroAge;
+        document.getElementById('lbl-story-theme').innerText = d.lblStoryTheme;
+        document.getElementById('lbl-art-style').innerText = d.lblArtStyle;
+        document.getElementById('opt-style1').innerText = d.optStyle1;
+        document.getElementById('opt-style2').innerText = d.optStyle2;
+        document.getElementById('opt-style3').innerText = d.optStyle3;
+        document.getElementById('btn-create-story').innerText = d.btnCreateStory;
+
+        document.getElementById('btn-prev').innerText = d.btnPrev;
+        document.getElementById('btn-next').innerText = d.btnNext;
+        document.getElementById('btn-audio-lbl').innerText = d.btnAudioLbl;
+        document.getElementById('btn-print-lbl').innerText = d.btnPrintLbl;
+        document.getElementById('btn-order-lbl').innerText = d.btnOrderLbl;
+
+        document.getElementById('lib-title').innerText = d.libTitle;
+        document.getElementById('lib-desc').innerText = d.libDesc;
+
+        document.getElementById('order-title').innerText = d.orderTitle;
+        document.getElementById('order-desc').innerText = d.orderDesc;
+        document.getElementById('lbl-order-addr').innerText = d.lblOrderAddr;
+        document.getElementById('lbl-order-type').innerText = d.lblOrderType;
+        document.getElementById('opt-order-hard').innerText = d.optOrderHard;
+        document.getElementById('opt-order-prem').innerText = d.optOrderPrem;
+        document.getElementById('btn-order-pay').innerText = d.btnOrderPay;
+
+        document.getElementById('pay-title').innerText = d.payTitle;
+        document.getElementById('pay-subtitle').innerText = d.paySubtitle;
+        document.getElementById('plan1-title').innerText = d.plan1Title;
+        document.getElementById('plan1-desc').innerText = d.plan1Desc;
+        document.getElementById('plan1-btn').innerText = d.plan1Btn;
+        document.getElementById('plan2-title').innerText = d.plan2Title;
+        document.getElementById('plan2-desc').innerText = d.plan2Desc;
+        document.getElementById('plan2-btn').innerText = d.plan2Btn;
+
+        if (currentPages.length > 0) {
+            updateSlideUI();
+        }
+    }
+
     function switchTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
         document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
         
         document.getElementById('tab-' + tabName).classList.add('active');
-        var navBtn = document.getElementById('tabNav-' + tabName);
+        var navBtn = document.getElementById('nav-' + tabName);
         if (navBtn) navBtn.classList.add('active');
 
         if (tabName === 'library') loadLibrary();
     }
 
-    // Слайдер страниц
-    function showSlide(idx) {
+    function updateSlideUI() {
         if (!currentPages || currentPages.length === 0) return;
-        currentIndex = idx;
         var p = currentPages[currentIndex];
+        var d = dictionary[currentLang];
 
         var img = document.getElementById('currentImage');
         img.style.opacity = '0.3';
@@ -546,8 +773,15 @@
         };
         temp.src = p.image_url;
 
-        document.getElementById('pageBadge').innerText = (currentLang === 'ru' ? 'Страница ' : 'Page ') + p.page_number + ' / ' + currentPages.length;
+        document.getElementById('pageBadge').innerText = d.badgePage + ' ' + p.page_number;
+        document.getElementById('pageCounter').innerText = p.page_number + ' / ' + currentPages.length;
         document.getElementById('currentText').innerText = p.text;
+    }
+
+    function showSlide(idx) {
+        if (!currentPages || currentPages.length === 0) return;
+        currentIndex = idx;
+        updateSlideUI();
     }
 
     function nextSlide() {
@@ -559,10 +793,9 @@
         showSlide(currentIndex > 0 ? currentIndex - 1 : currentPages.length - 1);
     }
 
-    // Генерация
     async function generateStory() {
         var status = document.getElementById('statusMsg');
-        status.innerText = currentLang === 'ru' ? '✨ Сочиняем сказку и иллюстрации...' : '✨ Writing story and illustrations...';
+        status.innerText = dictionary[currentLang].statusGen;
 
         var formData = new FormData();
         formData.append('hero_name', document.getElementById('heroName').value);
@@ -575,7 +808,7 @@
             var result = await response.json();
             if (result.success && result.pages) {
                 currentPages = result.pages;
-                status.innerText = currentLang === 'ru' ? '🎉 Готово!' : '🎉 Done!';
+                status.innerText = dictionary[currentLang].statusDone;
                 showSlide(0);
                 saveBookToLibrary(document.getElementById('heroName').value, document.getElementById('storyTheme').value, currentPages);
             } else {
@@ -586,7 +819,6 @@
         }
     }
 
-    // Сохранение в библиотеку (localStorage)
     function saveBookToLibrary(hero, theme, pages) {
         var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
         lib.unshift({
@@ -605,7 +837,7 @@
         var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
         box.innerHTML = '';
         if (lib.length === 0) {
-            box.innerHTML = '<p style="color:#aaa;">Пока нет сохраненных книг. Создайте первую сказку!</p>';
+            box.innerHTML = '<p style="color:#aaa;">' + dictionary[currentLang].libEmpty + '</p>';
             return;
         }
         lib.forEach(function(book) {
@@ -625,10 +857,9 @@
         });
     }
 
-    // Озвучка текущей страницы (SpeechSynthesis Web API)
     function toggleAudioStory() {
         if (!('speechSynthesis' in window)) {
-            alert('Ваш браузер не поддерживает синтез речи');
+            alert('Синтез речи не поддерживается браузером');
             return;
         }
         if (isSpeaking) {
@@ -645,33 +876,16 @@
         isSpeaking = true;
     }
 
-    // Скачивание книги
-    function downloadEpub() {
+    function printBook() {
         if (!currentPages.length) {
-            alert('Сначала сгенерируйте книгу!');
+            alert(currentLang === 'ru' ? 'Сначала создайте книгу!' : 'Please generate a book first!');
             return;
         }
-        alert('Книга подготавливается к экспорту в ePub / PDF...');
+        window.print();
     }
 
-    // Модальное окно оплаты
     function openPaymentModal() { document.getElementById('paymentModal').style.display = 'flex'; }
     function closePaymentModal() { document.getElementById('paymentModal').style.display = 'none'; }
-
-    // Переключение языков
-    function toggleLanguage() {
-        currentLang = currentLang === 'ru' ? 'en' : 'ru';
-        var isRu = currentLang === 'ru';
-        
-        document.getElementById('tabNav-about').innerText = isRu ? 'Главная' : 'Home';
-        document.getElementById('tabNav-create').innerText = isRu ? 'Создать сказку' : 'Create Book';
-        document.getElementById('tabNav-library').innerText = isRu ? 'Просмотренные книжки' : 'My Books';
-        document.getElementById('tabNav-order').innerText = isRu ? 'Заказать печать' : 'Order Print';
-
-        document.getElementById('txt-btn-audio').innerText = isRu ? 'Аудиосказка' : 'Audio Story';
-        document.getElementById('txt-btn-download').innerText = isRu ? 'Скачать ePub' : 'Download ePub';
-        document.getElementById('txt-btn-order').innerText = isRu ? 'Заказать книжку' : 'Order Hardcover';
-    }
 </script>
 </body>
 </html>
