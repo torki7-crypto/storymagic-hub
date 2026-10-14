@@ -152,7 +152,7 @@
     /* Генератор: 2 колонки */
     .app-grid {
         display: grid;
-        grid-template-columns: 310px 1fr;
+        grid-template-columns: 330px 1fr;
         gap: 22px;
         align-items: start;
     }
@@ -176,15 +176,35 @@
     }
     .custom-input, .custom-select {
         width: 100%;
-        padding: 10px 14px;
+        padding: 10px 12px;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.22);
         border-radius: 12px;
         color: #fff;
-        font-size: 0.95em;
+        font-size: 0.92em;
         outline: none;
     }
-    .custom-select option { background: #241438; color: #fff; }
+    .custom-select option, .custom-select optgroup { background: #241438; color: #fff; }
+
+    /* Загрузка фото */
+    .photo-upload-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px dashed rgba(255, 255, 255, 0.25);
+        padding: 10px 14px;
+        border-radius: 12px;
+        cursor: pointer;
+    }
+    .photo-preview {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: rgba(255, 255, 255, 0.1);
+        display: none;
+    }
 
     .magic-btn {
         width: 100%;
@@ -210,7 +230,7 @@
         min-height: 20px;
     }
 
-    /* Книжный разворот: СТРОГАЯ ИЗОЛЯЦИЯ ОТ НИЖНИХ КНОПОК */
+    /* Книжный разворот */
     .book-container {
         display: flex;
         flex-direction: column;
@@ -307,7 +327,7 @@
     }
     .turn-btn:hover { background: #ff6b8b; }
 
-    /* Панель коммерческих действий ПОД книгой */
+    /* Панель коммерческих действий */
     .action-bar {
         display: grid;
         grid-template-columns: 1fr 1fr 1.3fr;
@@ -353,7 +373,7 @@
     .book-item-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; }
     .book-item-meta { font-size: 0.85em; color: #b39ddb; }
 
-    /* Модальное окно оплаты */
+    /* Модалка оплаты */
     .modal-overlay {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -399,7 +419,6 @@
 </head>
 <body>
 
-    <!-- Шапка сайта -->
     <header>
         <div class="brand" onclick="switchTab('about')">
             <span style="font-size: 1.6em;">✨</span>
@@ -421,41 +440,50 @@
 
     <main>
         
-        <!-- 1. Главная -->
+        <!-- Главная -->
         <div id="tab-about" class="tab-content active">
             <div class="hero-box">
-                <h1 id="hero-title">Персональные книги для каждого ребенка</h1>
-                <p id="hero-desc">Превратите вашего ребенка в главного героя волшебного приключения. Искусственный интеллект адаптирует сюжет, возрастные акценты и генерирует уникальные иллюстрации в реальном времени.</p>
+                <h1 id="hero-title">Персональные терапевтические книги для детей</h1>
+                <p id="hero-desc">Загрузите фото ребёнка, и искусственный интеллект бережно создаст поучительную сказку, в которой главный герой с его внешностью победит страхи и найдёт друзей.</p>
                 <button class="magic-btn" id="hero-cta" style="max-width: 280px; margin: 0 auto; display: block;" onclick="switchTab('create')">🚀 Начать создание</button>
             </div>
 
             <div class="steps-grid">
                 <div class="step-card">
-                    <div class="step-icon">✍️</div>
-                    <h3 id="step1-title">1. Персонализация</h3>
-                    <p id="step1-desc">Укажите имя, возраст и любимый сюжет сказки.</p>
+                    <div class="step-icon">📸</div>
+                    <h3 id="step1-title">1. Фотография и герой</h3>
+                    <p id="step1-desc">Укажите имя и прикрепите фото — герой книги будет похож на вашего ребёнка.</p>
                 </div>
                 <div class="step-card">
-                    <div class="step-icon">🎨</div>
-                    <h3 id="step2-title">2. Генерация книги</h3>
-                    <p id="step2-desc">Нейросеть сочиняет сказку и рисует иллюстрации для каждого разворота.</p>
+                    <div class="step-icon">🌱</div>
+                    <h3 id="step2-title">2. Терапевтический сюжет</h3>
+                    <p id="step2-desc">Выберите тему: страх темноты, первый день в садике, капризы или дружба.</p>
                 </div>
                 <div class="step-card">
                     <div class="step-icon">📖</div>
                     <h3 id="step3-title">3. Читайте или закажите</h3>
-                    <p id="step3-desc">Читайте в удобном книжном развороте, слушайте аудиосказку или оформите печать.</p>
+                    <p id="step3-desc">Читайте в книжном развороте, слушайте аудиосказку или оформите в переплете.</p>
                 </div>
             </div>
         </div>
 
-        <!-- 2. Генератор -->
+        <!-- Генератор -->
         <div id="tab-create" class="tab-content">
             <div class="app-grid">
                 
-                <!-- Левая колонка параметров -->
                 <div class="panel-card">
                     <h2 style="font-family:'Comfortaa', cursive; font-size:1.2em; margin-bottom:14px;" id="lbl-form-title">Параметры книги</h2>
                     
+                    <!-- Загрузка фото -->
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-photo">📷 Фото ребёнка (для сходства)</label>
+                        <div class="photo-upload-box" onclick="document.getElementById('photoInput').click()">
+                            <img id="photoThumb" class="photo-preview" alt="Preview">
+                            <span id="photoStatusText" style="font-size:0.85em; color:#ddd;">Нажмите, чтобы выбрать фото</span>
+                        </div>
+                        <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhotoSelect(event)">
+                    </div>
+
                     <div class="input-group">
                         <label class="input-label" id="lbl-hero-name">Имя героя</label>
                         <input type="text" id="heroName" class="custom-input" value="Алиса">
@@ -464,10 +492,31 @@
                         <label class="input-label" id="lbl-hero-age">Возраст</label>
                         <input type="number" id="childAge" class="custom-input" value="7">
                     </div>
+
+                    <!-- Выбор темы -->
                     <div class="input-group">
-                        <label class="input-label" id="lbl-story-theme">Сюжет / Тема</label>
-                        <input type="text" id="storyTheme" class="custom-input" value="Приключения в зачарованном лесу с волшебным котом">
+                        <label class="input-label" id="lbl-story-theme">Тема сказки</label>
+                        <select id="themeSelect" class="custom-select" onchange="checkCustomTheme()">
+                            <optgroup label="🌱 Терапевтические сказки (Уверенность и эмоции)" id="grp-therapy">
+                                <option value="Как победить страх темноты и подружиться с Ночной Звёздочкой" selected>Страх темноты и ночных теней</option>
+                                <option value="Храбрый шаг: первый день в новой школе и садике">Первый день в садике / школе</option>
+                                <option value="Укрощение сердитого дракончика: как справляться со злостью">Злость, капризы и эмоции</option>
+                                <option value="Королевство потерянных игрушек: радость порядка">Уборка игрушек и аккуратность</option>
+                                <option value="Сила доброго слова и умение делиться">Умение делиться и дружба</option>
+                            </optgroup>
+                            <optgroup label="🚀 Волшебные приключения" id="grp-adv">
+                                <option value="Приключения в зачарованном лесу с волшебным говорящим котом">Зачарованный лес и мудрый кот</option>
+                                <option value="Космическая экспедиция на Звёздный остров">Космическая экспедиция к звёздам</option>
+                                <option value="Путешествие во времена добрых динозавров">Экспедиция в мир динозавров</option>
+                            </optgroup>
+                            <option value="custom" id="opt-custom">✍️ Написать свою тему...</option>
+                        </select>
                     </div>
+
+                    <div class="input-group" id="customThemeBox" style="display:none;">
+                        <input type="text" id="customThemeInput" class="custom-input" placeholder="Опишите сюжет сказки...">
+                    </div>
+
                     <div class="input-group">
                         <label class="input-label" id="lbl-art-style">Стиль графики</label>
                         <select id="artStyle" class="custom-select">
@@ -481,7 +530,7 @@
                     <div id="statusMsg" class="status-msg"></div>
                 </div>
 
-                <!-- Правая колонка: книга и кнопки строго разделены -->
+                <!-- Книжный разворот -->
                 <div class="panel-card book-container">
                     
                     <div class="book-spread">
@@ -507,7 +556,6 @@
                         </div>
                     </div>
 
-                    <!-- Панель коммерческих действий ПОД книгой -->
                     <div class="action-bar">
                         <button class="action-btn" onclick="toggleAudioStory()">🎧 <span id="btn-audio-lbl">Аудиосказка</span></button>
                         <button class="action-btn" onclick="printBook()">📥 <span id="btn-print-lbl">Печать / Сохранить</span></button>
@@ -519,14 +567,14 @@
             </div>
         </div>
 
-        <!-- 3. Библиотека -->
+        <!-- Библиотека -->
         <div id="tab-library" class="tab-content">
             <h2 style="font-family:'Comfortaa', cursive;" id="lib-title">📚 Ваши созданные книги</h2>
             <p style="color:#bcaaa4; font-size:0.95em; margin-bottom:18px;" id="lib-desc">История всех книг, сгенерированных на этом устройстве.</p>
             <div id="libraryContainer" class="library-grid"></div>
         </div>
 
-        <!-- 4. Заказ книги -->
+        <!-- Заказ -->
         <div id="tab-order" class="tab-content">
             <div class="hero-box" style="text-align:left; max-width:620px;">
                 <h2 style="font-family:'Comfortaa', cursive; margin-bottom:12px;" id="order-title">🚚 Заказ книги в твердом переплете</h2>
@@ -578,6 +626,7 @@
     var currentIndex = 0;
     var currentLang = 'ru';
     var isSpeaking = false;
+    var selectedPhotoFile = null;
 
     var dictionary = {
         ru: {
@@ -587,21 +636,25 @@
             navLibrary: 'Просмотренные книжки',
             navOrder: 'Заказать печать',
             btnTopup: '💎 Пополнить',
-            heroTitle: 'Персональные книги для каждого ребенка',
-            heroDesc: 'Превратите вашего ребенка в главного героя волшебного приключения. Искусственный интеллект адаптирует сюжет, возрастные акценты и генерирует уникальные иллюстрации в реальном времени.',
+            heroTitle: 'Персональные терапевтические книги для детей',
+            heroDesc: 'Загрузите фото ребёнка, и искусственный интеллект бережно создаст поучительную сказку, в которой главный герой с его внешностью победит страхи и найдёт друзей.',
             heroCta: '🚀 Начать создание',
-            step1Title: '1. Персонализация',
-            step1Desc: 'Укажите имя, возраст и любимый сюжет сказки.',
-            step2Title: '2. Генерация книги',
-            step2Desc: 'Нейросеть сочиняет сказку и рисует иллюстрации для каждого разворота.',
+            step1Title: '1. Фотография и герой',
+            step1Desc: 'Укажите имя и прикрепите фото — герой книги будет похож на вашего ребёнка.',
+            step2Title: '2. Терапевтический сюжет',
+            step2Desc: 'Выберите тему: страх темноты, первый день в садике, капризы или дружба.',
             step3Title: '3. Читайте или закажите',
-            step3Desc: 'Читайте в удобном книжном развороте, слушайте аудиосказку или оформите печать.',
+            step3Desc: 'Читайте в книжном развороте, слушайте аудиосказку или оформите в переплете.',
             lblFormTitle: 'Параметры книги',
+            lblPhoto: '📷 Фото ребёнка (для сходства)',
+            photoChoose: 'Нажмите, чтобы выбрать фото',
             lblHeroName: 'Имя героя',
             valHeroName: 'Алиса',
             lblHeroAge: 'Возраст',
-            lblStoryTheme: 'Сюжет / Тема',
-            valStoryTheme: 'Приключения в зачарованном лесу с волшебным котом',
+            lblStoryTheme: 'Тема сказки',
+            grpTherapy: '🌱 Терапевтические сказки (Уверенность и эмоции)',
+            grpAdv: '🚀 Волшебные приключения',
+            optCustom: '✍️ Написать свою тему...',
             lblArtStyle: 'Стиль графики',
             optStyle1: 'Акварель / Сказка',
             optStyle2: '3D Мультфильм',
@@ -624,285 +677,3 @@
             placeholderAddr: 'Улица, дом, квартира, индекс',
             lblOrderType: 'Тип переплета',
             optOrderHard: 'Твердый матовый переплет — £14.99',
-            optOrderPrem: 'Премиум глянец с тиснением — £19.99',
-            btnOrderPay: 'Перейти к оплате',
-            payTitle: 'Выберите тариф',
-            paySubtitle: 'Пополните баланс для генерации книг и озвучки',
-            plan1Title: 'Старт',
-            plan1Desc: '5 персональных сказок + аудио',
-            plan1Btn: 'Купить',
-            plan2Title: 'Безлимит',
-            plan2Desc: 'Неограниченно сказок + экспорт',
-            plan2Btn: 'Выбрать',
-            statusGen: '✨ Сочиняем сказку и иллюстрации...',
-            statusDone: '🎉 Готово!'
-        },
-        en: {
-            langBtn: '🇷🇺 RU',
-            navAbout: 'Home',
-            navCreate: 'Create Story',
-            navLibrary: 'My Books',
-            navOrder: 'Order Hardcover',
-            btnTopup: '💎 Top Up',
-            heroTitle: 'Personalized Books for Every Child',
-            heroDesc: 'Turn your child into the hero of their own magical adventure. Artificial intelligence crafts heartfelt stories and stunning illustrations in real time.',
-            heroCta: '🚀 Start Creating',
-            step1Title: '1. Personalize',
-            step1Desc: 'Enter character name, age, and favorite story theme.',
-            step2Title: '2. Story Generation',
-            step2Desc: 'AI creates tailored narrative and beautiful illustrations for every spread.',
-            step3Title: '3. Read or Order',
-            step3Desc: 'Read in an interactive book spread, listen to audio, or order print copies.',
-            lblFormTitle: 'Book Settings',
-            lblHeroName: 'Hero Name',
-            valHeroName: 'Alice',
-            lblHeroAge: 'Age',
-            lblStoryTheme: 'Story Theme',
-            valStoryTheme: 'Adventures in an enchanted forest with a magical cat',
-            lblArtStyle: 'Art Style',
-            optStyle1: 'Watercolor / Fairy Tale',
-            optStyle2: '3D Animation',
-            optStyle3: 'Classic Gouache',
-            btnCreateStory: '🪄 Generate Book',
-            badgeCover: 'Cover',
-            badgePage: 'Page',
-            defaultWelcome: 'Fill in the parameters on the left and click "Generate Book". The storybook will unfold here in a full two-page spread with large, child-friendly typography.',
-            btnPrev: '❮ Back',
-            btnNext: 'Next ❯',
-            btnAudioLbl: 'Audio Story',
-            btnPrintLbl: 'Print / Save PDF',
-            btnOrderLbl: 'Order Hardcover',
-            libTitle: '📚 Your Created Books',
-            libDesc: 'History of all stories created on this device.',
-            libEmpty: 'No stories saved yet. Create your first book!',
-            orderTitle: '🚚 Order a Printed Hardcover Book',
-            orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.',
-            lblOrderAddr: 'Delivery Address',
-            placeholderAddr: 'Street, Apt, City, Postcode',
-            lblOrderType: 'Cover Type',
-            optOrderHard: 'Matte Hardcover — £14.99',
-            optOrderPrem: 'Premium Gloss with Foil — £19.99',
-            btnOrderPay: 'Proceed to Payment',
-            payTitle: 'Choose Your Plan',
-            paySubtitle: 'Add credits for book generation and voice narration',
-            plan1Title: 'Starter',
-            plan1Desc: '5 personalized stories + audio',
-            plan1Btn: 'Buy Now',
-            plan2Title: 'Unlimited',
-            plan2Desc: 'Unlimited stories + exports',
-            plan2Btn: 'Select Plan',
-            statusGen: '✨ Writing story and illustrations...',
-            statusDone: '🎉 Done!'
-        }
-    };
-
-    function toggleLanguage() {
-        currentLang = currentLang === 'ru' ? 'en' : 'ru';
-        var d = dictionary[currentLang];
-
-        document.getElementById('langBtn').innerText = d.langBtn;
-        document.getElementById('nav-about').innerText = d.navAbout;
-        document.getElementById('nav-create').innerText = d.navCreate;
-        document.getElementById('nav-library').innerText = d.navLibrary;
-        document.getElementById('nav-order').innerText = d.navOrder;
-        document.getElementById('btn-topup').innerText = d.btnTopup;
-
-        document.getElementById('hero-title').innerText = d.heroTitle;
-        document.getElementById('hero-desc').innerText = d.heroDesc;
-        document.getElementById('hero-cta').innerText = d.heroCta;
-
-        document.getElementById('step1-title').innerText = d.step1Title;
-        document.getElementById('step1-desc').innerText = d.step1Desc;
-        document.getElementById('step2-title').innerText = d.step2Title;
-        document.getElementById('step2-desc').innerText = d.step2Desc;
-        document.getElementById('step3-title').innerText = d.step3Title;
-        document.getElementById('step3-desc').innerText = d.step3Desc;
-
-        document.getElementById('lbl-form-title').innerText = d.lblFormTitle;
-        document.getElementById('lbl-hero-name').innerText = d.lblHeroName;
-        document.getElementById('heroName').value = d.valHeroName;
-        document.getElementById('lbl-hero-age').innerText = d.lblHeroAge;
-        document.getElementById('lbl-story-theme').innerText = d.lblStoryTheme;
-        document.getElementById('storyTheme').value = d.valStoryTheme;
-        document.getElementById('lbl-art-style').innerText = d.lblArtStyle;
-        document.getElementById('opt-style1').innerText = d.optStyle1;
-        document.getElementById('opt-style2').innerText = d.optStyle2;
-        document.getElementById('opt-style3').innerText = d.optStyle3;
-        document.getElementById('btn-create-story').innerText = d.btnCreateStory;
-
-        document.getElementById('btn-prev').innerText = d.btnPrev;
-        document.getElementById('btn-next').innerText = d.btnNext;
-        document.getElementById('btn-audio-lbl').innerText = d.btnAudioLbl;
-        document.getElementById('btn-print-lbl').innerText = d.btnPrintLbl;
-        document.getElementById('btn-order-lbl').innerText = d.btnOrderLbl;
-
-        document.getElementById('lib-title').innerText = d.libTitle;
-        document.getElementById('lib-desc').innerText = d.libDesc;
-
-        document.getElementById('order-title').innerText = d.orderTitle;
-        document.getElementById('order-desc').innerText = d.orderDesc;
-        document.getElementById('lbl-order-addr').innerText = d.lblOrderAddr;
-        document.getElementById('order-addr-input').placeholder = d.placeholderAddr;
-        document.getElementById('lbl-order-type').innerText = d.lblOrderType;
-        document.getElementById('opt-order-hard').innerText = d.optOrderHard;
-        document.getElementById('opt-order-prem').innerText = d.optOrderPrem;
-        document.getElementById('btn-order-pay').innerText = d.btnOrderPay;
-
-        document.getElementById('pay-title').innerText = d.payTitle;
-        document.getElementById('pay-subtitle').innerText = d.paySubtitle;
-        document.getElementById('plan1-title').innerText = d.plan1Title;
-        document.getElementById('plan1-desc').innerText = d.plan1Desc;
-        document.getElementById('plan1-btn').innerText = d.plan1Btn;
-        document.getElementById('plan2-title').innerText = d.plan2Title;
-        document.getElementById('plan2-desc').innerText = d.plan2Desc;
-        document.getElementById('plan2-btn').innerText = d.plan2Btn;
-
-        if (currentPages.length > 0) {
-            updateSlideUI();
-        } else {
-            document.getElementById('currentText').innerText = d.defaultWelcome;
-        }
-    }
-
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
-        document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
-        
-        document.getElementById('tab-' + tabName).classList.add('active');
-        var navBtn = document.getElementById('nav-' + tabName);
-        if (navBtn) navBtn.classList.add('active');
-
-        if (tabName === 'library') loadLibrary();
-    }
-
-    function updateSlideUI() {
-        if (!currentPages || currentPages.length === 0) return;
-        var p = currentPages[currentIndex];
-        var d = dictionary[currentLang];
-
-        var img = document.getElementById('currentImage');
-        img.style.opacity = '0.3';
-        var temp = new Image();
-        temp.onload = function() {
-            img.src = temp.src;
-            img.style.opacity = '1';
-        };
-        temp.src = p.image_url;
-
-        document.getElementById('pageBadge').innerText = d.badgePage + ' ' + p.page_number;
-        document.getElementById('pageCounter').innerText = p.page_number + ' / ' + currentPages.length;
-        document.getElementById('currentText').innerText = p.text;
-    }
-
-    function showSlide(idx) {
-        if (!currentPages || currentPages.length === 0) return;
-        currentIndex = idx;
-        updateSlideUI();
-    }
-
-    function nextSlide() {
-        if (!currentPages.length) return;
-        showSlide(currentIndex < currentPages.length - 1 ? currentIndex + 1 : 0);
-    }
-    function prevSlide() {
-        if (!currentPages.length) return;
-        showSlide(currentIndex > 0 ? currentIndex - 1 : currentPages.length - 1);
-    }
-
-    async function generateStory() {
-        var status = document.getElementById('statusMsg');
-        status.innerText = dictionary[currentLang].statusGen;
-
-        var formData = new FormData();
-        formData.append('hero_name', document.getElementById('heroName').value);
-        formData.append('age', document.getElementById('childAge').value);
-        formData.append('theme', document.getElementById('storyTheme').value);
-        formData.append('style', document.getElementById('artStyle').value);
-        formData.append('lang', currentLang);
-
-        try {
-            var response = await fetch('/api/generate', { method: 'POST', body: formData });
-            var result = await response.json();
-            if (result.success && result.pages) {
-                currentPages = result.pages;
-                status.innerText = dictionary[currentLang].statusDone;
-                showSlide(0);
-                saveBookToLibrary(document.getElementById('heroName').value, document.getElementById('storyTheme').value, currentPages);
-            } else {
-                status.innerText = '❌ ' + (result.error || 'Error');
-            }
-        } catch (e) {
-            status.innerText = '❌ ' + e.message;
-        }
-    }
-
-    function saveBookToLibrary(hero, theme, pages) {
-        var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
-        lib.unshift({
-            id: Date.now(),
-            hero: hero,
-            theme: theme,
-            cover: pages[0].image_url,
-            pages: pages,
-            date: new Date().toLocaleDateString()
-        });
-        localStorage.setItem('storymagic_lib', JSON.stringify(lib.slice(0, 10)));
-    }
-
-    function loadLibrary() {
-        var box = document.getElementById('libraryContainer');
-        var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
-        box.innerHTML = '';
-        if (lib.length === 0) {
-            box.innerHTML = '<p style="color:#aaa;">' + dictionary[currentLang].libEmpty + '</p>';
-            return;
-        }
-        lib.forEach(function(book) {
-            var el = document.createElement('div');
-            el.className = 'book-item-card';
-            el.innerHTML = '<img class="book-item-thumb" src="' + book.cover + '">' +
-                           '<div class="book-item-info">' +
-                           '<div class="book-item-title">' + book.hero + ': ' + book.theme + '</div>' +
-                           '<div class="book-item-meta">' + book.date + ' • ' + book.pages.length + ' p.</div>' +
-                           '</div>';
-            el.onclick = function() {
-                currentPages = book.pages;
-                switchTab('create');
-                showSlide(0);
-            };
-            box.appendChild(el);
-        });
-    }
-
-    function toggleAudioStory() {
-        if (!('speechSynthesis' in window)) {
-            alert('Speech synthesis not supported');
-            return;
-        }
-        if (isSpeaking) {
-            window.speechSynthesis.cancel();
-            isSpeaking = false;
-            return;
-        }
-        if (!currentPages.length) return;
-        var text = currentPages[currentIndex].text;
-        var utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = currentLang === 'ru' ? 'ru-RU' : 'en-US';
-        utterance.onend = function() { isSpeaking = false; };
-        window.speechSynthesis.speak(utterance);
-        isSpeaking = true;
-    }
-
-    function printBook() {
-        if (!currentPages.length) {
-            alert(currentLang === 'ru' ? 'Сначала создайте книгу!' : 'Please generate a book first!');
-            return;
-        }
-        window.print();
-    }
-
-    function openPaymentModal() { document.getElementById('paymentModal').style.display = 'flex'; }
-    function closePaymentModal() { document.getElementById('paymentModal').style.display = 'none'; }
-</script>
-</body>
-</html>
