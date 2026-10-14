@@ -323,10 +323,19 @@
 
         var img = document.getElementById('currentImage');
         img.style.opacity = '0.3';
-        setTimeout(function() {
+
+        // Создаем временный объект для предзагрузки
+        var tempImg = new Image();
+        tempImg.onload = function() {
             img.src = p.image_url;
             img.style.opacity = '1';
-        }, 150);
+        };
+        tempImg.onerror = function() {
+            // Резервный источник, если основной сервер занят
+            img.src = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(p.image_prompt) + '?width=800&height=600&nologo=true';
+            img.style.opacity = '1';
+        };
+        tempImg.src = p.image_url;
 
         document.getElementById('pageBadge').innerText = 'Страница ' + p.page_number + ' из ' + currentPages.length;
         document.getElementById('currentText').innerText = p.text;
