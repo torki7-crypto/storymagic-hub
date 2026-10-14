@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StoryMagic — Интерактивная фабрика сказок</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@400;600;700&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        font-family: 'Nunito', sans-serif;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #181326, #36224c, #1f0f38);
+        position: relative;
+        overflow-x: hidden;
+        color: #fff;
+        padding: 24px;
+    }
+
+    .bubble {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), rgba(255, 120, 200, 0.15) 60%, rgba(120, 180, 255, 0.05));
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.2), inset 0 0 15px rgba(255, 255, 255, 0.3);
+        animation: floatUp 15s infinite ease-in-out;
+        pointer-events: none;
+        z-index: 0;
+    }
+    .b1 { width: 90px; height: 90px; left: 6%; bottom: -100px; animation-duration: 16s; }
+    .b2 { width: 150px; height: 150px; left: 28%; bottom: -160px; animation-duration: 22s; animation-delay: 2s; }
+    .b3 { width: 70px; height: 70px; left: 68%; bottom: -80px; animation-duration: 14s; animation-delay: 1s; }
+    .b4 { width: 110px; height: 110px; left: 88%; bottom: -120px; animation-duration: 18s; animation-delay: 4s; }
+
+    @keyframes floatUp {
+        0% { transform: translateY(0) scale(1); opacity: 0; }
+        20% { opacity: 0.75; }
+        80% { opacity: 0.75; }
+        100% { transform: translateY(-1200px) scale(1.15); opacity: 0; }
+    }
+
+    .app-container {
+        max-width: 1240px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 28px;
+        align-items: start;
+    }
+
+    @media (max-width: 920px) {
+        .app-container { grid-template-columns: 1fr; }
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 24px;
+        padding: 26px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+    }
+
+    .brand-title {
+        font-family: 'Comfortaa', cursive;
+        font-size: 1.85em;
+        font-weight: 700;
+        margin-bottom: 6px;
+        background: linear-gradient(90deg, #ff9a9e, #fecfef, #a1c4fd);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .sub-title {
+        font-size: 0.9em;
+        color: #d1c4e9;
+        margin-bottom: 24px;
+    }
+
+    .input-group { margin-bottom: 18px; }
+
+    .input-label {
+        display: block;
+        font-size: 0.85em;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        color: #f1e4ff;
+    }
+
+    .custom-input, .custom-select {
+        width: 100%;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 0.95em;
+        outline: none;
+    }
+
+    .custom-input:focus, .custom-select:focus {
+        border-color: #ff9a9e;
+    }
+
+    .custom-select option {
+        background: #2b1d3d;
+        color: #fff;
+    }
+
+    .magic-btn {
+        width: 100%;
+        padding: 15px;
+        border: none;
+        border-radius: 14px;
+        font-family: 'Comfortaa', cursive;
+        font-size: 1.05em;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #ff6b8b, #ff8e53);
+        box-shadow: 0 8px 22px rgba(255, 107, 139, 0.4);
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        margin-top: 10px;
+    }
+
+    .magic-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(255, 107, 139, 0.6);
+    }
+
+    .status-msg {
+        margin-top: 15px;
+        font-size: 0.9em;
+        text-align: center;
+        color: #a1c4fd;
+        min-height: 20px;
+    }
+
+    .book-stage {
+        width: 100%;
+        background: rgba(18, 14, 30, 0.65);
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .slide-image-box {
+        width: 100%;
+        height: 420px;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #110e1d;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .slide-image-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: opacity 0.3s ease;
+    }
+
+    .slide-story-card {
+        width: 100%;
+        margin-top: 18px;
+        background: rgba(255, 255, 255, 0.07);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .slide-page-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        background: rgba(255, 107, 139, 0.3);
+        color: #ff9a9e;
+        font-weight: 700;
+        font-size: 0.85em;
+        margin-bottom: 10px;
+    }
+
+    .slide-text {
+        font-size: 1.2em;
+        line-height: 1.65;
+        color: #f7f3ff;
+    }
+
+    .carousel-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 20px;
+    }
+
+    .nav-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #fff;
+        font-size: 1.3em;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .nav-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: scale(1.08);
+    }
+
+    .dots-container { display: flex; gap: 8px; }
+
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .dot.active {
+        background: #ff6b8b;
+        width: 26px;
+        border-radius: 10px;
+    }
+</style>
+</head>
+<body>
+
+    <div class="bubble b1"></div>
+    <div class="bubble b2"></div>
+    <div class="bubble b3"></div>
+    <div class="bubble b4"></div>
+
+    <div class="app-container">
+        
+        <div class="glass-card">
+            <h1 class="brand-title">✨ StoryMagic</h1>
+            <p class="sub-title">Генератор детских интерактивных книг</p>
+
+            <div class="input-group">
+                <label class="input-label">Имя героя</label>
+                <input type="text" id="heroName" class="custom-input" value="Алиса">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Возраст ребёнка</label>
+                <input type="number" id="childAge" class="custom-input" value="7">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Тема сказки</label>
+                <input type="text" id="storyTheme" class="custom-input" value="Приключения в зачарованном лесу с волшебным котом">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Стиль иллюстраций</label>
+                <select id="artStyle" class="custom-select">
+                    <option value="Watercolor children's book" selected>Акварель / Сказка</option>
+                    <option value="3D Pixar animation character style">3D Мультфильм (Pixar)</option>
+                    <option value="Whimsical gouache storybook illustration">Гуашь / Классическая книжка</option>
+                </select>
+            </div>
+
+            <button class="magic-btn" onclick="generateStory()">🪄 Создать сказку</button>
+            <div id="statusMsg" class="status-msg"></div>
+        </div>
+
+        <div class="glass-card">
+            <div class="book-stage">
+                <div class="slide-image-box">
+                    <img id="currentImage" src="https://picsum.photos/seed/storymagic/800/600" alt="Иллюстрация страницы">
+                </div>
+                
+                <div class="slide-story-card">
+                    <span id="pageBadge" class="slide-page-badge">Обложка</span>
+                    <p id="currentText" class="slide-text">Заполните данные слева и нажмите кнопку «Создать сказку» — книга появится здесь!</p>
+                </div>
+            </div>
+
+            <div class="carousel-controls">
+                <button class="nav-btn" onclick="prevSlide()">❮</button>
+                <div class="dots-container" id="dotsBox"></div>
+                <button class="nav-btn" onclick="nextSlide()">❯</button>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    var currentPages = [];
+    var currentIndex = 0;
+
+    function renderDots() {
+        var box = document.getElementById('dotsBox');
+        box.innerHTML = '';
+        currentPages.forEach(function(_, idx) {
+            var d = document.createElement('div');
+            d.className = 'dot' + (idx === currentIndex ? ' active' : '');
+            d.onclick = function() { goToSlide(idx); };
+            box.appendChild(d);
+        });
+    }
+
+    function showSlide(idx) {
+        if (!currentPages || currentPages.length === 0) return;
+        currentIndex = idx;
+        var p = currentPages[currentIndex];
+
+        var img = document.getElementById('currentImage');
+        img.style.opacity = '0.3';
+        setTimeout(function() {
+            img.src = p.image_url;
+            img.style.opacity = '1';
+        }, 150);
+
+        document.getElementById('pageBadge').innerText = 'Страница ' + p.page_number + ' из ' + currentPages.length;
+        document.getElementById('currentText').innerText = p.text;
+        renderDots();
+    }
+
+    function nextSlide() {
+        if (currentPages.length === 0) return;
+        showSlide(currentIndex < currentPages.length - 1 ? currentIndex + 1 : 0);
+    }
+
+    function prevSlide() {
+        if (currentPages.length === 0) return;
+        showSlide(currentIndex > 0 ? currentIndex - 1 : currentPages.length - 1);
+    }
+
+    function goToSlide(idx) {
+        showSlide(idx);
+    }
+
+    async function generateStory() {
+        var status = document.getElementById('statusMsg');
+        status.innerText = '✨ Сочиняем сказку через Gemini и генерируем иллюстрации...';
+
+        var formData = new FormData();
+        formData.append('hero_name', document.getElementById('heroName').value);
+        formData.append('age', document.getElementById('childAge').value);
+        formData.append('theme', document.getElementById('storyTheme').value);
+        formData.append('style', document.getElementById('artStyle').value);
+
+        try {
+            var response = await fetch('/api/generate', {
+                method: 'POST',
+                body: formData
+            });
+
+            var result = await response.json();
+            if (result.success && result.pages) {
+                currentPages = result.pages;
+                status.innerText = '🎉 Сказка готова!';
+                showSlide(0);
+            } else {
+                status.innerText = '❌ Ошибка: ' + (result.error || 'Сбой генерации');
+            }
+        } catch (e) {
+            status.innerText = '❌ Ошибка сети: ' + e.message;
+        }
+    }
+</script>
+</body>
+</html>
