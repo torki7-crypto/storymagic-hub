@@ -569,6 +569,10 @@
         </nav>
 
         <div class="header-actions">
+            <nav class="nav-links">
+  <button type="button" class="nav-btn active" id="btn-nav-home" onclick="switchSection('home')">Главная</button>
+  <button type="button" class="nav-btn" id="btn-nav-about" onclick="switchSection('about')">О проекте / Как это работает</button>
+</nav>
             <button class="lang-badge" id="langBtn" onclick="toggleLanguage()">🇬🇧 EN</button>
             <button class="pay-btn" id="btn-topup" onclick="openPaymentModal()">💎 Пополнить</button>
         </div>
@@ -726,7 +730,54 @@
                 <button class="magic-btn" onclick="openPaymentModal()" style="margin-top:16px;" id="btn-order-pay">Перейти к оплате</button>
             </div>
         </div>
+<!-- Секция О проекте -->
+<section id="about-section" class="panel-card about-card" style="display: none;">
+  <div class="about-header">
+    <h2 id="about-title">О проекте StoryMagic</h2>
+    <p class="about-subtitle" id="about-tagline">Персонализированные терапевтические сказки, которые помогают детям расти уверенными и счастливыми.</p>
+  </div>
 
+  <div class="about-grid">
+    <div class="about-item">
+      <div class="about-icon">✨</div>
+      <h3 id="about-col1-title">В чем суть?</h3>
+      <p id="about-col1-desc">
+        Каждая история создается индивидуально под вашего ребенка. Сказкотерапия помогает мягко преодолевать страхи (темнота, адаптация в школе/саду), учит дружбе и вере в себя.
+      </p>
+    </div>
+
+    <div class="about-item">
+      <div class="about-icon">📸</div>
+      <h3 id="about-col2-title">Конфиденциальность</h3>
+      <p id="about-col2-desc">
+        Мы строго соблюдаем UK GDPR и стандарты ICO Children's Code. Фотографии используются только для создания иллюстраций и удаляются сразу после генерации.
+      </p>
+    </div>
+
+    <div class="about-item">
+      <div class="about-icon">📖</div>
+      <h3 id="about-col3-title">Как получить книгу?</h3>
+      <p id="about-col3-desc">
+        Читайте прямо на сайте, скачивайте в ePub для планшетов (iPad/Android) или заказывайте печатное издание в твердом переплете.
+      </p>
+    </div>
+  </div>
+
+  <div class="about-steps">
+    <h3 id="about-steps-title">3 простых шага:</h3>
+    <ol>
+      <li id="about-step-1"><strong>Шаг 1:</strong> Укажите имя, возраст и выберите тему сказки.</li>
+      <li id="about-step-2"><strong>Шаг 2:</strong> Загрузите фото (по желанию) и подтвердите согласие родителя.</li>
+      <li id="about-step-3"><strong>Шаг 3:</strong> Получите готовую иллюстрированную сказку за пару минут!</li>
+    </ol>
+  </div>
+
+  <div style="text-align: center; margin-top: 25px;">
+    <button type="button" class="magic-btn" onclick="switchSection('home')" id="about-back-btn">
+      Создать сказку сейчас ✨
+    </button>
+  </div>
+</section>
     </main>
 
     <!-- Модалка оплаты -->
@@ -1171,6 +1222,58 @@
             closePaymentModal();
         }
     }
-</script>
+</script>// Генератор плавающих фоновых шариков
+function initFloatingBubbles(count = 14) {
+  const container = document.getElementById('bubblesContainer');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (let i = 0; i < count; i++) {
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    
+    // Случайный размер от 18px до 55px
+    const size = Math.floor(Math.random() * 38) + 18;
+    bubble.style.width = `${size}px`;
+    bubble.style.height = `${size}px`;
+
+    // Случайное положение по горизонтали
+    bubble.style.left = `${Math.random() * 100}%`;
+
+    // Случайная длительность всплытия (8s - 18s) и задержка старта
+    const duration = (Math.random() * 10 + 8).toFixed(1);
+    const delay = (Math.random() * 8).toFixed(1);
+    bubble.style.animationDuration = `${duration}s`;
+    bubble.style.animationDelay = `${delay}s`;
+
+    container.appendChild(bubble);
+  }
+}
+
+// Переключение страниц
+function switchSection(section) {
+  // Находим основную форму по ID или классу
+  const homeCard = document.getElementById('generatorCard') || document.querySelector('.panel-card:not(#about-section)');
+  const aboutCard = document.getElementById('about-section');
+  const btnHome = document.getElementById('btn-nav-home');
+  const btnAbout = document.getElementById('btn-nav-about');
+
+  if (section === 'about') {
+    if (homeCard) homeCard.style.display = 'none';
+    if (aboutCard) aboutCard.style.display = 'block';
+    if (btnHome) btnHome.classList.remove('active');
+    if (btnAbout) btnAbout.classList.add('active');
+  } else {
+    if (homeCard) homeCard.style.display = 'block';
+    if (aboutCard) aboutCard.style.display = 'none';
+    if (btnHome) btnHome.classList.add('active');
+    if (btnAbout) btnAbout.classList.remove('active');
+  }
+}
+
+// Запуск анимации шариков при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+  initFloatingBubbles();
+});
 </body>
 </html>
