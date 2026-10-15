@@ -201,7 +201,7 @@
         .step-card h3 { margin-bottom: 8px; font-size: 1.15em; color: #fff; }
         .step-card p { font-size: 0.9em; color: #bcaaa4; line-height: 1.45; }
 
-        /* Карточка "О нас" */
+        /* Карточка О нас */
         .about-card {
             max-width: 900px;
             margin: 20px auto 40px;
@@ -1050,8 +1050,8 @@
             btnPrev: '❮ Wstecz',
             btnNext: 'Dalej ❯',
             btnAudioLbl: 'Audiobook',
-            btnPrintLbl: 'Drukuj / PDF',
-            btnOrderLbl: 'Zamów druk',
+            btnPrintLbl: 'Drukuj / Zapisz PDF',
+            btnOrderLbl: 'Zamów książkę',
             libTitle: '📚 Twoje stworzone książki',
             libDesc: 'Historia książek wygenerowanych na tym urządzeniu.',
             libEmpty: 'Brak zapisanych bajek. Stwórz swoją pierwszą książkę!',
@@ -1128,12 +1128,12 @@
             btnCreateStory: '🪄 Generează cartea',
             badgeCover: 'Copertă',
             badgePage: 'Pagina',
-            defaultWelcome: 'Completează formularul din stânga și apasă «Generează cartea». Povestea va apărea aici într-un format de carte deschisă.',
+            defaultWelcome: 'Completează formularul din stânga și apasă «Generează cartea». Povestea va apărea aici în format de carte deschisă, cu text mare și ușor de citit.',
             btnPrev: '❮ Înapoi',
             btnNext: 'Înainte ❯',
             btnAudioLbl: 'Audiobook',
-            btnPrintLbl: 'Tipărește / PDF',
-            btnOrderLbl: 'Comandă carte',
+            btnPrintLbl: 'Tipărește / Salvează PDF',
+            btnOrderLbl: 'Comandă cartea',
             libTitle: '📚 Cărțile tale create',
             libDesc: 'Istoricul poveștilor generate pe acest dispozitiv.',
             libEmpty: 'Nicio carte salvată încă. Creează prima poveste!',
@@ -1210,12 +1210,12 @@
             btnCreateStory: '🪄 Genera il libro',
             badgeCover: 'Copertina',
             badgePage: 'Pagina',
-            defaultWelcome: 'Compila i dettagli a sinistra e clicca su «Genera il libro». La storia comparirà qui in un elegante formato a doppia pagina.',
+            defaultWelcome: 'Compila i parametri a sinistra e clicca su «Genera il libro». La favola si aprirà qui in un vero formato a doppia pagina, con caratteri grandi e facili da leggere.',
             btnPrev: '❮ Indietro',
             btnNext: 'Avanti ❯',
             btnAudioLbl: 'Audiofavola',
-            btnPrintLbl: 'Stampa / PDF',
-            btnOrderLbl: 'Ordina copia',
+            btnPrintLbl: 'Stampa / Salva PDF',
+            btnOrderLbl: 'Ordina libro',
             libTitle: '📚 I tuoi libri creati',
             libDesc: 'Cronologia dei libri generati su questo dispositivo.',
             libEmpty: 'Nessun libro salvato. Crea la tua prima favola!',
@@ -1292,12 +1292,12 @@
             btnCreateStory: '🪄 Kitabı Oluştur',
             badgeCover: 'Kapak',
             badgePage: 'Sayfa',
-            defaultWelcome: 'Soldaki bilgileri doldurup «Kitabı Oluştur» butonuna tıklayın. Masal, burada çocuklara uygun büyük ve rahat yazı tipiyle açılacaktır.',
+            defaultWelcome: 'Soldaki alanları doldurun ve «Kitabı Oluştur» butonuna tıklayın. Masal, burada çocuklara uygun büyük ve okunaklı yazıyla açılacaktır.',
             btnPrev: '❮ Geri',
             btnNext: 'İleri ❯',
             btnAudioLbl: 'Sesli Masal',
-            btnPrintLbl: 'Yazdır / PDF',
-            btnOrderLbl: 'Baskı Siparişi',
+            btnPrintLbl: 'Yazdır / PDF Kaydet',
+            btnOrderLbl: 'Kitap Siparişi',
             libTitle: '📚 Oluşturulan Kitaplar',
             libDesc: 'Bu cihazda oluşturulmuş tüm masalların geçmişi.',
             libEmpty: 'Henüz kayıtlı kitap yok. İlk masalınızı şimdi oluşturun!',
@@ -1371,12 +1371,14 @@
         document.documentElement.lang = lang;
         var d = dictionary[lang] || dictionary['en'];
 
+        // Шапка и навигация
         document.getElementById('nav-about').innerText = d.navAbout;
         document.getElementById('nav-create').innerText = d.navCreate;
         document.getElementById('nav-library').innerText = d.navLibrary;
         document.getElementById('nav-order').innerText = d.navOrder;
         document.getElementById('btn-topup').innerText = d.btnTopup;
 
+        // Главный экран
         document.getElementById('hero-title').innerText = d.heroTitle;
         document.getElementById('hero-desc').innerText = d.heroDesc;
         document.getElementById('hero-cta').innerText = d.heroCta;
@@ -1388,6 +1390,7 @@
         document.getElementById('step3-title').innerText = d.step3Title;
         document.getElementById('step3-desc').innerText = d.step3Desc;
 
+        // Раздел О нас
         document.getElementById('about-title').innerText = d.aboutTitle;
         document.getElementById('about-tagline').innerText = d.aboutTagline;
         document.getElementById('about-col1-title').innerText = d.aboutCol1Title;
@@ -1401,6 +1404,7 @@
         document.getElementById('about-step-2').innerHTML = d.aboutStep2;
         document.getElementById('about-step-3').innerHTML = d.aboutStep3;
 
+        // Форма создания
         document.getElementById('lbl-form-title').innerText = d.lblFormTitle;
         document.getElementById('lbl-photo').innerText = d.lblPhoto;
         if (!selectedPhotoFile) {
@@ -1432,12 +1436,14 @@
         document.getElementById('lbl-consent-text').innerText = d.lblConsentText;
         document.getElementById('btn-create-story').innerText = d.btnCreateStory;
 
+        // Кнопки под книгой и перелистывание
         document.getElementById('btn-prev').innerText = d.btnPrev;
         document.getElementById('btn-next').innerText = d.btnNext;
         document.getElementById('btn-audio-lbl').innerText = d.btnAudioLbl;
-        document.getElementById('btnPrintLbl').innerText = d.btnPrintLbl;
+        document.getElementById('btn-print-lbl').innerText = d.btnPrintLbl;
         document.getElementById('btn-order-lbl').innerText = d.btnOrderLbl;
 
+        // Библиотека и оформление заказа
         document.getElementById('lib-title').innerText = d.libTitle;
         document.getElementById('lib-desc').innerText = d.libDesc;
 
@@ -1450,6 +1456,7 @@
         document.getElementById('opt-order-prem').innerText = d.optOrderPrem;
         document.getElementById('btn-order-pay').innerText = d.btnOrderPay;
 
+        // Тарифы
         document.getElementById('pay-title').innerText = d.payTitle;
         document.getElementById('pay-subtitle').innerText = d.paySubtitle;
         document.getElementById('plan1-title').innerText = d.plan1Title;
@@ -1459,6 +1466,7 @@
         document.getElementById('plan2-desc').innerText = d.plan2Desc;
         document.getElementById('plan2-btn').innerText = d.plan2Btn;
 
+        // Обновление разворота книги
         if (currentPages.length > 0) {
             updateSlideUI();
         } else {
@@ -1535,7 +1543,7 @@
         formData.append('age', document.getElementById('childAge').value);
         formData.append('theme', selectedTheme);
         formData.append('style', document.getElementById('artStyle').value);
-        formData.append('lang', currentLang); // Передаем en, ru, pl, ro, it или tr
+        formData.append('lang', currentLang);
 
         if (selectedPhotoFile) {
             formData.append('photo', selectedPhotoFile);
@@ -1648,6 +1656,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         initFloatingBubbles();
+        changeLanguage('en');
     });
 </script>
 </body>
