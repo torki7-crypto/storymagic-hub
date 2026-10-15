@@ -9,7 +9,6 @@ from ebooklib import epub
 
 from fastapi import FastAPI, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 # Подключение Gemini API
@@ -18,7 +17,7 @@ from google.genai import types
 
 app = FastAPI(title="StoryMagic Hub Backend")
 
-# Включаем CORS, чтобы запросы с любого адреса проходили без ошибок браузера
+# Включаем CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Инициализация клиента Gemini (ключ GEMINI_API_KEY берется из переменных окружения Railway)
+# Инициализация клиента Gemini
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
 
 
@@ -191,7 +190,6 @@ Requirements:
 3. Keep the tone gentle, encouraging, and magical.
 """
 
-        # Запрос к Gemini со строгой JSON-схемой ответа
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -230,11 +228,15 @@ async def export_epub(story: StoryBookData):
 
 
 # ==========================================
-# 4. Раздача фронтенда (index.html)
+# 4. Раздача фронтенда (поддержка и templates/, и корня)
 # ==========================================
 
 @app.get("/")
 async def serve_index():
+    # Проверяем в папке templates/
+    if os.path.exists("templates/index.html"):
+        return FileResponse("templates/index.html")
+    # Проверяем в корне
     if os.path.exists("index.html"):
         return FileResponse("index.html")
-    return {"message": "StoryMagic Hub Backend is running. Place index.html in the root folder to view frontend."}
+    return {"message": "index.html not found"}
