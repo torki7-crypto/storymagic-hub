@@ -3,592 +3,1740 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StoryMagic Hub - Personalized Children's Books</title>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>StoryMagic — Personalized Books for Kids</title>
     <style>
-        :root {
-            --primary: #6C5CE7;
-            --primary-light: #A29BFE;
-            --secondary: #FD79A8;
-            --accent: #FDCB6E;
-            --bg: #F9F9FF;
-            --surface: #FFFFFF;
-            --text: #2D3436;
-            --text-muted: #636E72;
-            --border: #DFE6E9;
-            --success: #00B894;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@400;600;700;800&family=Lora:ital,wght@0,500;0,600;1,400&display=swap');
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Nunito', sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
+            background: linear-gradient(135deg, #130d24, #27163d, #140b26);
+            color: #fff;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
             position: relative;
+            overflow-x: hidden;
         }
 
-        /* Floating magic bubbles background */
+        /* Фоновые анимированные пузыри */
+        .bubbles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
         .bubble {
             position: absolute;
+            bottom: -60px;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), rgba(255, 107, 139, 0.18));
             border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(162, 155, 254, 0.2));
-            box-shadow: 0 10px 20px rgba(108, 92, 231, 0.05);
-            pointer-events: none;
-            z-index: 0;
-            animation: float 14s infinite ease-in-out;
+            animation: floatUp linear infinite;
+            box-shadow: 0 0 15px rgba(255, 107, 139, 0.25);
         }
 
-        .bubble:nth-child(1) { width: 120px; height: 120px; top: 10%; left: 5%; animation-duration: 12s; }
-        .bubble:nth-child(2) { width: 180px; height: 180px; top: 60%; left: 85%; animation-duration: 16s; }
-        .bubble:nth-child(3) { width: 80px; height: 80px; top: 80%; left: 10%; animation-duration: 10s; }
-        .bubble:nth-child(4) { width: 140px; height: 140px; top: 25%; left: 80%; animation-duration: 14s; }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-25px) rotate(8deg); }
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) translateX(0) scale(0.8);
+                opacity: 0;
+            }
+            15% {
+                opacity: 0.7;
+            }
+            85% {
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(-110vh) translateX(40px) scale(1.1);
+                opacity: 0;
+            }
         }
 
         header {
-            position: relative;
-            z-index: 10;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 12px 28px;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            padding: 1.2rem 2rem;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 2px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        .logo {
-            font-family: 'Fredoka', cursive;
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--primary);
-            text-decoration: none;
+        .brand {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-        }
-
-        .lang-select-wrapper {
-            position: relative;
-        }
-
-        .lang-select {
-            appearance: none;
-            background: var(--surface);
-            border: 2px solid var(--primary-light);
-            padding: 0.5rem 2rem 0.5rem 1rem;
-            border-radius: 20px;
-            font-weight: 700;
-            font-family: 'Nunito', sans-serif;
-            color: var(--primary);
+            gap: 10px;
             cursor: pointer;
+        }
+        .brand-title {
+            font-family: 'Comfortaa', cursive;
+            font-size: 1.5em;
+            font-weight: 700;
+            background: linear-gradient(90deg, #ff9a9e, #fecfef, #a1c4fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 5px;
+            border-radius: 14px;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: #d1c4e9;
+            padding: 8px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: 0.2s;
+        }
+        .tab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #ff6b8b, #ff8e53);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(255, 107, 139, 0.35);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Селектор языка */
+        .lang-select-box {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 10px;
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+        }
+        .lang-select {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.88em;
             outline: none;
-            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .lang-select option {
+            background: #1c1130;
+            color: #fff;
         }
 
-        .lang-select:hover {
-            border-color: var(--primary);
-        }
-
-        .lang-select-wrapper::after {
-            content: "▼";
-            font-size: 0.7rem;
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--primary);
-            pointer-events: none;
+        .pay-btn {
+            background: linear-gradient(135deg, #a18cd1, #fbc2eb);
+            color: #240e48;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 0.85em;
+            box-shadow: 0 4px 12px rgba(161, 140, 209, 0.3);
         }
 
         main {
-            position: relative;
-            z-index: 5;
-            max-width: 800px;
-            width: 100%;
-            margin: 2rem auto;
-            padding: 0 1.5rem;
-            flex-grow: 1;
-        }
-
-        .card {
-            background: var(--surface);
-            border-radius: 24px;
-            padding: 2.5rem;
-            box-shadow: 0 15px 35px rgba(108, 92, 231, 0.08);
-            border: 2px solid rgba(162, 155, 254, 0.3);
-        }
-
-        h1 {
-            font-family: 'Fredoka', cursive;
-            font-size: 2.2rem;
-            color: var(--primary);
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-            font-size: 1.1rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: var(--text);
-        }
-
-        input[type="text"],
-        input[type="number"],
-        textarea,
-        select.input-field {
-            width: 100%;
-            padding: 0.85rem 1.2rem;
-            border-radius: 14px;
-            border: 2px solid var(--border);
-            font-family: 'Nunito', sans-serif;
-            font-size: 1rem;
-            color: var(--text);
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        input:focus, textarea:focus, select.input-field:focus {
-            border-color: var(--primary);
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 90px;
-        }
-
-        .row {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .col {
             flex: 1;
-        }
-
-        /* UK GDPR & ICO Children's Code Notice */
-        .gdpr-box {
-            background: #F1F2F6;
-            border-radius: 16px;
-            padding: 1.2rem;
-            margin: 1.8rem 0;
-            border-left: 5px solid var(--primary);
-            font-size: 0.9rem;
-            line-height: 1.5;
-            color: var(--text-muted);
-        }
-
-        .gdpr-box strong {
-            color: var(--text);
-            display: block;
-            margin-bottom: 0.4rem;
-        }
-
-        .checkbox-container {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.8rem;
-            margin-top: 0.8rem;
-            cursor: pointer;
-            color: var(--text);
-            font-weight: 600;
-        }
-
-        .checkbox-container input {
-            margin-top: 0.25rem;
-            width: 18px;
-            height: 18px;
-            accent-color: var(--primary);
-            cursor: pointer;
-        }
-
-        .btn-submit {
+            padding: 20px 28px;
+            max-width: 1400px;
+            margin: 0 auto;
             width: 100%;
-            padding: 1rem;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 1.2rem;
-            font-weight: 700;
-            font-family: 'Fredoka', cursive;
-            cursor: pointer;
-            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.25);
-            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            z-index: 10;
         }
 
-        .btn-submit:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 25px rgba(108, 92, 231, 0.35);
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
-        .btn-submit:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .hero-box {
+            text-align: center;
+            max-width: 860px;
+            margin: 30px auto;
         }
-
-        /* Result story display */
-        #storyResult {
-            display: none;
-            margin-top: 2rem;
-            background: #FFFFFF;
-            border-radius: 20px;
-            padding: 2rem;
-            border: 2px dashed var(--primary-light);
+        .hero-box h1 {
+            font-family: 'Comfortaa', cursive;
+            font-size: 2.5em;
+            margin-bottom: 16px;
+            background: linear-gradient(90deg, #ff9a9e, #fad0c4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-
-        #storyResult h2 {
-            font-family: 'Fredoka', cursive;
-            color: var(--primary);
-            margin-bottom: 1rem;
+        .hero-box p {
+            font-size: 1.15em;
+            line-height: 1.6;
+            color: #ded1f7;
+            margin-bottom: 28px;
+        }
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .step-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 26px 20px;
+            border-radius: 18px;
             text-align: center;
         }
+        .step-icon { font-size: 2.2em; margin-bottom: 12px; }
+        .step-card h3 { margin-bottom: 8px; font-size: 1.15em; color: #fff; }
+        .step-card p { font-size: 0.9em; color: #bcaaa4; line-height: 1.45; }
 
-        .story-text {
-            font-size: 1.15rem;
-            line-height: 1.8;
-            margin-bottom: 1.5rem;
-            white-space: pre-wrap;
+        /* Карточка О нас */
+        .about-card {
+            max-width: 900px;
+            margin: 20px auto 40px;
+            line-height: 1.6;
+        }
+        .about-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .about-header h2 {
+            font-family: 'Comfortaa', cursive;
+            font-size: 1.8em;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .about-subtitle {
+            color: #cbd5e1;
+            font-size: 1.05em;
+        }
+        .about-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+        .about-item {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+        }
+        .about-item h3 {
+            color: #ff8da1;
+            margin: 10px 0 8px;
+            font-size: 1.1em;
+        }
+        .about-item p {
+            font-size: 0.9em;
+            color: #cbd5e1;
+        }
+        .about-steps {
+            background: rgba(0, 0, 0, 0.28);
+            border-radius: 14px;
+            padding: 20px 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .about-steps h3 {
+            margin-bottom: 12px;
+            color: #fff;
+        }
+        .about-steps ol {
+            padding-left: 20px;
+            color: #cbd5e1;
+            font-size: 0.95em;
+        }
+        .about-steps li {
+            margin-bottom: 8px;
         }
 
-        .btn-download {
+        .app-grid {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 22px;
+            align-items: start;
+        }
+        .panel-card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 22px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+        }
+        .input-group { margin-bottom: 12px; }
+        .input-label {
+            display: block;
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+            color: #f1e4ff;
+        }
+        .custom-input, .custom-select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 0.92em;
+            outline: none;
+        }
+        .custom-select option, .custom-select optgroup { background: #241438; color: #fff; }
+
+        .photo-upload-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px dashed rgba(255, 255, 255, 0.25);
+            padding: 10px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .photo-preview {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+
+        /* Юридический блок согласия (UK GDPR / Children's Code) */
+        .legal-box {
+            margin: 12px 0;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 12px;
+            font-size: 0.78em;
+            line-height: 1.45;
+            color: #cbd5e1;
+        }
+        .legal-label {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            cursor: pointer;
+        }
+        .legal-label input {
+            margin-top: 2px;
+            accent-color: #ff6b8b;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .magic-btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Comfortaa', cursive;
+            font-size: 1.05em;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(135deg, #ff6b8b, #ff8e53);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 6px;
+        }
+        .magic-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(255, 107, 139, 0.4); }
+
+        .status-msg {
+            margin-top: 10px;
+            font-size: 0.85em;
+            text-align: center;
+            color: #a1c4fd;
+            min-height: 20px;
+        }
+
+        .book-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .book-spread {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            min-height: 480px;
+            background: rgba(14, 9, 26, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 16px;
+        }
+
+        .book-left-img {
+            position: relative;
+            background: #090511;
+            border-radius: 16px;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.6rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            min-height: 380px;
+        }
+        .book-left-img img {
             width: 100%;
-            padding: 0.9rem;
-            background: var(--success);
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-size: 1.1rem;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s ease;
+        }
+
+        .book-right-page {
+            background: #fbf7ee;
+            color: #2b1f1d;
+            border-radius: 16px;
+            padding: 26px 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: inset 4px 0 16px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.25);
+            border-left: 4px solid #e2d7c5;
+        }
+
+        .book-header-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed #d5c7b3;
+            padding-bottom: 8px;
+        }
+        .book-badge {
+            font-family: 'Comfortaa', cursive;
+            font-size: 0.95em;
             font-weight: 700;
-            font-family: 'Fredoka', cursive;
+            color: #b24867;
+        }
+
+        .book-body-text {
+            font-family: 'Lora', Georgia, serif;
+            font-size: 1.25em;
+            line-height: 1.7;
+            color: #261d1a;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 18px 0;
+            letter-spacing: 0.2px;
+        }
+
+        .book-nav-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px dashed #d5c7b3;
+            padding-top: 10px;
+        }
+
+        .turn-btn {
+            background: #2b1f1d;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 6px 16px rgba(0, 184, 148, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9em;
+            transition: 0.2s;
+        }
+        .turn-btn:hover { background: #ff6b8b; }
+
+        /* 4 кнопки в ряд */
+        .action-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1.3fr;
+            gap: 12px;
+            width: 100%;
+        }
+        .action-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.9em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .action-btn:hover { background: rgba(255, 255, 255, 0.16); }
+        .action-btn.btn-epub {
+            background: rgba(161, 140, 209, 0.2);
+            border-color: #a18cd1;
+            color: #f1e4ff;
+        }
+        .action-btn.btn-epub:hover {
+            background: #a18cd1;
+            color: #240e48;
+        }
+        .btn-order { background: linear-gradient(135deg, #11998e, #38ef7d); color: #082918; border: none; }
+
+        .library-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .book-item-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            overflow: hidden;
+            cursor: pointer;
             transition: transform 0.2s;
         }
+        .book-item-card:hover { transform: translateY(-4px); }
+        .book-item-thumb { width: 100%; height: 180px; object-fit: cover; }
+        .book-item-info { padding: 14px; }
+        .book-item-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; }
+        .book-item-meta { font-size: 0.85em; color: #b39ddb; }
 
-        .btn-download:hover {
-            transform: translateY(-2px);
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
         }
-
-        footer {
-            text-align: center;
-            padding: 1.5rem;
-            font-size: 0.85rem;
-            color: var(--text-muted);
+        .modal-card {
+            background: #1e1533;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 28px;
+            max-width: 500px;
+            width: 90%;
             position: relative;
-            z-index: 10;
+        }
+        .modal-close {
+            position: absolute;
+            top: 14px; right: 16px;
+            font-size: 1.4em;
+            cursor: pointer;
+            color: #aaa;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin: 20px 0;
+        }
+        .pricing-tier {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+        }
+        .pricing-tier.featured { border-color: #ff6b8b; background: rgba(255, 107, 139, 0.1); }
+        .price-val { font-size: 1.6em; font-weight: 800; margin: 8px 0; color: #fecfef; }
+
+        @media (max-width: 900px) {
+            .app-grid { grid-template-columns: 1fr; }
+            .book-spread { grid-template-columns: 1fr; }
+            .steps-grid { grid-template-columns: 1fr; }
+            .action-bar { grid-template-columns: 1fr 1fr; }
+            .header-actions { gap: 8px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Magic background bubbles -->
-    <div class="bubble"></div>
-    <div class="bubble"></div>
-    <div class="bubble"></div>
-    <div class="bubble"></div>
+    <!-- Фоновые пузыри -->
+    <div class="bubbles-container" id="bubblesContainer"></div>
 
     <header>
-        <a href="#" class="logo">✨ StoryMagic Hub</a>
-        <div class="lang-select-wrapper">
-            <select id="langSelector" class="lang-select">
-                <option value="en">English (EN)</option>
-                <option value="ru">Русский (RU)</option>
-                <option value="pl">Polski (PL)</option>
-                <option value="ro">Română (RO)</option>
-                <option value="it">Italiano (IT)</option>
-                <option value="tr">Türkçe (TR)</option>
-            </select>
+        <div class="brand" onclick="switchTab('about')">
+            <span style="font-size: 1.6em;">✨</span>
+            <div class="brand-title">StoryMagic</div>
+        </div>
+
+        <nav class="nav-tabs">
+            <button class="tab-btn active" id="nav-about" onclick="switchTab('about')">Главная</button>
+            <button class="tab-btn" id="nav-create" onclick="switchTab('create')">Создать сказку</button>
+            <button class="tab-btn" id="nav-library" onclick="switchTab('library')">Просмотренные книжки</button>
+            <button class="tab-btn" id="nav-order" onclick="switchTab('order')">Заказать печать</button>
+        </nav>
+
+        <div class="header-actions">
+            <div class="lang-select-box">
+                <select class="lang-select" id="langSelector" onchange="changeLanguage(this.value)">
+                    <option value="en" selected>🇬🇧 EN</option>
+                    <option value="ru">🇷🇺 RU</option>
+                    <option value="pl">🇵🇱 PL</option>
+                    <option value="ro">🇷🇴 RO</option>
+                    <option value="it">🇮🇹 IT</option>
+                    <option value="tr">🇹🇷 TR</option>
+                </select>
+            </div>
+            <button class="pay-btn" id="btn-topup" onclick="openPaymentModal()">💎 Top Up</button>
         </div>
     </header>
 
     <main>
-        <div class="card">
-            <h1 id="t_hero_title">Create a Magical Story</h1>
-            <p id="t_hero_sub" class="subtitle">Personalized tales crafted with artificial intelligence and love.</p>
+        <!-- Вкладка: Главная + О нас -->
+        <div id="tab-about" class="tab-content active">
+            <div class="hero-box">
+                <h1 id="hero-title">Personalized Therapeutic Books for Children</h1>
+                <p id="hero-desc">Upload your child's photo, and we will craft a gentle, inspiring story where a hero resembling your child conquers fears and discovers superpowers.</p>
+                <button class="magic-btn" id="hero-cta" style="max-width: 280px; margin: 0 auto 35px; display: block;" onclick="switchTab('create')">🚀 Start Creating</button>
+            </div>
 
-            <form id="storyForm">
-                <div class="row">
-                    <div class="col form-group">
-                        <label id="t_child_name_label" for="childName">Child's Name</label>
-                        <input type="text" id="childName" required placeholder="e.g. Leo">
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-icon">📸</div>
+                    <h3 id="step1-title">1. Photo & Hero</h3>
+                    <p id="step1-desc">Upload a picture and enter child's name for tailored character resemblance.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-icon">🌱</div>
+                    <h3 id="step2-title">2. Gentle Narrative</h3>
+                    <p id="step2-desc">Choose therapeutic themes: dark fears, first day of school, anger, sharing.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-icon">📖</div>
+                    <h3 id="step3-title">3. Read or Order</h3>
+                    <p id="step3-desc">Read online, download as an ePub file, or order a hardcover print book.</p>
+                </div>
+            </div>
+
+            <section class="panel-card about-card">
+                <div class="about-header">
+                    <h2 id="about-title">About StoryMagic</h2>
+                    <p class="about-subtitle" id="about-tagline">Personalized therapeutic tales helping children grow confident, resilient, and happy.</p>
+                </div>
+
+                <div class="about-grid">
+                    <div class="about-item">
+                        <div style="font-size: 2em; margin-bottom: 8px;">✨</div>
+                        <h3 id="about-col1-title">Why Story Therapy?</h3>
+                        <p id="about-col1-desc">
+                            Each story is uniquely crafted for your child. Story therapy gently resolves childhood fears, builds emotional intelligence, and encourages kindness.
+                        </p>
                     </div>
-                    <div class="col form-group">
-                        <label id="t_child_age_label" for="childAge">Age</label>
-                        <input type="number" id="childAge" min="1" max="12" value="6" required>
+
+                    <div class="about-item">
+                        <div style="font-size: 2em; margin-bottom: 8px;">🛡️</div>
+                        <h3 id="about-col2-title">Safety & Privacy</h3>
+                        <p id="about-col2-desc">
+                            Fully compliant with UK GDPR & the ICO Children's Code. Photos are strictly used to create illustrations, never train public models, and are immediately deleted.
+                        </p>
+                    </div>
+
+                    <div class="about-item">
+                        <div style="font-size: 2em; margin-bottom: 8px;">📚</div>
+                        <h3 id="about-col3-title">Formats & Print</h3>
+                        <p id="about-col3-desc">
+                            Read on screen, export as an ePub file for tablet reading (iPad/Android), or order a beautifully bound physical hardcover delivered to your door.
+                        </p>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label id="t_story_lang_label" for="storyLanguage">Story Language</label>
-                    <select id="storyLanguage" class="input-field">
-                        <option value="en">English</option>
-                        <option value="ru">Русский</option>
-                        <option value="pl">Polski</option>
-                        <option value="ro">Română</option>
-                        <option value="it">Italiano</option>
-                        <option value="tr">Türkçe</option>
+                <div class="about-steps">
+                    <h3 id="about-steps-title">3 Simple Steps:</h3>
+                    <ol>
+                        <li id="about-step-1"><strong>Step 1:</strong> Enter child details and choose an inspiring story theme.</li>
+                        <li id="about-step-2"><strong>Step 2:</strong> Upload an optional photo & confirm parental consent.</li>
+                        <li id="about-step-3"><strong>Step 3:</strong> Enjoy a unique, beautifully illustrated storybook in minutes!</li>
+                    </ol>
+                </div>
+            </section>
+        </div>
+
+        <!-- Генератор сказки -->
+        <div id="tab-create" class="tab-content">
+            <div class="app-grid">
+                
+                <div class="panel-card">
+                    <h2 style="font-family:'Comfortaa', cursive; font-size:1.2em; margin-bottom:14px;" id="lbl-form-title">Book Settings</h2>
+                    
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-photo">📷 Child Photo (for likeness)</label>
+                        <div class="photo-upload-box" onclick="document.getElementById('photoInput').click()">
+                            <img id="photoThumb" class="photo-preview" alt="Preview">
+                            <span id="photoStatusText" style="font-size:0.85em; color:#ddd;">Click to select photo</span>
+                        </div>
+                        <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhotoSelect(event)">
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-hero-name">Hero Name</label>
+                        <input type="text" id="heroName" class="custom-input" value="Alice">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-hero-age">Age</label>
+                        <input type="number" id="childAge" class="custom-input" value="7">
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-story-theme">Story Theme</label>
+                        <select id="themeSelect" class="custom-select" onchange="checkCustomTheme()">
+                            <optgroup label="🌱 Therapeutic Stories" id="grp-therapy">
+                                <option value="Fear of the dark & night shadows" id="opt-theme-dark" selected>Fear of the dark & night shadows</option>
+                                <option value="First day at nursery / school" id="opt-theme-school">First day at nursery / school</option>
+                                <option value="Anger, tantrums & big feelings" id="opt-theme-anger">Anger, tantrums & big feelings</option>
+                                <option value="Tidying up toys & order" id="opt-theme-toys">Tidying up toys & order</option>
+                                <option value="Kindness, sharing & making friends" id="opt-theme-share">Kindness, sharing & making friends</option>
+                            </optgroup>
+                            <optgroup label="🚀 Magical Adventures" id="grp-adv">
+                                <option value="Enchanted forest & wise talking cat" id="opt-theme-forest">Enchanted forest & wise talking cat</option>
+                                <option value="Space voyage to the Star Island" id="opt-theme-space">Space voyage to the Star Island</option>
+                                <option value="Expedition to the gentle dinosaurs" id="opt-theme-dino">Expedition to the gentle dinosaurs</option>
+                            </optgroup>
+                            <option value="custom" id="opt-custom">✍️ Custom Story Idea...</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group" id="customThemeBox" style="display:none;">
+                        <input type="text" id="customThemeInput" class="custom-input" placeholder="Describe the story...">
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-art-style">Art Style</label>
+                        <select id="artStyle" class="custom-select">
+                            <option value="Watercolor children book illustration" id="opt-style1" selected>Watercolor / Fairy Tale</option>
+                            <option value="Pixar 3D cute animated render" id="opt-style2">3D Animation</option>
+                            <option value="Classic pencil gouache fairy tale" id="opt-style3">Classic Gouache</option>
+                        </select>
+                    </div>
+
+                    <!-- Юридическое согласие (UK GDPR) -->
+                    <div class="legal-box">
+                        <label class="legal-label">
+                            <input type="checkbox" id="legalConsent" required>
+                            <span id="lbl-consent-text">
+                                I confirm that I am the parent or legal guardian and consent to photo processing for book illustration. Photos are deleted immediately and never shared publicly.
+                            </span>
+                        </label>
+                    </div>
+
+                    <button class="magic-btn" onclick="generateStory()" id="btn-create-story">🪄 Generate Book</button>
+                    <div id="statusMsg" class="status-msg"></div>
+                </div>
+
+                <div class="panel-card book-container">
+                    
+                    <div class="book-spread">
+                        <div class="book-left-img">
+                            <img id="currentImage" src="https://picsum.photos/seed/magictale/800/800" alt="Illustration">
+                        </div>
+
+                        <div class="book-right-page">
+                            <div class="book-header-line">
+                                <span class="book-badge" id="pageBadge">Cover</span>
+                                <span style="font-size:0.85em; color:#8d7b68;" id="book-brand-lbl">StoryMagic Kids</span>
+                            </div>
+
+                            <div class="book-body-text" id="currentText">
+                                Fill in the parameters on the left and click "Generate Book". The storybook will unfold here in a full two-page spread with large, child-friendly typography.
+                            </div>
+
+                            <div class="book-nav-footer">
+                                <button class="turn-btn" onclick="prevSlide()" id="btn-prev">❮ Back</button>
+                                <span id="pageCounter" style="font-weight:700; color:#5c4d3c;">1 / 1</span>
+                                <button class="turn-btn" onclick="nextSlide()" id="btn-next">Next ❯</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Нижний ряд из 4 кнопок -->
+                    <div class="action-bar">
+                        <button class="action-btn" onclick="toggleAudioStory()">🎧 <span id="btn-audio-lbl">Audio Story</span></button>
+                        <button class="action-btn" onclick="printBook()">🖨️ <span id="btn-print-lbl">Print / Save PDF</span></button>
+                        <button class="action-btn btn-epub" onclick="exportEpub()">📥 <span id="btn-epub-lbl">Export ePub</span></button>
+                        <button class="action-btn btn-order" onclick="switchTab('order')">🚚 <span id="btn-order-lbl">Order Hardcover</span></button>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Библиотека -->
+        <div id="tab-library" class="tab-content">
+            <h2 style="font-family:'Comfortaa', cursive;" id="lib-title">📚 Your Created Books</h2>
+            <p style="color:#bcaaa4; font-size:0.95em; margin-bottom:18px;" id="lib-desc">History of all stories created on this device.</p>
+            <div id="libraryContainer" class="library-grid"></div>
+        </div>
+
+        <!-- Заказ печати -->
+        <div id="tab-order" class="tab-content">
+            <div class="hero-box" style="text-align:left; max-width:620px;">
+                <h2 style="font-family:'Comfortaa', cursive; margin-bottom:12px;" id="order-title">🚚 Order a Printed Hardcover Book</h2>
+                <p style="color:#ded1f7; font-size:1em; margin-bottom:20px;" id="order-desc">We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.</p>
+                
+                <div class="input-group">
+                    <label class="input-label" id="lbl-order-addr">Delivery Address</label>
+                    <input type="text" class="custom-input" id="order-addr-input" placeholder="Street, Apt, City, Postcode">
+                </div>
+                <div class="input-group">
+                    <label class="input-label" id="lbl-order-type">Cover Type</label>
+                    <select class="custom-select">
+                        <option id="opt-order-hard">Matte Hardcover — £14.99</option>
+                        <option id="opt-order-prem">Premium Gloss with Foil — £19.99</option>
                     </select>
                 </div>
-
-                <div class="form-group">
-                    <label id="t_story_theme_label" for="storyTheme">Theme or Adventure Idea</label>
-                    <textarea id="storyTheme" placeholder="e.g. A space journey with a friendly robotic puppy..."></textarea>
-                </div>
-
-                <!-- UK GDPR / ICO Children's Code Block -->
-                <div class="gdpr-box">
-                    <strong id="t_gdpr_title">🛡️ Privacy & Child Safety (UK GDPR)</strong>
-                    <span id="t_gdpr_desc">
-                        We respect family privacy. Story inputs are processed strictly to generate your custom book and are not used for public AI training or shared with third parties.
-                    </span>
-                    <label class="checkbox-container">
-                        <input type="checkbox" id="parentConsent" required>
-                        <span id="t_gdpr_check">I confirm that I am a parent or legal guardian and consent to story creation.</span>
-                    </label>
-                </div>
-
-                <button type="submit" id="t_submit_btn" class="btn-submit">Generate Story ✨</button>
-            </form>
-
-            <!-- Book result display & ePub Download -->
-            <div id="storyResult">
-                <h2 id="resultTitle">Your Story Book</h2>
-                <div id="resultContent" class="story-text"></div>
-                <button id="downloadEpubBtn" class="btn-download">
-                    📥 <span id="t_download_btn">Download ePub Book</span>
-                </button>
+                <button class="magic-btn" onclick="openPaymentModal()" style="margin-top:16px;" id="btn-order-pay">Proceed to Payment</button>
             </div>
         </div>
     </main>
 
-    <footer>
-        <p>© 2026 StoryMagic Hub. Built with care for children and parents.</p>
-    </footer>
+    <!-- Модалка оплаты -->
+    <div id="paymentModal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-card">
+            <div class="modal-close" onclick="closePaymentModal()">✕</div>
+            <h2 style="font-family:'Comfortaa', cursive; margin-bottom:6px;" id="pay-title">Choose Your Plan</h2>
+            <p style="font-size:0.85em; color:#ccc;" id="pay-subtitle">Add credits for book generation and voice narration</p>
 
-    <script>
-        // 1. Translations dictionary for all 6 languages
-        const translations = {
-            en: {
-                hero_title: "Create a Magical Story",
-                hero_sub: "Personalized tales crafted with artificial intelligence and love.",
-                child_name: "Child's Name",
-                child_age: "Age",
-                story_lang: "Story Language",
-                story_theme: "Theme or Adventure Idea",
-                theme_placeholder: "e.g. A space journey with a friendly robotic puppy...",
-                gdpr_title: "🛡️ Privacy & Child Safety (UK GDPR)",
-                gdpr_desc: "We respect family privacy. Story inputs are processed strictly to generate your custom book and are not used for public AI training or shared with third parties.",
-                gdpr_check: "I confirm that I am a parent or legal guardian and consent to story creation.",
-                submit_btn: "Generate Story ✨",
-                generating: "Writing your magical tale...",
-                download_btn: "Download ePub Book"
-            },
-            ru: {
-                hero_title: "Создайте волшебную сказку",
-                hero_sub: "Персонализированные истории, созданные искусственным интеллектом с любовью.",
-                child_name: "Имя ребенка",
-                child_age: "Возраст",
-                story_lang: "Язык сказки",
-                story_theme: "Тема или сюжет приключения",
-                theme_placeholder: "например, Путешествие в космос с добрым щенком-роботом...",
-                gdpr_title: "🛡️ Защита данных и детей (UK GDPR)",
-                gdpr_desc: "Мы уважительно относимся к приватности. Введенные данные используются исключительно для создания книги, не передаются третьим лицам и не обучают публичные модели.",
-                gdpr_check: "Я подтверждаю, что являюсь родителем или опекуном, и даю согласие на создание сказки.",
-                submit_btn: "Создать сказку ✨",
-                generating: "Сочиняем волшебную историю...",
-                download_btn: "Скачать книгу в ePub"
-            },
-            pl: {
-                hero_title: "Stwórz Magiczną Opowieść",
-                hero_sub: "Spersonalizowane bajki tworzone ze sztuczną inteligencją i miłością.",
-                child_name: "Imię dziecka",
-                child_age: "Wiek",
-                story_lang: "Język bajki",
-                story_theme: "Temat lub pomysł na przygodę",
-                theme_placeholder: "np. Kosmiczna podróż z przyjaznym pieskiem-robotem...",
-                gdpr_title: "🛡️ Prywatność i Bezpieczeństwo Dzieci (UK GDPR)",
-                gdpr_desc: "Szanujemy prywatność Twojej rodziny. Dane są przetwarzane wyłącznie w celu wygenerowania książki i nie są udostępniane stronom trzecim.",
-                gdpr_check: "Potwierdzam, że jestem rodzicem lub opiekunem prawnym i wyrażam zgodę na stworzenie bajki.",
-                submit_btn: "Stwórz bajkę ✨",
-                generating: "Pisanie magicznej opowieści...",
-                download_btn: "Pobierz książkę w ePub"
-            },
-            ro: {
-                hero_title: "Creează o Poveste Magică",
-                hero_sub: "Povești personalizate create cu inteligență artificială și dragoste.",
-                child_name: "Numele copilului",
-                child_age: "Vârstă",
-                story_lang: "Limba poveștii",
-                story_theme: "Tema sau ideea aventurii",
-                theme_placeholder: "ex. O călătorie în spațiu cu un cățeluș robot prietenos...",
-                gdpr_title: "🛡️ Confidențialitate și Protecția Copilului (UK GDPR)",
-                gdpr_desc: "Respectăm confidențialitatea familiei. Datele sunt utilizate strict pentru generarea cărții și nu sunt partajate cu terți.",
-                gdpr_check: "Confirm că sunt părinte sau tutore legal și sunt de acord cu crearea poveștii.",
-                submit_btn: "Generează povestea ✨",
-                generating: "Scriem povestea magică...",
-                download_btn: "Descarcă cartea în ePub"
-            },
-            it: {
-                hero_title: "Crea una Storia Magica",
-                hero_sub: "Fiabe personalizzate create con intelligenza artificiale e amore.",
-                child_name: "Nome del bambino",
-                child_age: "Età",
-                story_lang: "Lingua della storia",
-                story_theme: "Tema o idea dell'avventura",
-                theme_placeholder: "es. Un viaggio nello spazio con un cagnolino robot amico...",
-                gdpr_title: "🛡️ Privacy e Sicurezza dei Minori (UK GDPR)",
-                gdpr_desc: "Rispettiamo la privacy della tua famiglia. I dati sono trattati esclusivamente per generare il libro e non sono condivisi con terzi.",
-                gdpr_check: "Confermo di essere un genitore o tutore legale e acconsento alla creazione della storia.",
-                submit_btn: "Genera la fiaba ✨",
-                generating: "Scrivendo la storia magica...",
-                download_btn: "Scarica il libro in ePub"
-            },
-            tr: {
-                hero_title: "Sihirli Bir Masal Yaratın",
-                hero_sub: "Yapay zeka ve sevgiyle hazırlanmış kişiselleştirilmiş çocuk masalları.",
-                child_name: "Çocuğun Adı",
-                child_age: "Yaş",
-                story_lang: "Masal Dili",
-                story_theme: "Tema veya Macera Fikri",
-                theme_placeholder: "örn. Sevimli bir robot köpekle uzay yolculuğu...",
-                gdpr_title: "🛡️ Gizlilik ve Çocuk Güvenliği (UK GDPR)",
-                gdpr_desc: "Aile gizliliğine saygı duyuyoruz. Bilgiler yalnızca masal kitabını oluşturmak için kullanılır ve üçüncü taraflarla paylaşılmaz.",
-                gdpr_check: "Ebeveyn veya yasal vasi olduğumu onaylıyor ve masal oluşturulmasına izin veriyorum.",
-                submit_btn: "Masal Oluştur ✨",
-                generating: "Sihirli masalınız yazılıyor...",
-                download_btn: "ePub Kitabını İndir"
-            }
+            <div class="pricing-grid">
+                <div class="pricing-tier">
+                    <h3 id="plan1-title">Starter</h3>
+                    <div class="price-val">£4.99</div>
+                    <p style="font-size:0.8em; color:#ccc;" id="plan1-desc">5 personalized stories + audio</p>
+                    <button class="magic-btn" style="margin-top:12px; padding:8px;" onclick="alert('Stripe Checkout...')" id="plan1-btn">Buy Now</button>
+                </div>
+                <div class="pricing-tier featured">
+                    <h3 id="plan2-title">Unlimited</h3>
+                    <div class="price-val">£12.99</div>
+                    <p style="font-size:0.8em; color:#ccc;" id="plan2-desc">Unlimited stories + exports</p>
+                    <button class="magic-btn" style="margin-top:12px; padding:8px;" onclick="alert('Stripe Checkout...')" id="plan2-btn">Select Plan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    var currentPages = [];
+    var currentIndex = 0;
+    var currentLang = 'en';
+    var isSpeaking = false;
+    var selectedPhotoFile = null;
+    var currentBookTitle = "Magical Story";
+
+    var dictionary = {
+        en: {
+            navAbout: 'Home / About',
+            navCreate: 'Create Story',
+            navLibrary: 'My Books',
+            navOrder: 'Order Hardcover',
+            btnTopup: '💎 Top Up',
+            heroTitle: 'Personalized Therapeutic Books for Children',
+            heroDesc: 'Upload your child\'s photo, and we will craft a gentle, inspiring story where a hero resembling your child conquers fears and discovers superpowers.',
+            heroCta: '🚀 Start Creating',
+            step1Title: '1. Photo & Hero',
+            step1Desc: 'Upload a picture and enter child\'s name for tailored character resemblance.',
+            step2Title: '2. Gentle Narrative',
+            step2Desc: 'Choose therapeutic themes: dark fears, first day of school, anger, sharing.',
+            step3Title: '3. Read or Order',
+            step3Desc: 'Read online, download as an ePub file, or order a hardcover print book.',
+            aboutTitle: 'About StoryMagic',
+            aboutTagline: 'Personalized therapeutic tales helping children grow confident, resilient, and happy.',
+            aboutCol1Title: 'Why Story Therapy?',
+            aboutCol1Desc: 'Each story is uniquely crafted for your child. Story therapy gently resolves childhood fears, builds emotional intelligence, and encourages kindness.',
+            aboutCol2Title: 'Safety & Privacy',
+            aboutCol2Desc: 'Fully compliant with UK GDPR & the ICO Children\'s Code. Photos are strictly used to create illustrations, never train public models, and are immediately deleted.',
+            aboutCol3Title: 'Formats & Print',
+            aboutCol3Desc: 'Read on screen, export as an ePub file for tablet reading (iPad/Android), or order a beautifully bound physical hardcover delivered to your door.',
+            aboutStepsTitle: '3 Simple Steps:',
+            aboutStep1: '<strong>Step 1:</strong> Enter child details and choose an inspiring story theme.',
+            aboutStep2: '<strong>Step 2:</strong> Upload an optional photo & confirm parental consent.',
+            aboutStep3: '<strong>Step 3:</strong> Enjoy a unique, beautifully illustrated storybook in minutes!',
+            lblFormTitle: 'Book Settings',
+            lblPhoto: '📷 Child Photo (for likeness)',
+            photoChoose: 'Click to select photo',
+            lblHeroName: 'Hero Name',
+            valHeroName: 'Alice',
+            lblHeroAge: 'Age',
+            lblStoryTheme: 'Story Theme',
+            grpTherapy: '🌱 Therapeutic Stories (Emotional Growth)',
+            themeDark: 'Fear of the dark & night shadows',
+            themeSchool: 'First day at nursery / school',
+            themeAnger: 'Anger, tantrums & big feelings',
+            themeToys: 'Tidying up toys & order',
+            themeShare: 'Kindness, sharing & making friends',
+            grpAdv: '🚀 Magical Adventures',
+            themeForest: 'Enchanted forest & wise talking cat',
+            themeSpace: 'Space voyage to the Star Island',
+            themeDino: 'Expedition to the gentle dinosaurs',
+            optCustom: '✍️ Custom Story Idea...',
+            lblArtStyle: 'Art Style',
+            optStyle1: 'Watercolor / Fairy Tale',
+            optStyle2: '3D Animation',
+            optStyle3: 'Classic Gouache',
+            lblConsentText: 'I confirm that I am the parent or legal guardian and consent to photo processing for book illustration. Photos are deleted immediately and never shared publicly.',
+            consentAlert: 'Please confirm parental/guardian consent to proceed.',
+            btnCreateStory: '🪄 Generate Book',
+            badgeCover: 'Cover',
+            badgePage: 'Page',
+            defaultWelcome: 'Fill in the parameters on the left and click "Generate Book". The storybook will unfold here in a full two-page spread with large, child-friendly typography.',
+            btnPrev: '❮ Back',
+            btnNext: 'Next ❯',
+            btnAudioLbl: 'Audio Story',
+            btnPrintLbl: 'Print / Save PDF',
+            btnEpubLbl: 'Export ePub',
+            btnOrderLbl: 'Order Hardcover',
+            libTitle: '📚 Your Created Books',
+            libDesc: 'History of all stories created on this device.',
+            libEmpty: 'No stories saved yet. Create your first book!',
+            orderTitle: '🚚 Order a Printed Hardcover Book',
+            orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.',
+            lblOrderAddr: 'Delivery Address',
+            placeholderAddr: 'Street, Apt, City, Postcode',
+            lblOrderType: 'Cover Type',
+            optOrderHard: 'Matte Hardcover — £14.99',
+            optOrderPrem: 'Premium Gloss with Foil — £19.99',
+            btnOrderPay: 'Proceed to Payment',
+            payTitle: 'Choose Your Plan',
+            paySubtitle: 'Add credits for book generation and voice narration',
+            plan1Title: 'Starter',
+            plan1Desc: '5 personalized stories + audio',
+            plan1Btn: 'Buy Now',
+            plan2Title: 'Unlimited',
+            plan2Desc: 'Unlimited stories + exports',
+            plan2Btn: 'Select Plan',
+            statusGen: '✨ Creating your personal story and illustrations...',
+            statusDone: '🎉 Book is ready!'
+        },
+        ru: {
+            navAbout: 'Главная',
+            navCreate: 'Создать сказку',
+            navLibrary: 'Просмотренные книжки',
+            navOrder: 'Заказать печать',
+            btnTopup: '💎 Пополнить',
+            heroTitle: 'Персональные терапевтические книги для детей',
+            heroDesc: 'Загрузите фото ребёнка, и мы создадим добрую поучительную сказку, в которой главный герой с его внешностью победит страхи и найдёт друзей.',
+            heroCta: '🚀 Начать создание',
+            step1Title: '1. Фотография и герой',
+            step1Desc: 'Укажите имя и прикрепите фото — герой книги будет похож на вашего ребёнка.',
+            step2Title: '2. Терапевтический сюжет',
+            step2Desc: 'Выберите тему: страх темноты, первый день в садике, капризы или дружба.',
+            step3Title: '3. Читайте или закажите',
+            step3Desc: 'Читайте в книжном развороте, скачивайте в ePub или оформите в печатном переплете.',
+            aboutTitle: 'О проекте StoryMagic',
+            aboutTagline: 'Персонализированные сказки, помогающие детям расти уверенными и спокойными.',
+            aboutCol1Title: 'В чем суть?',
+            aboutCol1Desc: 'Каждая история создается индивидуально под вашего ребенка. Сказкотерапия помогает мягко преодолевать страхи (темнота, адаптация в школе/саду), учит дружбе и вере в себя.',
+            aboutCol2Title: 'Конфиденциальность',
+            aboutCol2Desc: 'Мы строго соблюдаем UK GDPR и стандарты ICO Children\'s Code. Фотографии используются исключительно для генерации книги, никогда не обучают публичные модели и сразу удаляются.',
+            aboutCol3Title: 'Как получить книгу?',
+            aboutCol3Desc: 'Читайте онлайн, сохраняйте в ePub для планшетов (iPad/Android) или заказывайте подарочное печатное издание в твердом переплете с доставкой на дом.',
+            aboutStepsTitle: '3 простых шага:',
+            aboutStep1: '<strong>Шаг 1:</strong> Укажите имя, возраст ребенка и выберите развивающую тему.',
+            aboutStep2: '<strong>Шаг 2:</strong> Загрузите фото (по желанию) и подтвердите согласие родителя.',
+            aboutStep3: '<strong>Шаг 3:</strong> Получите готовую иллюстрированную книгу за пару минут!',
+            lblFormTitle: 'Параметры книги',
+            lblPhoto: '📷 Фото ребёнка (для сходства)',
+            photoChoose: 'Нажмите, чтобы выбрать фото',
+            lblHeroName: 'Имя героя',
+            valHeroName: 'Алиса',
+            lblHeroAge: 'Возраст',
+            lblStoryTheme: 'Тема сказки',
+            grpTherapy: '🌱 Терапевтические сказки (Уверенность и эмоции)',
+            themeDark: 'Страх темноты и ночных теней',
+            themeSchool: 'Первый день в садике / школе',
+            themeAnger: 'Злость, капризы и эмоции',
+            themeToys: 'Уборка игрушек и аккуратность',
+            themeShare: 'Умение делиться и дружба',
+            grpAdv: '🚀 Волшебные приключения',
+            themeForest: 'Зачарованный лес и мудрый кот',
+            themeSpace: 'Космическая экспедиция к звёздам',
+            themeDino: 'Экспедиция в мир динозавров',
+            optCustom: '✍️ Написать свою тему...',
+            lblArtStyle: 'Стиль графики',
+            optStyle1: 'Акварель / Сказка',
+            optStyle2: '3D Мультфильм',
+            optStyle3: 'Классическая гуашь',
+            lblConsentText: 'Я являюсь родителем или опекуном ребёнка и даю согласие на обработку фото для создания книги. Фото удаляется сразу после обработки и не сохраняется в открытых базах.',
+            consentAlert: 'Пожалуйста, подтвердите согласие родителя/опекуна на обработку фото.',
+            btnCreateStory: '🪄 Создать сказку',
+            badgeCover: 'Обложка',
+            badgePage: 'Страница',
+            defaultWelcome: 'Заполните параметры слева и нажмите «Создать сказку». Книга развернётся здесь в формате настоящего книжного разворота с крупным и удобным для чтения шрифтом.',
+            btnPrev: '❮ Назад',
+            btnNext: 'Вперед ❯',
+            btnAudioLbl: 'Аудиосказка',
+            btnPrintLbl: 'Печать / Сохранить',
+            btnEpubLbl: 'Скачать ePub',
+            btnOrderLbl: 'Заказать книжку',
+            libTitle: '📚 Ваши созданные книги',
+            libDesc: 'История всех книг, сгенерированных на этом устройстве.',
+            libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
+            orderTitle: '🚚 Заказ книги в твердом переплете',
+            orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим прямо до вашей двери.',
+            lblOrderAddr: 'Адрес доставки',
+            placeholderAddr: 'Улица, дом, квартира, индекс',
+            lblOrderType: 'Тип переплета',
+            optOrderHard: 'Твердый матовый переплет — £14.99',
+            optOrderPrem: 'Премиум глянец с тиснением — £19.99',
+            btnOrderPay: 'Перейти к оплате',
+            payTitle: 'Выберите тариф',
+            paySubtitle: 'Пополните баланс для генерации книг и озвучки',
+            plan1Title: 'Старт',
+            plan1Desc: '5 персональных сказок + аудио',
+            plan1Btn: 'Купить',
+            plan2Title: 'Безлимит',
+            plan2Desc: 'Неограниченно сказок + экспорт',
+            plan2Btn: 'Выбрать',
+            statusGen: '✨ Создаем персональную сказку и волшебные иллюстрации...',
+            statusDone: '🎉 Сказка готова!'
+        },
+        pl: {
+            navAbout: 'Strona główna / O nas',
+            navCreate: 'Stwórz bajkę',
+            navLibrary: 'Moje książki',
+            navOrder: 'Zamów druk',
+            btnTopup: '💎 Doładuj',
+            heroTitle: 'Spersonalizowane bajki terapeutyczne dla dzieci',
+            heroDesc: 'Prześlij zdjęcie dziecka, a stworzymy ciepłą opowieść, w której bohater podobny do Twojego malucha pokonuje lęki i odkrywa swoje talenty.',
+            heroCta: '🚀 Rozpocznij tworzenie',
+            step1Title: '1. Zdjęcie i bohater',
+            step1Desc: 'Podaj imię i dodaj zdjęcie – bohater bajki będzie wyglądał jak Twoje dziecko.',
+            step2Title: '2. Wątek terapeutyczny',
+            step2Desc: 'Wybierz temat: lęk przed ciemnością, pierwszy dzień w szkole, złość lub dzielenie się.',
+            step3Title: '3. Czytaj lub zamów',
+            step3Desc: 'Czytaj online, pobierz plik ePub na tablet lub zamów książkę w twardej oprawie.',
+            aboutTitle: 'O projekcie StoryMagic',
+            aboutTagline: 'Terapeutyczne bajki wspierające pewność siebie i emocjonalny rozwój dzieci.',
+            aboutCol1Title: 'Dlaczego bajkoterapia?',
+            aboutCol1Desc: 'Każda historia powstaje indywidualnie. Bajkoterapia łagodnie oswaja lęki, uczy empatii, współpracy i buduje odporność psychiczną.',
+            aboutCol2Title: 'Bezpieczeństwo i prywatność',
+            aboutCol2Desc: 'Pełna zgodność z UK GDPR i ICO Children\'s Code. Zdjęcia służą wyłącznie do generowania ilustracji, nie trenują modeli AI i są natychmiast usuwane.',
+            aboutCol3Title: 'Formaty i druk',
+            aboutCol3Desc: 'Czytaj na ekranie, pobierz format ePub na tablet lub zamów pamiątkowe wydanie w twardej oprawie z dostawą pod drzwi.',
+            aboutStepsTitle: '3 proste kroki:',
+            aboutStep1: '<strong>Krok 1:</strong> Wpisz dane dziecka i wybierz temat opowieści.',
+            aboutStep2: '<strong>Krok 2:</strong> Załącz opcjonalne zdjęcie i potwierdź zgodę rodzica.',
+            aboutStep3: '<strong>Krok 3:</strong> Odbierz pięknie zilustrowaną bajkę w kilka minut!',
+            lblFormTitle: 'Ustawienia książki',
+            lblPhoto: '📷 Zdjęcie dziecka (do ilustracji)',
+            photoChoose: 'Kliknij, aby wybrać zdjęcie',
+            lblHeroName: 'Imię bohatera',
+            valHeroName: 'Zosia',
+            lblHeroAge: 'Wiek',
+            lblStoryTheme: 'Temat bajki',
+            grpTherapy: '🌱 Bajki terapeutyczne (Rozwój emocjonalny)',
+            themeDark: 'Strach przed ciemnością i cieniami',
+            themeSchool: 'Pierwszy dzień w przedszkolu / szkole',
+            themeAnger: 'Złość, napady złości i emocje',
+            themeToys: 'Sprzątanie zabawek i porządek',
+            themeShare: 'Dzielenie się i nawiązywanie przyjaźni',
+            grpAdv: '🚀 Magiczne przygody',
+            themeForest: 'Zaczarowany las i mądry kot',
+            themeSpace: 'Kosmiczna wyprawa na Gwiezdną Wyspę',
+            themeDino: 'Wyprawa do łagodnych dinozaurów',
+            optCustom: '✍️ Własny pomysł na bajkę...',
+            lblArtStyle: 'Styl graficzny',
+            optStyle1: 'Akwarela / Bajkowy',
+            optStyle2: 'Animacja 3D',
+            optStyle3: 'Klasyczny gwasz',
+            lblConsentText: 'Potwierdzam, że jestem rodzicem lub opiekunem prawnym i wyrażam zgodę na przetwarzanie zdjęcia do celów ilustracji. Zdjęcia są natychmiast usuwane.',
+            consentAlert: 'Proszę potwierdzić zgodę rodzica/opiekuna prawnego.',
+            btnCreateStory: '🪄 Wygeneruj bajkę',
+            badgeCover: 'Okładka',
+            badgePage: 'Strona',
+            defaultWelcome: 'Wypełnij formularz po lewej stronie i kliknij «Wygeneruj bajkę». Książka otworzy się tutaj w formie rozkładówki z dużą, czytelną czcionką.',
+            btnPrev: '❮ Wstecz',
+            btnNext: 'Dalej ❯',
+            btnAudioLbl: 'Audiobook',
+            btnPrintLbl: 'Drukuj / Zapisz PDF',
+            btnEpubLbl: 'Pobierz ePub',
+            btnOrderLbl: 'Zamów książkę',
+            libTitle: '📚 Twoje stworzone książki',
+            libDesc: 'Historia książek wygenerowanych na tym urządzeniu.',
+            libEmpty: 'Brak zapisanych bajek. Stwórz swoją pierwszą książkę!',
+            orderTitle: '🚚 Zamów książkę w twardej oprawie',
+            orderDesc: 'Drukujemy na papierze kredowym premium 170 g/m² z soczystymi ilustracjami i dostarczamy prosto do domu.',
+            lblOrderAddr: 'Adres dostawy',
+            placeholderAddr: 'Ulica, numer, miasto, kod pocztowy',
+            lblOrderType: 'Rodzaj oprawy',
+            optOrderHard: 'Twarda matowa oprawa — £14.99',
+            optOrderPrem: 'Błyszcząca ze złoceniem — £19.99',
+            btnOrderPay: 'Przejdź do płatności',
+            payTitle: 'Wybierz pakiet',
+            paySubtitle: 'Doładuj konto, aby tworzyć książki i generować głos',
+            plan1Title: 'Start',
+            plan1Desc: '5 bajek personalizowanych + audio',
+            plan1Btn: 'Kup teraz',
+            plan2Title: 'Bez limitu',
+            plan2Desc: 'Nielimitowane bajki + eksport ePub',
+            plan2Btn: 'Wybierz plan',
+            statusGen: '✨ Tworzymy unikalną opowieść i ilustracje...',
+            statusDone: '🎉 Książka jest gotowa!'
+        },
+        ro: {
+            navAbout: 'Acasă / Despre noi',
+            navCreate: 'Creează poveste',
+            navLibrary: 'Cărțile mele',
+            navOrder: 'Comandă tipar',
+            btnTopup: '💎 Încarcă',
+            heroTitle: 'Cărți terapeutice personalizate pentru copii',
+            heroDesc: 'Încarcă poza copilului și vom crea o poveste plină de căldură, în care un erou asemănător micuțului tău își învinge fricile și descoperă noi puteri.',
+            heroCta: '🚀 Începe crearea',
+            step1Title: '1. Fotografie și erou',
+            step1Desc: 'Introdu numele și încarcă o fotografie pentru o asemănare personalizată.',
+            step2Title: '2. Fir narativ terapeutic',
+            step2Desc: 'Alege tema: frica de întuneric, prima zi de școală, furie sau generozitate.',
+            step3Title: '3. Citește sau comandă',
+            step3Desc: 'Citește online, descarcă în format ePub pe tabletă sau comandă cartea tipărită.',
+            aboutTitle: 'Despre StoryMagic',
+            aboutTagline: 'Povești terapeutice personalizate care ajută copiii să crească încrezători și fericiți.',
+            aboutCol1Title: 'De ce terapia prin povești?',
+            aboutCol1Desc: 'Fiecare poveste este creată individual. Terapia prin povești rezolvă cu blândețe temerile, dezvoltă empatia și cultivă curajul.',
+            aboutCol2Title: 'Siguranță și confidențialitate',
+            aboutCol2Desc: 'În conformitate cu UK GDPR și normele ICO Children\'s Code. Fotografiile sunt utilizate exclusiv pentru ilustrații, nu antrenează modele publice și se șterg imediat.',
+            aboutCol3Title: 'Formate și tipar',
+            aboutCol3Desc: 'Citește pe ecran, exportă ca fișier ePub pentru tabletă (iPad/Android) sau comandă o ediție de colecție cu copertă cartonată.',
+            aboutStepsTitle: '3 pași simpli:',
+            aboutStep1: '<strong>Pasul 1:</strong> Completează datele copilului și alege o temă educativă.',
+            aboutStep2: '<strong>Pasul 2:</strong> Încarcă o fotografie opțională și confirmă acordul.',
+            aboutStep3: '<strong>Pasul 3:</strong> Bucură-te de o carte ilustrată unică în câteva minute!',
+            lblFormTitle: 'Setări carte',
+            lblPhoto: '📷 Poză copil (pentru asemănare)',
+            photoChoose: 'Apasă pentru a alege poza',
+            lblHeroName: 'Nume erou',
+            valHeroName: 'Ana',
+            lblHeroAge: 'Vârstă',
+            lblStoryTheme: 'Tema poveștii',
+            grpTherapy: '🌱 Povești terapeutice (Dezvoltare emoțională)',
+            themeDark: 'Frica de întuneric și umbre',
+            themeSchool: 'Prima zi la grădiniță / școală',
+            themeAnger: 'Furia, capriciile și emoțiile puternice',
+            themeToys: 'Curățenia jucăriilor și ordinea',
+            themeShare: 'Generozitatea și prietenia',
+            grpAdv: '🚀 Aventuri magice',
+            themeForest: 'Pădurea fermecată și motanul înțelept',
+            themeSpace: 'Călătorie spațială spre Insula Stelelor',
+            themeDino: 'Expediție în lumea dinozaurilor blânzi',
+            optCustom: '✍️ Idee personalizată...',
+            lblArtStyle: 'Stil grafic',
+            optStyle1: 'Acuarelă / De poveste',
+            optStyle2: 'Animație 3D',
+            optStyle3: 'Guașă clasică',
+            lblConsentText: 'Confirm că sunt părintele sau tutorele legal și sunt de acord cu procesarea fotografiei pentru ilustrarea cărții. Fotografia este ștearsă imediat.',
+            consentAlert: 'Vă rugăm să confirmați acordul părintelui/tutorelui.',
+            btnCreateStory: '🪄 Generează cartea',
+            badgeCover: 'Copertă',
+            badgePage: 'Pagina',
+            defaultWelcome: 'Completează formularul din stânga și apasă «Generează cartea». Povestea va apărea aici în format de carte deschisă, cu text mare și ușor de citit.',
+            btnPrev: '❮ Înapoi',
+            btnNext: 'Înainte ❯',
+            btnAudioLbl: 'Audiobook',
+            btnPrintLbl: 'Tipărește / Salvează PDF',
+            btnEpubLbl: 'Descarcă ePub',
+            btnOrderLbl: 'Comandă cartea',
+            libTitle: '📚 Cărțile tale create',
+            libDesc: 'Istoricul poveștilor generate pe acest dispozitiv.',
+            libEmpty: 'Nicio carte salvată încă. Creează prima poveste!',
+            orderTitle: '🚚 Comandă cartea în copertă cartonată',
+            orderDesc: 'Tipărim pe hârtie lucioasă premium de 170 g/m² cu ilustrații vibrante și livrăm direct la ușa ta.',
+            lblOrderAddr: 'Adresă de livrare',
+            placeholderAddr: 'Stradă, număr, oraș, cod poștal',
+            lblOrderType: 'Tip copertă',
+            optOrderHard: 'Copertă cartonată mată — £14.99',
+            optOrderPrem: 'Copertă lucioasă cu folie aurie — £19.99',
+            btnOrderPay: 'Spre plată',
+            payTitle: 'Alege abonamentul',
+            paySubtitle: 'Adaugă credite pentru generarea cărților și a vocii',
+            plan1Title: 'Start',
+            plan1Desc: '5 povești personalizate + audio',
+            plan1Btn: 'Cumpără',
+            plan2Title: 'Nelimitat',
+            plan2Desc: 'Povești nelimitate + export ePub',
+            plan2Btn: 'Alege planul',
+            statusGen: '✨ Scriem povestea și pictăm ilustrațiile...',
+            statusDone: '🎉 Cartea este gata!'
+        },
+        it: {
+            navAbout: 'Home / Chi siamo',
+            navCreate: 'Crea favola',
+            navLibrary: 'I miei libri',
+            navOrder: 'Ordina stampa',
+            btnTopup: '💎 Ricarica',
+            heroTitle: 'Libri terapeutici personalizzati per bambini',
+            heroDesc: 'Carica la foto del tuo bimbo e creeremo una dolce storia illustrata dove un eroe a sua somiglianza supera le paure e impara a fidarsi di sé.',
+            heroCta: '🚀 Inizia a creare',
+            step1Title: '1. Foto ed eroe',
+            step1Desc: 'Inserisci il nome e carica la foto per far somigliare l’eroe al tuo bambino.',
+            step2Title: '2. Trama terapeutica',
+            step2Desc: 'Scegli il tema: paura del buio, primo giorno di scuola, rabbia o condivisione.',
+            step3Title: '3. Leggi o ordina',
+            step3Desc: 'Sfoglia online, scarica in ePub sul tablet oppure ordina il volume cartaceo rilegato.',
+            aboutTitle: 'Cos\'è StoryMagic',
+            aboutTagline: 'Favole terapeutiche personalizzate per far crescere i bimbi sereni e sicuri di sé.',
+            aboutCol1Title: 'La favolaterapia',
+            aboutCol1Desc: 'Ogni storia è creata su misura. Le favole aiutano a elaborare paure, gestire le emozioni e stimolare l\'empatia con dolcezza e fantasia.',
+            aboutCol2Title: 'Privacy e sicurezza UK',
+            aboutCol2Desc: 'Pieno rispetto del GDPR e dell\'ICO Children\'s Code. Le foto sono usate solo per le illustrazioni, non addestrano modelli pubblici e vengono eliminate all\'istante.',
+            aboutCol3Title: 'Digitale e cartaceo',
+            aboutCol3Desc: 'Leggi direttamente dal browser, esporta il formato ePub per tablet (iPad/Android) o ricevi a casa un lussuoso libro con copertina rigida.',
+            aboutStepsTitle: '3 semplici passaggi:',
+            aboutStep1: '<strong>Passo 1:</strong> Inserisci i dati del bimbo e scegli un tema educativo.',
+            aboutStep2: '<strong>Passo 2:</strong> Carica una foto opzionale e conferma il consenso.',
+            aboutStep3: '<strong>Passo 3:</strong> Ricevi una meravigliosa favola illustrata in pochi minuti!',
+            lblFormTitle: 'Dettagli libro',
+            lblPhoto: '📷 Foto del bimbo (per somiglianza)',
+            photoChoose: 'Clicca per scegliere la foto',
+            lblHeroName: 'Nome dell\'eroe',
+            valHeroName: 'Sofia',
+            lblHeroAge: 'Età',
+            lblStoryTheme: 'Tema della favola',
+            grpTherapy: '🌱 Favole terapeutiche (Crescita emotiva)',
+            themeDark: 'Paura del buio e delle ombre',
+            themeSchool: 'Primo giorno all\'asilo / a scuola',
+            themeAnger: 'Rabbia, capricci e grandi emozioni',
+            themeToys: 'Riordinare i giochi con allegria',
+            themeShare: 'Gentilezza e saper condividere',
+            grpAdv: '🚀 Avventure magiche',
+            themeForest: 'Il bosco incantato e il gatto saggio',
+            themeSpace: 'Viaggio spaziale verso l\'Isola delle Stelle',
+            themeDino: 'Spedizione nel mondo dei dinosauri buoni',
+            optCustom: '✍️ Idea personalizzata...',
+            lblArtStyle: 'Stile grafico',
+            optStyle1: 'Acquerello fiabesco',
+            optStyle2: 'Animazione 3D',
+            optStyle3: 'Guazzo classico',
+            lblConsentText: 'Dichiaro di essere genitore/tutore legale e acconsento al trattamento della foto per la grafica del libro. La foto viene cancellata subito dopo l\'uso.',
+            consentAlert: 'Si prega di confermare il consenso del genitore/tutore.',
+            btnCreateStory: '🪄 Genera il libro',
+            badgeCover: 'Copertina',
+            badgePage: 'Pagina',
+            defaultWelcome: 'Compila i parametri a sinistra e clicca su «Genera il libro». La favola si aprirà qui in un vero formato a doppia pagina, con caratteri grandi e facili da leggere.',
+            btnPrev: '❮ Indietro',
+            btnNext: 'Avanti ❯',
+            btnAudioLbl: 'Audiofavola',
+            btnPrintLbl: 'Stampa / Salva PDF',
+            btnEpubLbl: 'Scarica ePub',
+            btnOrderLbl: 'Ordina libro',
+            libTitle: '📚 I tuoi libri creati',
+            libDesc: 'Cronologia dei libri generati su questo dispositivo.',
+            libEmpty: 'Nessun libro salvato. Crea la tua prima favola!',
+            orderTitle: '🚚 Ordina il volume con copertina rigida',
+            orderDesc: 'Stampiamo su carta patinata brillante da 170 g/m² con colori vivaci e spediamo direttamente a casa tua.',
+            lblOrderAddr: 'Indirizzo di consegna',
+            placeholderAddr: 'Via, numero, città, CAP',
+            lblOrderType: 'Tipo di copertina',
+            optOrderHard: 'Copertina rigida opaca — £14.99',
+            optOrderPrem: 'Copertina lucida con rilievi — £19.99',
+            btnOrderPay: 'Vai al pagamento',
+            payTitle: 'Scegli il piano',
+            paySubtitle: 'Aggiungi crediti per creare nuove storie e ascoltare le audiofavole',
+            plan1Title: 'Base',
+            plan1Desc: '5 favole personalizzate + audio',
+            plan1Btn: 'Acquista',
+            plan2Title: 'Illimitato',
+            plan2Desc: 'Favole illimitate + export ePub',
+            plan2Btn: 'Scegli piano',
+            statusGen: '✨ Scrittura della favola e creazione illustrazioni...',
+            statusDone: '🎉 Il libro è pronto!'
+        },
+        tr: {
+            navAbout: 'Ana Sayfa / Hakkında',
+            navCreate: 'Masal Oluştur',
+            navLibrary: 'Kitaplarım',
+            navOrder: 'Baskı Siparişi',
+            btnTopup: '💎 Bakiye Yükle',
+            heroTitle: 'Çocuklar İçin Kişiselleştirilmiş Terapötik Kitaplar',
+            heroDesc: 'Çocuğunuzun fotoğrafını yükleyin; ona benzeyen sevimli bir kahramanın korkularını yenip özgüven kazandığı eğitici ve sıcak bir masal hazırlayalım.',
+            heroCta: '🚀 Oluşturmaya Başla',
+            step1Title: '1. Fotoğraf ve Kahraman',
+            step1Desc: 'İsim girin ve fotoğraf ekleyin; kahraman çocuğunuza benzesin.',
+            step2Title: '2. Terapötik Konu',
+            step2Desc: 'Konuyu seçin: karanlık korkusu, okula başlama, öfke kontrolü veya paylaşma.',
+            step3Title: '3. Oku veya Sipariş Ver',
+            step3Desc: 'Çevrim içi okuyun, ePub formatında tablete indirin veya ciltli kitap sipariş edin.',
+            aboutTitle: 'StoryMagic Hakkında',
+            aboutTagline: 'Çocukların özgüvenli ve mutlu büyümesine yardımcı olan kişiye özel masallar.',
+            aboutCol1Title: 'Masal Terapisi Nedir?',
+            aboutCol1Desc: 'Her masal çocuğunuza özel yazılır. Masal terapisi korkuları yatıştırır, duygusal zekayı geliştirir ve empatiyi güçlendirir.',
+            aboutCol2Title: 'Güvenlik ve Gizlilik',
+            aboutCol2Desc: 'UK GDPR ve ICO Children\'s Code kurallarına tam uyumluluk. Fotoğraflar yalnızca çizim oluşturmak içindir, asla genel modelleri eğitmez ve anında silinir.',
+            aboutCol3Title: 'Formatlar ve Baskı',
+            aboutCol3Desc: 'Web\'de okuyun, tabletler (iPad/Android) için ePub olarak indirin veya kapınıza kadar teslim edilen lüks ciltli baskısını edinin.',
+            aboutStepsTitle: '3 Kolay Adım:',
+            aboutStep1: '<strong>1. Adım:</strong> Çocuğun bilgilerini girin ve eğitici konuyu seçin.',
+            aboutStep2: '<strong>2. Adım:</strong> İsteğe bağlı fotoğraf yükleyin ve ebeveyn onayını verin.',
+            aboutStep3: '<strong>3. Adım:</strong> Birkaç dakika içinde benzersiz resimli kitabınız hazır!',
+            lblFormTitle: 'Kitap Seçenekleri',
+            lblPhoto: '📷 Çocuk Fotoğrafı (benzerlik için)',
+            photoChoose: 'Fotoğraf seçmek için tıklayın',
+            lblHeroName: 'Kahramanın Adı',
+            valHeroName: 'Elif',
+            lblHeroAge: 'Yaş',
+            lblStoryTheme: 'Masal Teması',
+            grpTherapy: '🌱 Terapötik Masallar (Duygusal Gelişim)',
+            themeDark: 'Karanlık ve gece gölgeleri korkusu',
+            themeSchool: 'Anaokuluna / okula ilk gün',
+            themeAnger: 'Öfke, inatlaşma ve güçlü duygular',
+            themeToys: 'Oyuncakları toplama ve düzen',
+            themeShare: 'Paylaşma, nezaket ve arkadaşlık',
+            grpAdv: '🚀 Büyülü Maceralar',
+            themeForest: 'Büyülü orman ve bilge konuşan kedi',
+            themeSpace: 'Yıldız Adası\'na uzay yolculuğu',
+            themeDino: 'Sevimli dinozorlar dünyasına keşif',
+            optCustom: '✍️ Kendi masal fikrini yaz...',
+            lblArtStyle: 'Çizim Stili',
+            optStyle1: 'Suluboya / Masalsı',
+            optStyle2: '3D Animasyon',
+            optStyle3: 'Klasik Guaj Boya',
+            lblConsentText: 'Çocuğun ebeveyni/yasal vasisi olduğumu ve fotoğrafın kitap çizimi için işlenmesine onay verdiğimi beyan ederim. Fotoğraflar işlemden hemen sonra silinir.',
+            consentAlert: 'Lütfen ebeveyn/vasi onay kutusunu işaretleyin.',
+            btnCreateStory: '🪄 Kitabı Oluştur',
+            badgeCover: 'Kapak',
+            badgePage: 'Sayfa',
+            defaultWelcome: 'Soldaki alanları doldurun ve «Kitabı Oluştur» butonuna tıklayın. Masal, burada çocuklara uygun büyük ve okunaklı yazıyla açılacaktır.',
+            btnPrev: '❮ Geri',
+            btnNext: 'İleri ❯',
+            btnAudioLbl: 'Sesli Masal',
+            btnPrintLbl: 'Yazdır / PDF Kaydet',
+            btnEpubLbl: 'ePub İndir',
+            btnOrderLbl: 'Kitap Siparişi',
+            libTitle: '📚 Oluşturulan Kitaplar',
+            libDesc: 'Bu cihazda oluşturulmuş tüm masalların geçmişi.',
+            libEmpty: 'Henüz kayıtlı kitap yok. İlk masalınızı şimdi oluşturun!',
+            orderTitle: '🚚 Sert Ciltli Kitap Siparişi',
+            orderDesc: '170 g/m² kaliteli parlak kağıda canlı renklerle basıyoruz ve kapınıza kadar gönderiyoruz.',
+            lblOrderAddr: 'Teslimat Adresi',
+            placeholderAddr: 'Sokak, bina no, daire, posta kodu, şehir',
+            lblOrderType: 'Cilt Tipi',
+            optOrderHard: 'Mat Sert Kapak — £14.99',
+            optOrderPrem: 'Varak Baskılı Parlak Kapak — £19.99',
+            btnOrderPay: 'Ödemeye Geç',
+            payTitle: 'Paket Seçin',
+            paySubtitle: 'Yeni kitaplar ve seslendirme oluşturmak için bakiye yükleyin',
+            plan1Title: 'Başlangıç',
+            plan1Desc: '5 özel masal + seslendirme',
+            plan1Btn: 'Satın Al',
+            plan2Title: 'Sınırsız',
+            plan2Desc: 'Sınırsız masal + ePub dışa aktarma',
+            plan2Btn: 'Paketi Seç',
+            statusGen: '✨ Masal yazılıyor ve özel illüstrasyonlar çiziliyor...',
+            statusDone: '🎉 Kitap hazır!'
+        }
+    };
+
+    // Фоновые шарики
+    function initFloatingBubbles(count = 15) {
+        var container = document.getElementById('bubblesContainer');
+        if (!container) return;
+        container.innerHTML = '';
+
+        for (var i = 0; i < count; i++) {
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            
+            var size = Math.floor(Math.random() * 36) + 18;
+            bubble.style.width = size + 'px';
+            bubble.style.height = size + 'px';
+            bubble.style.left = Math.random() * 100 + '%';
+
+            var duration = (Math.random() * 8 + 8).toFixed(1);
+            var delay = (Math.random() * 8).toFixed(1);
+            bubble.style.animationDuration = duration + 's';
+            bubble.style.animationDelay = delay + 's';
+
+            container.appendChild(bubble);
+        }
+    }
+
+    function handlePhotoSelect(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        selectedPhotoFile = file;
+
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            var thumb = document.getElementById('photoThumb');
+            thumb.src = evt.target.result;
+            thumb.style.display = 'block';
+            document.getElementById('photoStatusText').innerText = file.name;
         };
+        reader.readAsDataURL(file);
+    }
 
-        // 2. Language switch handler
-        const langSelector = document.getElementById('langSelector');
-        function applyLanguage(lang) {
-            const t = translations[lang] || translations.en;
-            document.getElementById('t_hero_title').textContent = t.hero_title;
-            document.getElementById('t_hero_sub').textContent = t.hero_sub;
-            document.getElementById('t_child_name_label').textContent = t.child_name;
-            document.getElementById('t_child_age_label').textContent = t.child_age;
-            document.getElementById('t_story_lang_label').textContent = t.story_lang;
-            document.getElementById('t_story_theme_label').textContent = t.story_theme;
-            document.getElementById('storyTheme').placeholder = t.theme_placeholder;
-            document.getElementById('t_gdpr_title').textContent = t.gdpr_title;
-            document.getElementById('t_gdpr_desc').textContent = t.gdpr_desc;
-            document.getElementById('t_gdpr_check').textContent = t.gdpr_check;
-            document.getElementById('t_submit_btn').textContent = t.submit_btn;
-            document.getElementById('t_download_btn').textContent = t.download_btn;
-            document.getElementById('storyLanguage').value = lang;
+    function checkCustomTheme() {
+        var val = document.getElementById('themeSelect').value;
+        document.getElementById('customThemeBox').style.display = (val === 'custom') ? 'block' : 'none';
+    }
+
+    function changeLanguage(lang) {
+        currentLang = lang;
+        document.documentElement.lang = lang;
+        var d = dictionary[lang] || dictionary['en'];
+
+        // Шапка и навигация
+        document.getElementById('nav-about').innerText = d.navAbout;
+        document.getElementById('nav-create').innerText = d.navCreate;
+        document.getElementById('nav-library').innerText = d.navLibrary;
+        document.getElementById('nav-order').innerText = d.navOrder;
+        document.getElementById('btn-topup').innerText = d.btnTopup;
+
+        // Главный экран
+        document.getElementById('hero-title').innerText = d.heroTitle;
+        document.getElementById('hero-desc').innerText = d.heroDesc;
+        document.getElementById('hero-cta').innerText = d.heroCta;
+
+        document.getElementById('step1-title').innerText = d.step1Title;
+        document.getElementById('step1-desc').innerText = d.step1Desc;
+        document.getElementById('step2-title').innerText = d.step2Title;
+        document.getElementById('step2-desc').innerText = d.step2Desc;
+        document.getElementById('step3-title').innerText = d.step3Title;
+        document.getElementById('step3-desc').innerText = d.step3Desc;
+
+        // Раздел О нас
+        document.getElementById('about-title').innerText = d.aboutTitle;
+        document.getElementById('about-tagline').innerText = d.aboutTagline;
+        document.getElementById('about-col1-title').innerText = d.aboutCol1Title;
+        document.getElementById('about-col1-desc').innerText = d.aboutCol1Desc;
+        document.getElementById('about-col2-title').innerText = d.aboutCol2Title;
+        document.getElementById('about-col2-desc').innerText = d.aboutCol2Desc;
+        document.getElementById('about-col3-title').innerText = d.aboutCol3Title;
+        document.getElementById('about-col3-desc').innerText = d.aboutCol3Desc;
+        document.getElementById('about-steps-title').innerText = d.aboutStepsTitle;
+        document.getElementById('about-step-1').innerHTML = d.aboutStep1;
+        document.getElementById('about-step-2').innerHTML = d.aboutStep2;
+        document.getElementById('about-step-3').innerHTML = d.aboutStep3;
+
+        // Форма создания
+        document.getElementById('lbl-form-title').innerText = d.lblFormTitle;
+        document.getElementById('lbl-photo').innerText = d.lblPhoto;
+        if (!selectedPhotoFile) {
+            document.getElementById('photoStatusText').innerText = d.photoChoose;
         }
 
-        langSelector.addEventListener('change', (e) => applyLanguage(e.target.value));
+        document.getElementById('lbl-hero-name').innerText = d.lblHeroName;
+        document.getElementById('heroName').value = d.valHeroName;
+        document.getElementById('lbl-hero-age').innerText = d.lblHeroAge;
+        document.getElementById('lbl-story-theme').innerText = d.lblStoryTheme;
+        
+        document.getElementById('grp-therapy').label = d.grpTherapy;
+        document.getElementById('opt-theme-dark').innerText = d.themeDark;
+        document.getElementById('opt-theme-school').innerText = d.themeSchool;
+        document.getElementById('opt-theme-anger').innerText = d.themeAnger;
+        document.getElementById('opt-theme-toys').innerText = d.themeToys;
+        document.getElementById('opt-theme-share').innerText = d.themeShare;
+        
+        document.getElementById('grp-adv').label = d.grpAdv;
+        document.getElementById('opt-theme-forest').innerText = d.themeForest;
+        document.getElementById('opt-theme-space').innerText = d.themeSpace;
+        document.getElementById('opt-theme-dino').innerText = d.themeDino;
+        document.getElementById('opt-custom').innerText = d.optCustom;
 
-        // 3. Current generated story state in memory
-        let currentStoryData = null;
+        document.getElementById('lbl-art-style').innerText = d.lblArtStyle;
+        document.getElementById('opt-style1').innerText = d.optStyle1;
+        document.getElementById('opt-style2').innerText = d.optStyle2;
+        document.getElementById('opt-style3').innerText = d.optStyle3;
+        document.getElementById('lbl-consent-text').innerText = d.lblConsentText;
+        document.getElementById('btn-create-story').innerText = d.btnCreateStory;
 
-        // 4. Form submission handler
-        const storyForm = document.getElementById('storyForm');
-        storyForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Кнопки под книгой и перелистывание
+        document.getElementById('btn-prev').innerText = d.btnPrev;
+        document.getElementById('btn-next').innerText = d.btnNext;
+        document.getElementById('btn-audio-lbl').innerText = d.btnAudioLbl;
+        document.getElementById('btn-print-lbl').innerText = d.btnPrintLbl;
+        document.getElementById('btn-epub-lbl').innerText = d.btnEpubLbl;
+        document.getElementById('btn-order-lbl').innerText = d.btnOrderLbl;
 
-            const submitBtn = document.getElementById('t_submit_btn');
-            const selectedLang = langSelector.value;
-            const t = translations[selectedLang] || translations.en;
+        // Библиотека и оформление заказа
+        document.getElementById('lib-title').innerText = d.libTitle;
+        document.getElementById('lib-desc').innerText = d.libDesc;
 
-            submitBtn.disabled = true;
-            submitBtn.textContent = t.generating;
+        document.getElementById('order-title').innerText = d.orderTitle;
+        document.getElementById('order-desc').innerText = d.orderDesc;
+        document.getElementById('lbl-order-addr').innerText = d.lblOrderAddr;
+        document.getElementById('order-addr-input').placeholder = d.placeholderAddr;
+        document.getElementById('lbl-order-type').innerText = d.lblOrderType;
+        document.getElementById('opt-order-hard').innerText = d.optOrderHard;
+        document.getElementById('opt-order-prem').innerText = d.optOrderPrem;
+        document.getElementById('btn-order-pay').innerText = d.btnOrderPay;
 
-            const payload = {
-                child_name: document.getElementById('childName').value,
-                child_age: parseInt(document.getElementById('childAge').value, 10),
-                language_code: document.getElementById('storyLanguage').value,
-                theme: document.getElementById('storyTheme').value
+        // Тарифы
+        document.getElementById('pay-title').innerText = d.payTitle;
+        document.getElementById('pay-subtitle').innerText = d.paySubtitle;
+        document.getElementById('plan1-title').innerText = d.plan1Title;
+        document.getElementById('plan1-desc').innerText = d.plan1Desc;
+        document.getElementById('plan1-btn').innerText = d.plan1Btn;
+        document.getElementById('plan2-title').innerText = d.plan2Title;
+        document.getElementById('plan2-desc').innerText = d.plan2Desc;
+        document.getElementById('plan2-btn').innerText = d.plan2Btn;
+
+        // Обновление разворота книги
+        if (currentPages.length > 0) {
+            updateSlideUI();
+        } else {
+            document.getElementById('pageBadge').innerText = d.badgeCover;
+            document.getElementById('currentText').innerText = d.defaultWelcome;
+        }
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+        document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+        
+        var targetTab = document.getElementById('tab-' + tabName);
+        if (targetTab) targetTab.classList.add('active');
+        
+        var navBtn = document.getElementById('nav-' + tabName);
+        if (navBtn) navBtn.classList.add('active');
+
+        if (tabName === 'library') loadLibrary();
+    }
+
+    function updateSlideUI() {
+        if (!currentPages || currentPages.length === 0) return;
+        var p = currentPages[currentIndex];
+        var d = dictionary[currentLang];
+
+        var img = document.getElementById('currentImage');
+        img.style.opacity = '0.3';
+        var temp = new Image();
+        temp.onload = function() {
+            img.src = temp.src;
+            img.style.opacity = '1';
+        };
+        temp.src = p.image_url;
+
+        document.getElementById('pageBadge').innerText = (currentIndex === 0) ? d.badgeCover : (d.badgePage + ' ' + p.page_number);
+        document.getElementById('pageCounter').innerText = p.page_number + ' / ' + currentPages.length;
+        document.getElementById('currentText').innerText = p.text;
+    }
+
+    function showSlide(idx) {
+        if (!currentPages || currentPages.length === 0) return;
+        currentIndex = idx;
+        updateSlideUI();
+    }
+
+    function nextSlide() {
+        if (!currentPages.length) return;
+        showSlide(currentIndex < currentPages.length - 1 ? currentIndex + 1 : 0);
+    }
+    function prevSlide() {
+        if (!currentPages.length) return;
+        showSlide(currentIndex > 0 ? currentIndex - 1 : currentPages.length - 1);
+    }
+
+    async function generateStory() {
+        var consent = document.getElementById('legalConsent');
+        if (!consent.checked) {
+            alert(dictionary[currentLang].consentAlert);
+            return;
+        }
+
+        var status = document.getElementById('statusMsg');
+        status.innerText = dictionary[currentLang].statusGen;
+
+        var themeEl = document.getElementById('themeSelect');
+        var selectedTheme = themeEl.options[themeEl.selectedIndex].text;
+        if (themeEl.value === 'custom') {
+            selectedTheme = document.getElementById('customThemeInput').value.trim() || 'Custom gentle fairy tale';
+        }
+
+        var heroNameVal = document.getElementById('heroName').value.trim() || 'Hero';
+        currentBookTitle = heroNameVal + ' - ' + selectedTheme;
+
+        var formData = new FormData();
+        formData.append('hero_name', heroNameVal);
+        formData.append('age', document.getElementById('childAge').value);
+        formData.append('theme', selectedTheme);
+        formData.append('style', document.getElementById('artStyle').value);
+        formData.append('lang', currentLang);
+
+        if (selectedPhotoFile) {
+            formData.append('photo', selectedPhotoFile);
+        }
+
+        try {
+            var response = await fetch('/api/generate', { method: 'POST', body: formData });
+            var result = await response.json();
+            if (result.success && result.pages) {
+                currentPages = result.pages;
+                status.innerText = dictionary[currentLang].statusDone;
+                showSlide(0);
+                saveBookToLibrary(heroNameVal, selectedTheme, currentPages);
+            } else {
+                status.innerText = '❌ ' + (result.error || 'Error');
+            }
+        } catch (e) {
+            status.innerText = '❌ ' + e.message;
+        }
+    }
+
+    function saveBookToLibrary(hero, theme, pages) {
+        var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
+        lib.unshift({
+            id: Date.now(),
+            hero: hero,
+            theme: theme,
+            cover: pages[0].image_url,
+            pages: pages,
+            date: new Date().toLocaleDateString()
+        });
+        localStorage.setItem('storymagic_lib', JSON.stringify(lib.slice(0, 10)));
+    }
+
+    function loadLibrary() {
+        var box = document.getElementById('libraryContainer');
+        var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
+        box.innerHTML = '';
+        if (lib.length === 0) {
+            box.innerHTML = '<p style="color:#aaa;">' + dictionary[currentLang].libEmpty + '</p>';
+            return;
+        }
+        lib.forEach(function(book) {
+            var el = document.createElement('div');
+            el.className = 'book-item-card';
+            el.innerHTML = '<img class="book-item-thumb" src="' + book.cover + '" alt="' + book.hero + '">' +
+                           '<div class="book-item-info">' +
+                           '<div class="book-item-title">' + book.hero + ': ' + book.theme + '</div>' +
+                           '<div class="book-item-meta">' + book.date + ' • ' + book.pages.length + ' p.</div>' +
+                           '</div>';
+            el.onclick = function() {
+                currentPages = book.pages;
+                currentBookTitle = book.hero + ' - ' + book.theme;
+                switchTab('create');
+                showSlide(0);
             };
+            box.appendChild(el);
+        });
+    }
 
-            try {
-                // Запрос к эндпоинту генерации на бэкенде (относительный путь работает прямо на том же домене)
-                const response = await fetch('/api/generate-story', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+    function toggleAudioStory() {
+        if (!('speechSynthesis' in window)) {
+            alert('Speech synthesis not supported on this browser');
+            return;
+        }
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            isSpeaking = false;
+            return;
+        }
+        if (!currentPages.length) return;
+        var text = currentPages[currentIndex].text;
+        var utterance = new SpeechSynthesisUtterance(text);
+        
+        var langMap = {
+            'en': 'en-GB',
+            'ru': 'ru-RU',
+            'pl': 'pl-PL',
+            'ro': 'ro-RO',
+            'it': 'it-IT',
+            'tr': 'tr-TR'
+        };
+        utterance.lang = langMap[currentLang] || 'en-GB';
 
-                if (!response.ok) {
-                    throw new Error("Generation error");
-                }
+        utterance.onend = function() { isSpeaking = false; };
+        window.speechSynthesis.speak(utterance);
+        isSpeaking = true;
+    }
 
-                currentStoryData = await response.json();
+    function printBook() {
+        if (!currentPages.length) {
+            alert(currentLang === 'ru' ? 'Сначала создайте книгу!' : 'Please generate a book first!');
+            return;
+        }
+        window.print();
+    }
 
-                // Отображаем полученный результат
-                document.getElementById('resultTitle').textContent = currentStoryData.title;
-                const fullText = currentStoryData.chapters.map(c => `${c.title}\n\n${c.paragraphs.join('\n\n')}`).join('\n\n---\n\n');
-                document.getElementById('resultContent').textContent = fullText;
-                document.getElementById('storyResult').style.display = 'block';
-                document.getElementById('storyResult').scrollIntoView({ behavior: 'smooth' });
+    // Экспорт книги в ePub
+    async function exportEpub() {
+        if (!currentPages || currentPages.length === 0) {
+            alert(currentLang === 'ru' ? 'Сначала создайте книгу!' : 'Please generate a book first!');
+            return;
+        }
 
-            } catch (err) {
-                alert("Error generating story. Please verify that the backend is active.");
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = t.submit_btn;
-            }
+        var btn = document.getElementById('btn-epub-lbl');
+        var originalText = btn.innerText;
+        btn.innerText = '⏳ ...';
+
+        // Собираем главы из текущих страниц
+        var chapters = currentPages.map(function(page, index) {
+            return {
+                chapter_number: index + 1,
+                title: (index === 0) ? (dictionary[currentLang].badgeCover || 'Cover') : ((dictionary[currentLang].badgePage || 'Page') + ' ' + (index + 1)),
+                paragraphs: [page.text]
+            };
         });
 
-        // 5. Download ePub button handler
-        document.getElementById('downloadEpubBtn').addEventListener('click', async () => {
-            if (!currentStoryData) return;
+        var payload = {
+            title: currentBookTitle || 'StoryMagic Book',
+            language_code: currentLang,
+            author: 'StoryMagic Hub',
+            description: 'Personalized therapeutic children book',
+            chapters: chapters
+        };
 
-            try {
-                const response = await fetch('/api/export-epub', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(currentStoryData)
-                });
+        try {
+            var response = await fetch('/api/export-epub', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-                if (!response.ok) {
-                    throw new Error("ePub export failed");
-                }
+            if (!response.ok) throw new Error('ePub export failed');
 
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${currentStoryData.title.replace(/[^a-zA-Z0-9а-яА-ЯёЁ]/g, '_')}.epub`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-            } catch (err) {
-                alert("Error downloading ePub file.");
-            }
-        });
-    </script>
+            var blob = await response.blob();
+            var downloadUrl = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = downloadUrl;
+            var safeName = (currentBookTitle || 'Story').replace(/[^a-zA-Z0-9а-яА-ЯёЁ]/g, '_');
+            a.download = safeName + '.epub';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (err) {
+            alert('Export Error: ' + err.message);
+        } finally {
+            btn.innerText = originalText;
+        }
+    }
+
+    function openPaymentModal() { 
+        document.getElementById('paymentModal').style.display = 'flex'; 
+    }
+
+    function closePaymentModal() { 
+        document.getElementById('paymentModal').style.display = 'none'; 
+    }
+
+    function closeModalOnBackdrop(e) {
+        if (e.target.id === 'paymentModal') {
+            closePaymentModal();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initFloatingBubbles();
+        changeLanguage('en');
+    });
+</script>
 </body>
 </html>
