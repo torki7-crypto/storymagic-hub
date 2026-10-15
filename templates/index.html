@@ -489,16 +489,16 @@
                         <label class="input-label" id="lbl-story-theme">Тема сказки</label>
                         <select id="themeSelect" class="custom-select" onchange="checkCustomTheme()">
                             <optgroup label="🌱 Терапевтические сказки (Уверенность и эмоции)" id="grp-therapy">
-                                <option value="Как победить страх темноты и подружиться с Ночной Звёздочкой" selected>Страх темноты и ночных теней</option>
-                                <option value="Храбрый шаг: первый день в новой школе и садике">Первый день в садике / школе</option>
-                                <option value="Укрощение сердитого дракончика: как справляться со злостью">Злость, капризы и эмоции</option>
-                                <option value="Королевство потерянных игрушек: радость порядка">Уборка игрушек и аккуратность</option>
-                                <option value="Сила доброго слова и умение делиться">Умение делиться и дружба</option>
+                                <option value="Как победить страх темноты и подружиться с Ночной Звёздочкой" id="opt-theme-dark" selected>Страх темноты и ночных теней</option>
+                                <option value="Храбрый шаг: первый день в новой школе и садике" id="opt-theme-school">Первый день в садике / школе</option>
+                                <option value="Укрощение сердитого дракончика: как справляться со злостью" id="opt-theme-anger">Злость, капризы и эмоции</option>
+                                <option value="Королевство потерянных игрушек: радость порядка" id="opt-theme-toys">Уборка игрушек и аккуратность</option>
+                                <option value="Сила доброго слова и умение делиться" id="opt-theme-share">Умение делиться и дружба</option>
                             </optgroup>
                             <optgroup label="🚀 Волшебные приключения" id="grp-adv">
-                                <option value="Приключения в зачарованном лесу с волшебным говорящим котом">Зачарованный лес и мудрый кот</option>
-                                <option value="Космическая экспедиция на Звёздный остров">Космическая экспедиция к звёздам</option>
-                                <option value="Путешествие во времена добрых динозавров">Экспедиция в мир динозавров</option>
+                                <option value="Приключения в зачарованном лесу с волшебным говорящим котом" id="opt-theme-forest">Зачарованный лес и мудрый кот</option>
+                                <option value="Космическая экспедиция на Звёздный остров" id="opt-theme-space">Космическая экспедиция к звёздам</option>
+                                <option value="Путешествие во времена добрых динозавров" id="opt-theme-dino">Экспедиция в мир динозавров</option>
                             </optgroup>
                             <option value="custom" id="opt-custom">✍️ Написать свою тему...</option>
                         </select>
@@ -643,7 +643,15 @@
             lblHeroAge: 'Возраст',
             lblStoryTheme: 'Тема сказки',
             grpTherapy: '🌱 Терапевтические сказки (Уверенность и эмоции)',
+            themeDark: 'Страх темноты и ночных теней',
+            themeSchool: 'Первый день в садике / школе',
+            themeAnger: 'Злость, капризы и эмоции',
+            themeToys: 'Уборка игрушек и аккуратность',
+            themeShare: 'Умение делиться и дружба',
             grpAdv: '🚀 Волшебные приключения',
+            themeForest: 'Зачарованный лес и мудрый кот',
+            themeSpace: 'Космическая экспедиция к звёздам',
+            themeDino: 'Экспедиция в мир динозавров',
             optCustom: '✍️ Написать свою тему...',
             lblArtStyle: 'Стиль графики',
             optStyle1: 'Акварель / Сказка',
@@ -704,7 +712,15 @@
             lblHeroAge: 'Age',
             lblStoryTheme: 'Story Theme',
             grpTherapy: '🌱 Therapeutic Stories (Emotional Growth)',
+            themeDark: 'Fear of the dark & night shadows',
+            themeSchool: 'First day at nursery / school',
+            themeAnger: 'Anger, tantrums & big feelings',
+            themeToys: 'Tidying up toys & order',
+            themeShare: 'Kindness, sharing & making friends',
             grpAdv: '🚀 Magical Adventures',
+            themeForest: 'Enchanted forest & wise talking cat',
+            themeSpace: 'Space voyage to the Star Island',
+            themeDino: 'Expedition to the gentle dinosaurs',
             optCustom: '✍️ Custom Story Idea...',
             lblArtStyle: 'Art Style',
             optStyle1: 'Watercolor / Fairy Tale',
@@ -795,8 +811,19 @@
         document.getElementById('heroName').value = d.valHeroName;
         document.getElementById('lbl-hero-age').innerText = d.lblHeroAge;
         document.getElementById('lbl-story-theme').innerText = d.lblStoryTheme;
+        
+        // Перевод групп и пунктов тем сказок
         document.getElementById('grp-therapy').label = d.grpTherapy;
+        document.getElementById('opt-theme-dark').innerText = d.themeDark;
+        document.getElementById('opt-theme-school').innerText = d.themeSchool;
+        document.getElementById('opt-theme-anger').innerText = d.themeAnger;
+        document.getElementById('opt-theme-toys').innerText = d.themeToys;
+        document.getElementById('opt-theme-share').innerText = d.themeShare;
+        
         document.getElementById('grp-adv').label = d.grpAdv;
+        document.getElementById('opt-theme-forest').innerText = d.themeForest;
+        document.getElementById('opt-theme-space').innerText = d.themeSpace;
+        document.getElementById('opt-theme-dino').innerText = d.themeDino;
         document.getElementById('opt-custom').innerText = d.optCustom;
 
         document.getElementById('lbl-art-style').innerText = d.lblArtStyle;
@@ -835,6 +862,7 @@
         if (currentPages.length > 0) {
             updateSlideUI();
         } else {
+            document.getElementById('pageBadge').innerText = d.badgeCover;
             document.getElementById('currentText').innerText = d.defaultWelcome;
         }
     }
@@ -866,7 +894,7 @@
         };
         temp.src = p.image_url;
 
-        document.getElementById('pageBadge').innerText = d.badgePage + ' ' + p.page_number;
+        document.getElementById('pageBadge').innerText = (currentIndex === 0) ? d.badgeCover : (d.badgePage + ' ' + p.page_number);
         document.getElementById('pageCounter').innerText = p.page_number + ' / ' + currentPages.length;
         document.getElementById('currentText').innerText = p.text;
     }
@@ -890,8 +918,9 @@
         var status = document.getElementById('statusMsg');
         status.innerText = dictionary[currentLang].statusGen;
 
-        var selectedTheme = document.getElementById('themeSelect').value;
-        if (selectedTheme === 'custom') {
+        var themeEl = document.getElementById('themeSelect');
+        var selectedTheme = themeEl.options[themeEl.selectedIndex].text;
+        if (themeEl.value === 'custom') {
             selectedTheme = document.getElementById('customThemeInput').value.trim() || 'Индивидуальная поучительная сказка';
         }
 
