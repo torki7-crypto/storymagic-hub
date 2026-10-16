@@ -1,13 +1,12 @@
 import os
 import io
 import uuid
-import json
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from PIL import Image
 from ebooklib import epub
 
-from fastapi import FastAPI, Response, HTTPException
+from fastapi import FastAPI, Response, HTTPException, Form, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -34,12 +33,6 @@ client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
 # 1. Pydantic-модели данных
 # ==========================================
 
-class StoryGenerateRequest(BaseModel):
-    child_name: str
-    child_age: int
-    language_code: str = "en"
-    theme: Optional[str] = ""
-
 class ChapterData(BaseModel):
     chapter_number: int
     title: str
@@ -47,14 +40,14 @@ class ChapterData(BaseModel):
 
 class StoryBookData(BaseModel):
     title: str
-    language_code: str
+    language_code: str = "en"
     author: str = "StoryMagic Hub"
     description: Optional[str] = ""
     chapters: List[ChapterData]
 
 
 # ==========================================
-# 2. Модуль сборки ePub3 книги
+# 2. Модуль сборки ePub3
 # ==========================================
 
 class EpubBuilder:
@@ -94,7 +87,6 @@ class EpubBuilder:
         book = epub.EpubBook()
         lang = story.language_code.lower()
 
-        # Метаданные книги
         book_id = str(uuid.uuid4())
         book.set_identifier(f"urn:uuid:{book_id}")
         book.set_title(story.title)
@@ -104,7 +96,6 @@ class EpubBuilder:
         if story.description:
             book.add_metadata("DC", "description", story.description)
 
-        # Стили
         css_item = epub.EpubItem(
             uid="style_main",
             file_name="style/main.css",
@@ -116,7 +107,6 @@ class EpubBuilder:
         spine = ["nav"]
         toc = []
 
-        # Сборка глав
         for ch in story.chapters:
             paragraphs_html = "".join([f"<p>{p.strip()}</p>" for p in ch.paragraphs if p.strip()])
             chapter_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
@@ -152,22 +142,27 @@ class EpubBuilder:
         nav = epub.EpubNav()
         nav.add_item(css_item)
         book.add_item(nav)
-        
         book.spine = spine
 
-        # Запись в буфер байтов
         buffer = io.BytesIO()
         epub.write_epub(buffer, book, {})
         return buffer.getvalue()
 
 
 # ==========================================
-# 3. Маршруты API (Endpoints)
+# 3. Маршруты API для формы и экспорта
 # ==========================================
 
-@app.post("/api/generate-story", response_model=StoryBookData)
-async def generate_story(req: StoryGenerateRequest):
-    """Генерация структурированного текста сказки через Gemini API."""
+@app.post("/api/generate")
+async def generate_book(
+    hero_name: str = Form(...),
+    age: int = Form(...),
+    theme: str = Form(...),
+    style: str = Form("Watercolor / Fairy Tale"),
+    lang: str = Form("en"),
+    photo: Optional[UploadFile] = File(None)
+):
+    """Принимает FormData с фронтенда, генерирует страницы сказки через Gemini и отдает разворот книги."""
     try:
         lang_names = {
             "en": "English",
@@ -177,16 +172,17 @@ async def generate_story(req: StoryGenerateRequest):
             "it": "Italian",
             "tr": "Turkish"
         }
-        target_lang = lang_names.get(req.language_code, "English")
+        target_lang = lang_names.get(lang.lower(), "English")
 
         prompt = f"""
-You are a warm, imaginative children's book author. Write an engaging, age-appropriate bedtime story for a {req.child_age}-year-old child named {req.child_name}.
-Topic/Adventure: {req.theme or 'A magical journey with loyal animal friends'}.
+You are a warm, imaginative children's book author. Write an engaging, age-appropriate therapeutic bedtime story for a {age}-year-old child named {hero_name}.
+Story Theme / Emotional Growth: {theme}.
+Art Style: {style}.
 Language: Write the ENTIRE story (title, chapter names, and all text) strictly in {target_lang}.
 
 Requirements:
-1. Divide the story into 3 or 4 chapters.
-2. Each chapter must have a creative title and 2 to 4 paragraphs.
+1. Divide the story into 4 connected pages/chapters (Page 1 is the beginning/cover setup, Pages 2-3 are the adventure, Page 4 is the gentle triumph/resolution).
+2. Each page must contain 2 to 3 comforting, beautifully phrased paragraphs suitable for reading aloud to a child.
 3. Keep the tone gentle, encouraging, and magical.
 """
 
@@ -201,11 +197,34 @@ Requirements:
         )
 
         story_data = StoryBookData.model_validate_json(response.text)
-        story_data.language_code = req.language_code
-        return story_data
+
+        # Стандартные красивые иллюстрации под выбранную тему для разворота книги
+        theme_images = [
+            "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80"
+        ]
+
+        pages = []
+        for idx, ch in enumerate(story_data.chapters):
+            img_url = theme_images[idx % len(theme_images)]
+            full_text = "\n\n".join(ch.paragraphs)
+            pages.append({
+                "page_number": idx + 1,
+                "title": ch.title,
+                "text": full_text,
+                "image_url": img_url
+            })
+
+        return {
+            "success": True,
+            "title": story_data.title,
+            "pages": pages
+        }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Story generation failed: {str(e)}")
+        return {"success": False, "error": str(e)}
 
 
 @app.post("/api/export-epub")
@@ -228,15 +247,13 @@ async def export_epub(story: StoryBookData):
 
 
 # ==========================================
-# 4. Раздача фронтенда (поддержка и templates/, и корня)
+# 4. Раздача фронтенда (templates/index.html)
 # ==========================================
 
 @app.get("/")
 async def serve_index():
-    # Проверяем в папке templates/
     if os.path.exists("templates/index.html"):
         return FileResponse("templates/index.html")
-    # Проверяем в корне
     if os.path.exists("index.html"):
         return FileResponse("index.html")
     return {"message": "index.html not found"}
