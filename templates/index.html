@@ -3,362 +3,324 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StoryMagic Hub — Интерактивная книга</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>StoryMagic Hub — Интерактивная сказка</title>
   
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    /* Кастомный скроллбар для длинных текстов внутри разворота */
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 50% 15%, #1e1b4b 0%, #0b0f19 100%);
+      color: #f8fafc;
+    }
+    
+    .serif-text {
+      font-family: 'Lora', serif;
+    }
+
+    .magic-title {
+      font-family: 'Cinzel', serif;
+    }
+
+    /* Жестко фиксируем высоту разворота, чтобы тулбар всегда был виден */
+    .book-spread-container {
+      height: min(650px, calc(100vh - 180px));
+      min-height: 480px;
+    }
+
+    /* Аккуратный скроллбар для страницы чтения */
     .story-scroll::-webkit-scrollbar {
-      width: 6px;
+      width: 5px;
     }
     .story-scroll::-webkit-scrollbar-track {
-      background: #fdfbf7;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 4px;
     }
     .story-scroll::-webkit-scrollbar-thumb {
-      background: #d4c5b9;
+      background: rgba(168, 85, 247, 0.4);
       border-radius: 4px;
     }
     .story-scroll::-webkit-scrollbar-thumb:hover {
-      background: #b8a596;
-    }
-
-    /* Эффект текстуры книжного листа и тени корешка */
-    .book-spread {
-      background-color: #fdfcf7;
-      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.25), 0 0 10px rgba(0, 0, 0, 0.05);
-    }
-    .book-spine-shadow {
-      background: linear-gradient(to right, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.02) 8%, transparent 15%, transparent 85%, rgba(0,0,0,0.02) 92%, rgba(0,0,0,0.12) 100%);
-    }
-
-    /* Размытие для заблокированного пейволлом контента */
-    .blur-gate {
-      filter: blur(5px);
-      user-select: none;
-      pointer-events: none;
+      background: rgba(168, 85, 247, 0.7);
     }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+<body class="h-screen flex flex-col justify-between overflow-hidden">
 
-  <!-- Header -->
-  <header class="h-14 bg-slate-950/80 backdrop-blur border-b border-slate-800 px-6 flex items-center justify-between z-10">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-bold text-lg">✨</div>
-      <span class="text-white font-semibold tracking-wide">StoryMagic Hub</span>
+  <!-- ВЕРХНЯЯ ШАПКА -->
+  <header class="h-14 border-b border-purple-900/40 bg-slate-950/80 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
+    <div class="flex items-center space-x-3">
+      <span class="text-xl">✨</span>
+      <h1 class="text-lg font-bold tracking-wide text-purple-200 magic-title">StoryMagic Hub</h1>
     </div>
-    <div id="statusBadge" class="text-xs font-medium px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-      Режим предварительного просмотра
+    <div class="flex items-center space-x-3">
+      <span id="pageIndicator" class="text-xs text-purple-300 bg-purple-950/70 border border-purple-800/40 px-3 py-1.5 rounded-full font-medium">
+        Глава 1 из 4
+      </span>
     </div>
   </header>
 
-  <!-- Main Viewport Area: Строго центрированный разворот с фиксацией по высоте -->
-  <main class="flex-1 flex items-center justify-center p-4 max-w-7xl mx-auto w-full">
-    
-    <div class="w-full flex flex-col items-center">
+  <!-- ОСНОВНАЯ ЗОНА: ФИКСИРОВАННЫЙ РАЗВОРОТ КНИГИ -->
+  <main class="flex-1 flex items-center justify-center p-3 sm:p-4 min-h-0">
+    <div class="book-spread-container w-full max-w-5xl bg-slate-900/90 border border-purple-800/40 rounded-2xl shadow-2xl flex overflow-hidden backdrop-blur-xl relative">
       
-      <!-- Контейнер разворота (фиксированная пропорция, никогда не уходит за экран) -->
-      <div class="relative w-full max-w-5xl book-spread rounded-2xl overflow-hidden border border-amber-950/20"
-           style="height: min(680px, calc(100vh - 170px));">
-        
-        <!-- Тень центрального сгиба книги -->
-        <div class="absolute inset-0 book-spine-shadow pointer-events-none z-10"></div>
-
-        <!-- 2 колонки разворота (Иллюстрация слева, Текст справа) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 h-full w-full">
-          
-          <!-- Левая страница: Иллюстрация -->
-          <div class="relative bg-slate-100 flex items-center justify-center overflow-hidden border-r border-slate-200">
-            <img id="chapterImage" 
-                 src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop" 
-                 alt="Chapter Illustration" 
-                 class="w-full h-full object-cover transition-opacity duration-300">
-            
-            <div id="imageLockOverlay" class="hidden absolute inset-0 bg-slate-950/60 backdrop-blur-sm flex flex-col items-center justify-center text-white p-6 text-center">
-              <i class="fa-solid fa-lock text-4xl text-amber-400 mb-3"></i>
-              <p class="font-medium text-sm">Иллюстрация развязки доступна в полной версии</p>
-            </div>
+      <!-- ЛЕВАЯ СТРАНИЦА: ИЛЛЮСТРАЦИЯ -->
+      <div class="hidden md:flex w-1/2 p-6 bg-slate-950/40 items-center justify-center border-r border-purple-900/40 relative">
+        <div class="w-full h-full rounded-xl overflow-hidden border border-purple-800/30 bg-purple-950/20 relative shadow-inner">
+          <img id="chapterImage" 
+               src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80" 
+               alt="Иллюстрация главы" 
+               class="w-full h-full object-cover transition-opacity duration-300">
+          <div id="imageOverlayLock" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center flex-col p-4 text-center">
+            <span class="text-4xl mb-2">🔒</span>
+            <span class="text-sm text-purple-200 font-medium">Финальная иллюстрация доступна в полной версии</span>
           </div>
-
-          <!-- Правая страница: Текст главы с независимым скроллом -->
-          <div class="relative flex flex-col h-full bg-[#fdfbf7] p-8 md:p-10 justify-between">
-            
-            <!-- Заголовок главы (закреплен вверху страницы) -->
-            <div class="border-b border-amber-900/10 pb-4 mb-4 flex justify-between items-center shrink-0">
-              <h2 id="chapterTitle" class="font-serif text-2xl font-bold text-amber-950">Глава 1: Волшебный лес</h2>
-              <span id="pageIndicator" class="text-xs font-bold uppercase tracking-widest text-amber-800/60">Стр. 1 / 4</span>
-            </div>
-
-            <!-- Контейнер текста со скроллом -->
-            <div id="textScrollContainer" class="story-scroll overflow-y-auto flex-1 pr-3 relative">
-              
-              <!-- Обычный читаемый текст -->
-              <div id="chapterContent" class="font-serif text-slate-700 leading-relaxed text-base space-y-4">
-                В один прекрасный день юный герой отправился на поиски древних тайн, спрятанных за туманными холмами сказочного королевства. Воздух звенел от предвкушения приключений, а впереди простиралась тропа, вымощенная мерцающими кристаллами.
-              </div>
-
-              <!-- Пейволл-заглушка: рендерится поверх или вместо закрытого текста -->
-              <div id="paywallContainer" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-[#fdfbf7] via-[#fdfbf7]/95 to-transparent text-center p-6 mt-12">
-                <div class="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-2xl mb-3 shadow-inner">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i>
-                </div>
-                <h3 class="font-serif text-xl font-bold text-amber-950 mb-2">Кульминация сказки заблокирована</h3>
-                <p class="text-xs text-slate-600 max-w-sm mb-5 leading-relaxed">
-                  Узнайте, чем закончилось путешествие, откройте финал вслух и загрузите полную подарочную книгу в ePub3 прямо сейчас.
-                </p>
-                <button onclick="openPaymentModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm px-6 py-3 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-2">
-                  <i class="fa-solid fa-unlock"></i> Разблокировать продолжение
-                </button>
-              </div>
-
-            </div>
-
-            <!-- Нижняя служебная отметка страницы -->
-            <div class="pt-4 border-t border-amber-900/10 text-center text-[11px] text-amber-900/40 uppercase tracking-widest shrink-0">
-              StoryMagic Hub Edition
-            </div>
-
-          </div>
-
         </div>
-
       </div>
 
-      <!-- Панель управления навигацией и экспортом (зафиксирована снизу книги) -->
-      <div class="mt-4 w-full max-w-5xl flex flex-wrap items-center justify-between gap-3 px-2">
+      <!-- ПРАВАЯ СТРАНИЦА: ТЕКСТ С НЕЗАВИСИМЫМ СКРОЛЛОМ -->
+      <div class="w-full md:w-1/2 flex flex-col h-full bg-slate-900/60 relative">
         
-        <!-- Кнопки перелистывания -->
-        <div class="flex items-center gap-2">
-          <button id="prevBtn" onclick="navigateChapter(-1)" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-sm font-medium border border-slate-700 transition flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
-            <i class="fa-solid fa-arrow-left"></i> Назад
-          </button>
-          <button id="nextBtn" onclick="navigateChapter(1)" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-sm font-medium border border-slate-700 transition flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
-            Вперед <i class="fa-solid fa-arrow-right"></i>
-          </button>
+        <!-- Заголовок главы (зафиксирован) -->
+        <div class="p-6 pb-2 border-b border-purple-900/20 shrink-0">
+          <h2 id="chapterTitle" class="text-xl font-bold text-amber-200 magic-title tracking-wide">
+            Глава 1: Таинственный зов
+          </h2>
         </div>
 
-        <!-- Кнопки действий -->
-        <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="triggerAudio()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-medium border border-slate-700 flex items-center gap-2">
-            <i class="fa-solid fa-volume-high text-amber-400"></i> Аудио-сказка
-          </button>
-          <button onclick="handleEpubDownload()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-medium border border-slate-700 flex items-center gap-2">
-            <i class="fa-solid fa-book text-amber-400"></i> Экспорт ePub
-          </button>
-          <button onclick="openPaymentModal()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs shadow-md flex items-center gap-2">
-            <i class="fa-solid fa-crown"></i> Тарифы
+        <!-- Текст главы (скроллится внутри блока) -->
+        <div id="chapterContentWrapper" class="flex-1 p-6 overflow-y-auto story-scroll serif-text text-base leading-relaxed text-slate-200">
+          <p id="chapterText">
+            Далеко за хрустальными холмами, где лучи заката касаются верхушек древних сосен, началась эта история...
+          </p>
+        </div>
+
+        <!-- Заглушка пейволла для последней главы -->
+        <div id="chapterPaywallOverlay" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
+          <div class="w-16 h-16 rounded-full bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-3xl mb-4 shadow-lg shadow-purple-500/20">
+            🔒
+          </div>
+          <h3 class="text-xl font-bold text-white magic-title mb-2">Кульминация и финал сказки</h3>
+          <p class="text-sm text-slate-300 mb-6 max-w-xs">
+            Развязка истории, экспорт в ePub и печатная версия доступны по подписке или разовой покупке.
+          </p>
+          <button onclick="openPaymentModal()" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg transition-all transform hover:scale-105">
+            Разблокировать финал сказки
           </button>
         </div>
 
       </div>
 
     </div>
-
   </main>
 
-  <!-- Модальное окно оплаты (Paywall Modal) -->
-  <div id="paymentModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 md:p-8 text-white relative shadow-2xl">
+  <!-- НИЖНЯЯ ПАНЕЛЬ УПРАВЛЕНИЯ И ЭКСПОРТА (ВСЕГДА ВИДНА) -->
+  <footer class="h-20 border-t border-purple-900/40 bg-slate-950/90 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
+    
+    <!-- Навигация по страницам -->
+    <div class="flex items-center space-x-3">
+      <button id="prevBtn" onclick="prevChapter()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed border border-purple-800/40 text-purple-200 rounded-lg text-sm font-medium transition">
+        ← Назад
+      </button>
+      <button id="nextBtn" onclick="nextChapter()" class="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold shadow-md transition">
+        Вперед →
+      </button>
+    </div>
+
+    <!-- Тулбар действий (Audio, ePub, PDF) -->
+    <div class="flex items-center space-x-2 sm:space-x-3">
+      <button onclick="alert('Генерация озвучки...')" class="hidden sm:inline-flex items-center space-x-1 px-3 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-purple-900/30 transition">
+        <span>🎧</span>
+        <span>Audio</span>
+      </button>
       
-      <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800">
-        <i class="fa-solid fa-xmark"></i>
+      <button onclick="handleEpubExport()" class="flex items-center space-x-1.5 px-3 py-2 bg-purple-900/50 hover:bg-purple-800/60 text-purple-200 hover:text-white rounded-lg text-xs font-semibold border border-purple-500/40 transition">
+        <span>📖</span>
+        <span>Export ePub</span>
       </button>
 
-      <div class="text-center mb-8">
-        <span class="text-xs uppercase font-bold tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">StoryMagic Premium</span>
-        <h3 class="text-2xl font-bold mt-3">Откройте полную версию сказки</h3>
-        <p class="text-sm text-slate-400 mt-1">Разблокируйте развязку истории и заберите файл ePub3 в постоянную семейную коллекцию.</p>
+      <button onclick="openPaymentModal()" class="flex items-center space-x-1.5 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold transition">
+        <span>📦</span>
+        <span>Hardcover</span>
+      </button>
+    </div>
+
+  </footer>
+
+  <!-- МОДАЛЬНОЕ ОКНО ПЕЙВОЛЛА (PAYMENT MODAL) -->
+  <div id="paymentModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-purple-800/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative text-left">
+      
+      <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">✕</button>
+
+      <div class="text-center mb-6">
+        <span class="text-3xl">✨</span>
+        <h3 class="text-xl font-bold text-white magic-title mt-2">Выберите доступ к сказкам</h3>
+        <p class="text-xs text-slate-400 mt-1">Разблокируйте финал текущей истории и экспорт в ePub</p>
       </div>
 
-      <!-- Сетка тарифов -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
-        <!-- Тариф 1: Starter -->
-        <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-5 flex flex-col justify-between hover:border-slate-500 transition">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <!-- Тариф Starter -->
+        <div class="border border-purple-800/40 hover:border-purple-500 rounded-xl p-4 bg-slate-950/40 flex flex-col justify-between transition cursor-pointer" onclick="selectPlan('Starter')">
           <div>
-            <div class="flex justify-between items-baseline mb-2">
-              <h4 class="font-bold text-lg text-white">Starter</h4>
-              <span class="text-2xl font-black text-white">£3.99</span>
-            </div>
-            <p class="text-xs text-slate-400 mb-4">Для текущей книги</p>
-            <ul class="text-xs text-slate-300 space-y-2 mb-6">
-              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Разблокировка всех глав</li>
-              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Загрузка ePub3 и PDF</li>
-              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> 1 персонализированная сказка</li>
-            </ul>
+            <span class="text-xs font-semibold text-purple-400 uppercase tracking-wider">Starter</span>
+            <div class="text-2xl font-bold text-white mt-1">£4.99</div>
+            <p class="text-xs text-slate-400 mt-2">1 полная сказка, все главы, ePub-файл и цветной PDF.</p>
           </div>
-          <button onclick="processCheckout('starter')" class="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg text-xs transition">
-            Выбрать Starter
-          </button>
+          <button class="mt-4 w-full py-2 bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs font-semibold rounded-lg transition">Купить сказку</button>
         </div>
 
-        <!-- Тариф 2: Unlimited (Рекомендуемый) -->
-        <div class="bg-gradient-to-b from-amber-500/10 to-slate-800/80 border-2 border-amber-500/50 rounded-xl p-5 flex flex-col justify-between relative shadow-lg">
-          <div class="absolute -top-3 right-4 bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full">
-            Лучший выбор
-          </div>
+        <!-- Тариф Unlimited -->
+        <div class="border-2 border-purple-500 rounded-xl p-4 bg-purple-950/30 flex flex-col justify-between relative shadow-lg shadow-purple-900/20 cursor-pointer" onclick="selectPlan('Unlimited')">
+          <span class="absolute -top-2.5 right-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-[10px] text-white font-bold px-2 py-0.5 rounded-full">Хит</span>
           <div>
-            <div class="flex justify-between items-baseline mb-2">
-              <h4 class="font-bold text-lg text-amber-400">Unlimited</h4>
-              <span class="text-2xl font-black text-white">£9.99<span class="text-xs text-slate-400 font-normal">/мес</span></span>
-            </div>
-            <p class="text-xs text-slate-400 mb-4">Неограниченное творчество</p>
-            <ul class="text-xs text-slate-300 space-y-2 mb-6">
-              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Безлимитная генерация сказок</li>
-              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Аудио-озвучка Gemini Pro</li>
-              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Скачивание ePub3 без лимитов</li>
-              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Скидка 20% на твердый переплет</li>
-            </ul>
+            <span class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Unlimited</span>
+            <div class="text-2xl font-bold text-white mt-1">£14.99 <span class="text-xs font-normal text-slate-400">/мес</span></div>
+            <p class="text-xs text-slate-400 mt-2">Безлимитная генерация сказок, аудио, ePub и скидка на Hardcover.</p>
           </div>
-          <button onclick="processCheckout('unlimited')" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs shadow-md transition">
-            Оформить Unlimited
-          </button>
+          <button class="mt-4 w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg shadow-md transition">Подписаться</button>
         </div>
+      </div>
 
+      <div class="text-center text-[11px] text-slate-500">
+        Безопасная оплата картой через Stripe. Мгновенная доставка файлов.
       </div>
 
     </div>
   </div>
 
-  <!-- Клиентский скрипт управления книгой -->
+  <!-- JS ЛОГИКА -->
   <script>
-    // Тестовое состояние (синхронизируется с бэкендом)
-    let currentStory = {
-      id: "sample-story-uuid",
-      is_paid: false,
+    // Тестовая структура глав книги
+    const storyData = {
+      id: "demo-story-1",
+      isPaid: false, // Флаг оплаты книги
       chapters: [
         {
-          title: "Глава 1: Волшебный лес",
-          text: "В один прекрасный день юный исследователь отправился на поиски древних тайн, спрятанных за туманными холмами сказочного королевства. Воздух звенел от предвкушения приключений, а впереди простиралась тропа, вымощенная мерцающими кристаллами. Лес шептал свои древние легенды, пока первые солнечные лучи пробивались сквозь густые кроны вековых дубов.",
-          image_url: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop",
-          is_locked: false
+          title: "Глава 1: Таинственный зов",
+          image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80",
+          text: "Далеко за хрустальными холмами, где лучи заката касаются верхушек древних сосен, началась эта история. Маленький лисенок по имени Оскар нашел в корнях старого дуба странный светящийся желудь. Как только он коснулся его лапкой, воздух вокруг наполнился серебристым звоном..."
         },
         {
-          title: "Глава 2: Хранитель ключей",
-          text: "Среди ветвей старого ясеня сидел мудрый филин в бархатном камзоле. В его когтях мягко светился латунный ключ с гравировкой солнца. 'Ты ищешь ответы там, где еще никто не зажигал фонаря', — произнес он тихим, глухим голосом. Путь лежал через реку загадок, и времени до заката оставалось совсем немного.",
-          image_url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&auto=format&fit=crop",
-          is_locked: false
+          title: "Глава 2: Дорога через Мшистый лес",
+          image: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1000&q=80",
+          text: "Тропинка вела все глубже в лесную чащу. Деревья здесь шептались на неведомом языке, а под ногами переливались крошечные светлячки. Оскар знал, что впереди его ждет мост через Реку Снов, но никто не предупреждал его о хранителе моста..."
         },
         {
-          title: "Глава 3: Испытание храбрости",
-          text: "Хрустальный мост дрожал под порывами ночного ветра. Чтобы сделать шаг вперед, нужно было вспомнить самый добрый поступок в своей жизни. Сердце колотилось быстро, но страх отступил, когда мост озарился теплым янтарным светом, отвечая на искренние помыслы храброго путешественника.",
-          image_url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop",
-          is_locked: false
+          title: "Глава 3: Хранитель Реки Снов",
+          image: "https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=1000&q=80",
+          text: "На краю моста сидела огромная мудрая сова с глазами цвета теплого янтаря. 'Куда держишь путь, путник с светящимся желудем?' — спросила она низким бархатным голосом. Чтобы пройти дальше, Оскару предстояло разгадать самую сложную загадку леса..."
         },
         {
-          title: "Эпилог: Великая победа",
-          text: "И тогда тайна раскрылась: настоящая магия крылась вовсе не в заклинаниях или древних свитках, а в умении слушать и защищать тех, кто дорог. Королевство снова наполнилось радостным звоном колоколов, а на небе зажглась новая звезда в честь отважного героя.",
-          image_url: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop",
-          is_locked: true // Закрыто для бесплатной версии
+          title: "Глава 4: Великая тайна Звездного пика",
+          image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80",
+          text: "Кульминация сказки и счастливый финал! Оскар добрался до вершины Звездного пика и узнал истинную силу желудя..."
         }
       ]
     };
 
-    let currentIndex = 0;
+    let currentChapterIndex = 0;
 
     function renderChapter() {
-      const chapter = currentStory.chapters[currentIndex];
-      const total = currentStory.chapters.length;
+      const chapter = storyData.chapters[currentChapterIndex];
+      const isLastChapter = currentChapterIndex === storyData.chapters.length - 1;
+      const isLocked = isLastChapter && !storyData.isPaid;
 
-      document.getElementById('chapterTitle').innerText = chapter.title;
-      document.getElementById('pageIndicator').innerText = `Стр. ${currentIndex + 1} / ${total}`;
+      // Обновляем индикатор
+      document.getElementById("pageIndicator").innerText = `Глава ${currentChapterIndex + 1} из ${storyData.chapters.length}`;
+      document.getElementById("chapterTitle").innerText = chapter.title;
       
-      const imgElem = document.getElementById('chapterImage');
-      const imgLock = document.getElementById('imageLockOverlay');
-      const contentElem = document.getElementById('chapterContent');
-      const paywallElem = document.getElementById('paywallContainer');
-      const scrollContainer = document.getElementById('textScrollContainer');
+      // Обновляем состояние кнопки Назад
+      document.getElementById("prevBtn").disabled = currentChapterIndex === 0;
 
-      // Сброс прокрутки текста вверх при перелистывании
-      scrollContainer.scrollTop = 0;
+      // Проверка блокировки последней главы
+      const paywallOverlay = document.getElementById("chapterPaywallOverlay");
+      const imgLock = document.getElementById("imageOverlayLock");
+      const textContainer = document.getElementById("chapterText");
+      const chapterImg = document.getElementById("chapterImage");
 
-      // Обработка заблокированного контента
-      const isBlocked = chapter.is_locked && !currentStory.is_paid;
+      chapterImg.src = chapter.image;
 
-      if (isBlocked) {
-        imgElem.src = chapter.image_url;
-        imgLock.classList.remove('hidden');
-        
-        // Размываем текст и показываем плашку блокировки
-        contentElem.classList.add('blur-gate');
-        contentElem.innerText = chapter.text; 
-        paywallElem.classList.remove('hidden');
+      if (isLocked) {
+        paywallOverlay.classList.remove("hidden");
+        imgLock.classList.remove("hidden");
+        textContainer.innerText = "";
       } else {
-        imgElem.src = chapter.image_url;
-        imgLock.classList.add('hidden');
-        
-        contentElem.classList.remove('blur-gate');
-        contentElem.innerText = chapter.text;
-        paywallElem.classList.add('hidden');
+        paywallOverlay.classList.add("hidden");
+        imgLock.classList.add("hidden");
+        textContainer.innerText = chapter.text;
       }
 
-      // Состояние кнопок пагинации
-      document.getElementById('prevBtn').disabled = currentIndex === 0;
-      document.getElementById('nextBtn').disabled = currentIndex === total - 1;
+      // Скроллим блок текста наверх при смене главы
+      document.getElementById("chapterContentWrapper").scrollTop = 0;
     }
 
-    function navigateChapter(direction) {
-      const newIndex = currentIndex + direction;
-      if (newIndex >= 0 && newIndex < currentStory.chapters.length) {
-        currentIndex = newIndex;
+    function prevChapter() {
+      if (currentChapterIndex > 0) {
+        currentChapterIndex--;
         renderChapter();
+      }
+    }
+
+    function nextChapter() {
+      if (currentChapterIndex < storyData.chapters.length - 1) {
+        currentChapterIndex++;
+        renderChapter();
+      } else if (!storyData.isPaid) {
+        openPaymentModal();
+      }
+    }
+
+    // Защита ePub экспорта
+    async function handleEpubExport() {
+      if (!storyData.isPaid) {
+        openPaymentModal();
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/export-epub", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ story_id: storyData.id, is_paid: storyData.isPaid })
+        });
+
+        if (response.status === 402) {
+          openPaymentModal();
+          return;
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `StoryMagic_${storyData.id}.epub`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (err) {
+        console.error("Ошибка экспорта:", err);
       }
     }
 
     function openPaymentModal() {
-      document.getElementById('paymentModal').classList.remove('hidden');
+      document.getElementById("paymentModal").classList.remove("hidden");
     }
 
     function closePaymentModal() {
-      document.getElementById('paymentModal').classList.add('hidden');
+      document.getElementById("paymentModal").classList.add("hidden");
     }
 
-    async function processCheckout(plan) {
-      // Имитация успешной оплаты через Stripe / LemonSqueezy
-      try {
-        const response = await fetch(`/api/verify-payment/${currentStory.id}`, { method: 'POST' });
-        if (response.ok) {
-          currentStory.is_paid = true;
-          currentStory.chapters.forEach(c => c.is_locked = false);
-          
-          document.getElementById('statusBadge').innerText = "Премиум доступ активирован";
-          document.getElementById('statusBadge').className = "text-xs font-medium px-3 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800";
-          
-          closePaymentModal();
-          renderChapter();
-          alert("Оплата прошла успешно! Все главы разблокированы.");
-        }
-      } catch (e) {
-        // Fallback для локального тестирования UI без запущенного бэкенда
-        currentStory.is_paid = true;
-        currentStory.chapters.forEach(c => c.is_locked = false);
-        closePaymentModal();
-        renderChapter();
-      }
-    }
-
-    function handleEpubDownload() {
-      if (!currentStory.is_paid) {
-        openPaymentModal();
-      } else {
-        window.location.href = `/api/export-epub/${currentStory.id}`;
-      }
-    }
-
-    function triggerAudio() {
-      if (!currentStory.is_paid) {
-        openPaymentModal();
-      } else {
-        alert("Запуск аудио-озвучки сказки...");
-      }
+    function selectPlan(planName) {
+      alert(`Переход к оплате тарифа: ${planName}`);
+      // Здесь подключается Stripe Checkout Session
     }
 
     // Инициализация при загрузке
-    document.addEventListener("DOMContentLoaded", () => {
-      renderChapter();
-    });
+    renderChapter();
   </script>
-
 </body>
 </html>
