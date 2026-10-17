@@ -1,311 +1,744 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StoryMagic Hub — Интерактивная сказка</title>
-  
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoryMagic — Personalized Books for Kids</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@400;600;700;800&family=Lora:ital,wght@0,500;0,600;1,400&display=swap');
 
-  <style>
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background: radial-gradient(circle at 50% 15%, #1e1b4b 0%, #0b0f19 100%);
-      color: #f8fafc;
-    }
-    
-    .serif-text { font-family: 'Lora', serif; }
-    .magic-title { font-family: 'Cinzel', serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Жесткая фиксация высоты разворота: нижние кнопки никогда не уедут за экран */
-    .book-spread-container {
-      height: min(640px, calc(100vh - 170px));
-      min-height: 480px;
-    }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #130d24, #27163d, #140b26);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow-x: hidden;
+        }
 
-    /* Элегантный скроллбар для длинного текста сказки */
-    .story-scroll::-webkit-scrollbar {
-      width: 5px;
-    }
-    .story-scroll::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 4px;
-    }
-    .story-scroll::-webkit-scrollbar-thumb {
-      background: rgba(168, 85, 247, 0.4);
-      border-radius: 4px;
-    }
-    .story-scroll::-webkit-scrollbar-thumb:hover {
-      background: rgba(168, 85, 247, 0.7);
-    }
-  </style>
+        /* Фоновые анимированные пузыри */
+        .bubbles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .bubble {
+            position: absolute;
+            bottom: -60px;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), rgba(255, 107, 139, 0.18));
+            border-radius: 50%;
+            animation: floatUp linear infinite;
+            box-shadow: 0 0 15px rgba(255, 107, 139, 0.25);
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) translateX(0) scale(0.8); opacity: 0; }
+            15% { opacity: 0.7; }
+            85% { opacity: 0.7; }
+            100% { transform: translateY(-110vh) translateX(40px) scale(1.1); opacity: 0; }
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 12px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .brand-title {
+            font-family: 'Comfortaa', cursive;
+            font-size: 1.5em;
+            font-weight: 700;
+            background: linear-gradient(90deg, #ff9a9e, #fecfef, #a1c4fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 5px;
+            border-radius: 14px;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: #d1c4e9;
+            padding: 8px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: 0.2s;
+        }
+        .tab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #ff6b8b, #ff8e53);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(255, 107, 139, 0.35);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .lang-select-box {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 10px;
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+        }
+        .lang-select {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.88em;
+            outline: none;
+            cursor: pointer;
+        }
+        .lang-select option {
+            background: #1c1130;
+            color: #fff;
+        }
+
+        .pay-btn {
+            background: linear-gradient(135deg, #a18cd1, #fbc2eb);
+            color: #240e48;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 0.85em;
+            box-shadow: 0 4px 12px rgba(161, 140, 209, 0.3);
+        }
+
+        main {
+            flex: 1;
+            padding: 18px 28px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            position: relative;
+            z-index: 10;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .hero-box {
+            text-align: center;
+            max-width: 860px;
+            margin: 30px auto;
+        }
+        .hero-box h1 {
+            font-family: 'Comfortaa', cursive;
+            font-size: 2.5em;
+            margin-bottom: 16px;
+            background: linear-gradient(90deg, #ff9a9e, #fad0c4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-box p {
+            font-size: 1.15em;
+            line-height: 1.6;
+            color: #ded1f7;
+            margin-bottom: 28px;
+        }
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .step-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 26px 20px;
+            border-radius: 18px;
+            text-align: center;
+        }
+        .step-icon { font-size: 2.2em; margin-bottom: 12px; }
+        .step-card h3 { margin-bottom: 8px; font-size: 1.15em; color: #fff; }
+        .step-card p { font-size: 0.9em; color: #bcaaa4; line-height: 1.45; }
+
+        .about-card {
+            max-width: 900px;
+            margin: 20px auto 40px;
+            line-height: 1.6;
+        }
+        .about-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .about-header h2 {
+            font-family: 'Comfortaa', cursive;
+            font-size: 1.8em;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .about-subtitle {
+            color: #cbd5e1;
+            font-size: 1.05em;
+        }
+        .about-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+        .about-item {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+        }
+        .about-item h3 {
+            color: #ff8da1;
+            margin: 10px 0 8px;
+            font-size: 1.1em;
+        }
+        .about-item p {
+            font-size: 0.9em;
+            color: #cbd5e1;
+        }
+        .about-steps {
+            background: rgba(0, 0, 0, 0.28);
+            border-radius: 14px;
+            padding: 20px 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .about-steps h3 {
+            margin-bottom: 12px;
+            color: #fff;
+        }
+        .about-steps ol {
+            padding-left: 20px;
+            color: #cbd5e1;
+            font-size: 0.95em;
+        }
+        .about-steps li {
+            margin-bottom: 8px;
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: 330px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+        .panel-card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 22px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .input-group { margin-bottom: 11px; }
+        .input-label {
+            display: block;
+            font-size: 0.78em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            color: #f1e4ff;
+        }
+        .custom-input, .custom-select {
+            width: 100%;
+            padding: 9px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 0.9em;
+            outline: none;
+        }
+        .custom-select option, .custom-select optgroup { background: #241438; color: #fff; }
+
+        .photo-upload-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px dashed rgba(255, 255, 255, 0.25);
+            padding: 8px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .photo-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+
+        .legal-box {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 12px;
+            font-size: 0.75em;
+            line-height: 1.4;
+            color: #cbd5e1;
+        }
+        .legal-label {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            cursor: pointer;
+        }
+        .legal-label input {
+            margin-top: 2px;
+            accent-color: #ff6b8b;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .magic-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Comfortaa', cursive;
+            font-size: 1em;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(135deg, #ff6b8b, #ff8e53);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 4px;
+        }
+        .magic-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(255, 107, 139, 0.4); }
+
+        .status-msg {
+            margin-top: 8px;
+            font-size: 0.85em;
+            text-align: center;
+            color: #a1c4fd;
+            min-height: 20px;
+        }
+
+        /* =========================================================
+           ИСПРАВЛЕННАЯ ВЕРСТКА РАЗВОРОТА КНИГИ (ФИКСИРОВАННАЯ ВЫСОТА)
+           ========================================================= */
+        .book-container {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .book-spread {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            /* Жестко фиксируем высоту разворота, чтобы кнопки внизу никогда не уезжали */
+            height: 520px;
+            max-height: calc(100vh - 210px);
+            min-height: 440px;
+            background: rgba(14, 9, 26, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        .book-left-img {
+            position: relative;
+            background: #090511;
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            height: 100%;
+            min-height: 0;
+        }
+        .book-left-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s ease, filter 0.3s ease;
+        }
+        .book-left-img img.locked-blur {
+            filter: blur(14px) brightness(0.6);
+        }
+
+        .book-right-page {
+            position: relative;
+            background: #fbf7ee;
+            color: #2b1f1d;
+            border-radius: 16px;
+            padding: 20px 26px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: inset 4px 0 16px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.25);
+            border-left: 4px solid #e2d7c5;
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .book-header-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed #d5c7b3;
+            padding-bottom: 8px;
+            flex-shrink: 0;
+        }
+        .book-badge {
+            font-family: 'Comfortaa', cursive;
+            font-size: 0.95em;
+            font-weight: 700;
+            color: #b24867;
+        }
+
+        /* Контейнер текста с аккуратным внутренним скроллом */
+        .book-body-text {
+            font-family: 'Lora', Georgia, serif;
+            font-size: 1.12em;
+            line-height: 1.68;
+            color: #261d1a;
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 8px 14px 0;
+            letter-spacing: 0.2px;
+            white-space: pre-line;
+            min-height: 0;
+        }
+
+        /* Стилизация скроллбара внутри книжной страницы */
+        .book-body-text::-webkit-scrollbar {
+            width: 6px;
+        }
+        .book-body-text::-webkit-scrollbar-track {
+            background: rgba(213, 199, 179, 0.25);
+            border-radius: 6px;
+        }
+        .book-body-text::-webkit-scrollbar-thumb {
+            background: #c5b49e;
+            border-radius: 6px;
+        }
+        .book-body-text::-webkit-scrollbar-thumb:hover {
+            background: #b24867;
+        }
+
+        .book-nav-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px dashed #d5c7b3;
+            padding-top: 10px;
+            flex-shrink: 0;
+            z-index: 25;
+        }
+
+        /* Оверлей пейволла (замка) на последнем эпизоде */
+        .paywall-lock-overlay {
+            position: absolute;
+            top: 48px;
+            left: 0;
+            right: 0;
+            bottom: 58px;
+            background: rgba(251, 247, 238, 0.88);
+            backdrop-filter: blur(7px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            z-index: 20;
+        }
+        .paywall-lock-icon {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b8b, #ff8e53);
+            color: #fff;
+            font-size: 1.8em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            box-shadow: 0 6px 18px rgba(255, 107, 139, 0.35);
+        }
+        .paywall-lock-title {
+            font-family: 'Comfortaa', cursive;
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #2b1f1d;
+            margin-bottom: 8px;
+        }
+        .paywall-lock-desc {
+            font-size: 0.92em;
+            color: #5c4d3c;
+            max-width: 310px;
+            line-height: 1.45;
+            margin-bottom: 16px;
+        }
+        .paywall-unlock-btn {
+            background: linear-gradient(135deg, #ff6b8b, #ff8e53);
+            color: #fff;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 12px;
+            font-family: 'Comfortaa', cursive;
+            font-weight: 700;
+            font-size: 0.92em;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(255, 107, 139, 0.4);
+            transition: transform 0.2s;
+        }
+        .paywall-unlock-btn:hover {
+            transform: scale(1.04);
+        }
+
+        .turn-btn {
+            background: #2b1f1d;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9em;
+            transition: 0.2s;
+        }
+        .turn-btn:hover { background: #ff6b8b; }
+
+        /* 4 кнопки в ряд (всегда видны под книгой) */
+        .action-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1.3fr;
+            gap: 12px;
+            width: 100%;
+            flex-shrink: 0;
+        }
+        .action-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.9em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .action-btn:hover { background: rgba(255, 255, 255, 0.16); }
+        .action-btn.btn-epub {
+            background: rgba(161, 140, 209, 0.2);
+            border-color: #a18cd1;
+            color: #f1e4ff;
+        }
+        .action-btn.btn-epub:hover {
+            background: #a18cd1;
+            color: #240e48;
+        }
+        .btn-order { background: linear-gradient(135deg, #11998e, #38ef7d); color: #082918; border: none; }
+
+        .library-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .book-item-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .book-item-card:hover { transform: translateY(-4px); }
+        .book-item-thumb { width: 100%; height: 180px; object-fit: cover; }
+        .book-item-info { padding: 14px; }
+        .book-item-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; }
+        .book-item-meta { font-size: 0.85em; color: #b39ddb; }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+        .modal-card {
+            background: #1e1533;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 28px;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 14px; right: 16px;
+            font-size: 1.4em;
+            cursor: pointer;
+            color: #aaa;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin: 20px 0;
+        }
+        .pricing-tier {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+        }
+        .pricing-tier.featured { border-color: #ff6b8b; background: rgba(255, 107, 139, 0.1); }
+        .price-val { font-size: 1.6em; font-weight: 800; margin: 8px 0; color: #fecfef; }
+
+        @media (max-width: 900px) {
+            .app-grid { grid-template-columns: 1fr; }
+            .book-spread { grid-template-columns: 1fr; height: auto; max-height: none; }
+            .book-left-img { height: 280px; }
+            .book-right-page { height: 380px; }
+            .steps-grid { grid-template-columns: 1fr; }
+            .action-bar { grid-template-columns: 1fr 1fr; }
+            .header-actions { gap: 8px; }
+        }
+    </style>
 </head>
-<body class="h-screen flex flex-col justify-between overflow-hidden select-none">
+<body>
 
-  <!-- ВЕРХНЯЯ ШАПКА -->
-  <header class="h-14 border-b border-purple-900/40 bg-slate-950/80 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
-    <div class="flex items-center space-x-3">
-      <span class="text-xl">✨</span>
-      <h1 class="text-lg font-bold tracking-wide text-purple-200 magic-title">StoryMagic Hub</h1>
-    </div>
-    <div class="flex items-center space-x-3">
-      <span id="pageIndicator" class="text-xs text-purple-300 bg-purple-950/70 border border-purple-800/40 px-3 py-1.5 rounded-full font-medium">
-        Глава 1 из 4
-      </span>
-    </div>
-  </header>
+    <!-- Фоновые пузыри -->
+    <div class="bubbles-container" id="bubblesContainer"></div>
 
-  <!-- ЦЕНТР: РАЗВОРОТ КНИГИ -->
-  <main class="flex-1 flex items-center justify-center p-3 sm:p-4 min-h-0">
-    <div class="book-spread-container w-full max-w-5xl bg-slate-900/90 border border-purple-800/40 rounded-2xl shadow-2xl flex overflow-hidden backdrop-blur-xl relative">
-      
-      <!-- ЛЕВАЯ СТРАНИЦА: ИЛЛЮСТРАЦИЯ -->
-      <div class="hidden md:flex w-1/2 p-6 bg-slate-950/50 items-center justify-center border-r border-purple-900/40 relative">
-        <div class="w-full h-full rounded-xl overflow-hidden border border-purple-800/30 bg-purple-950/20 relative shadow-inner">
-          <img id="chapterImage" 
-               src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80" 
-               alt="Иллюстрация главы" 
-               class="w-full h-full object-cover transition-opacity duration-300">
-          <div id="imageOverlayLock" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center flex-col p-4 text-center">
-            <span class="text-4xl mb-2">🔒</span>
-            <span class="text-sm text-purple-200 font-medium">Финальная иллюстрация доступна в полной версии</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- ПРАВАЯ СТРАНИЦА: ТЕКСТ С НЕЗАВИСИМЫМ СКРОЛЛОМ -->
-      <div class="w-full md:w-1/2 flex flex-col h-full bg-slate-900/60 relative">
-        
-        <!-- Заголовок главы (зафиксирован) -->
-        <div class="p-6 pb-3 border-b border-purple-900/20 shrink-0">
-          <h2 id="chapterTitle" class="text-xl font-bold text-amber-200 magic-title tracking-wide">
-            Глава 1: Таинственный зов
-          </h2>
+    <header>
+        <div class="brand" onclick="switchTab('about')">
+            <span style="font-size: 1.6em;">✨</span>
+            <div class="brand-title">StoryMagic</div>
         </div>
 
-        <!-- Текст главы (скроллится только внутри этого блока) -->
-        <div id="chapterContentWrapper" class="flex-1 p-6 overflow-y-auto story-scroll serif-text text-base leading-relaxed text-slate-200 select-text">
-          <p id="chapterText">
-            Далеко за хрустальными холмами, где лучи заката касаются верхушек древних сосен, началась эта история...
-          </p>
+        <nav class="nav-tabs">
+            <button class="tab-btn active" id="nav-about" onclick="switchTab('about')">Главная</button>
+            <button class="tab-btn" id="nav-create" onclick="switchTab('create')">Создать сказку</button>
+            <button class="tab-btn" id="nav-library" onclick="switchTab('library')">Просмотренные книжки</button>
+            <button class="tab-btn" id="nav-order" onclick="switchTab('order')">Заказать печать</button>
+        </nav>
+
+        <div class="header-actions">
+            <div class="lang-select-box">
+                <select class="lang-select" id="langSelector" onchange="changeLanguage(this.value)">
+                    <option value="en" selected>🇬🇧 EN</option>
+                    <option value="ru">🇷🇺 RU</option>
+                    <option value="pl">🇵🇱 PL</option>
+                    <option value="ro">🇷🇴 RO</option>
+                    <option value="it">🇮🇹 IT</option>
+                    <option value="tr">🇹🇷 TR</option>
+                </select>
+            </div>
+            <button class="pay-btn" id="btn-topup" onclick="openPaymentModal()">💎 Top Up</button>
         </div>
+    </header>
 
-        <!-- Заглушка пейволла для последней главы -->
-        <div id="chapterPaywallOverlay" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
-          <div class="w-16 h-16 rounded-full bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-3xl mb-4 shadow-lg shadow-purple-500/20">
-            🔒
-          </div>
-          <h3 class="text-xl font-bold text-white magic-title mb-2">Кульминация и финал сказки</h3>
-          <p class="text-xs text-slate-300 mb-6 max-w-xs">
-            Развязка истории, экспорт в ePub и печатная версия доступны по подписке или разовой покупке.
-          </p>
-          <button onclick="openPaymentModal()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg transition transform hover:scale-105 text-sm">
-            Разблокировать финал
-          </button>
-        </div>
+    <main>
+        <!-- Вкладка: Главная + О нас -->
+        <div id="tab-about" class="tab-content active">
+            <div class="hero-box">
+                <h1 id="hero-title">Personalized Therapeutic Books for Children</h1>
+                <p id="hero-desc">Upload your child's photo, and we will craft a gentle, inspiring story where a hero resembling your child conquers fears and discovers superpowers.</p>
+                <button class="magic-btn" id="hero-cta" style="max-width: 280px; margin: 0 auto 35px; display: block;" onclick="switchTab('create')">🚀 Start Creating</button>
+            </div>
 
-      </div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-icon">📸</div>
+                    <h3 id="step1-title">1. Photo & Hero</h3>
+                    <p id="step1-desc">Upload a picture and enter child's name for tailored character resemblance.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-icon">🌱</div>
+                    <h3 id="step2-title">2. Gentle Narrative</h3>
+                    <p id="step2-desc">Choose therapeutic themes: dark fears, first day of school, anger, sharing.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-icon">📖</div>
+                    <h3 id="step3-title">3. Read or Order</h3>
+                    <p id="step3-desc">Read online, download as an ePub file, or order a hardcover print book.</p>
+                </div>
+            </div>
 
-    </div>
-  </main>
+            <section class="panel-card about-card">
+                <div class="about-header">
+                    <h2 id="about-title">About StoryMagic</h2>
+                    <p class="about-subtitle" id="about-tagline">Personalized therapeutic tales helping children grow confident, resilient, and happy.</p>
+                </div>
 
-  <!-- НИЖНЯЯ ПАНЕЛЬ ДЕЙСТВИЙ И ПЕРЕЛИСТЫВАНИЯ (ВСЕГДА ЗАФИКСИРОВАНА) -->
-  <footer class="h-20 border-t border-purple-900/40 bg-slate-950/90 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
-    
-    <!-- Навигация -->
-    <div class="flex items-center space-x-3">
-      <button id="prevBtn" onclick="prevChapter()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed border border-purple-800/40 text-purple-200 rounded-lg text-sm font-medium transition">
-        ← Назад
-      </button>
-      <button id="nextBtn" onclick="nextChapter()" class="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold shadow-md transition">
-        Вперед →
-      </button>
-    </div>
+                <div class="about-grid">
+                    <div class="about-item">
+                        <div style="font-size: 2em; margin-bottom: 8px;">✨</div>
+                        <h3 id="about-col1-title">Why Story Therapy?</h3>
+                        <p id="about-col1-desc">
+                            Each story is uniquely crafted for your child. Story therapy gently resolves childhood fears, builds emotional intelligence, and encourages kindness.
+                        </p>
+                    </div>
 
-    <!-- Тулбар действий -->
-    <div class="flex items-center space-x-2 sm:space-x-3">
-      <button onclick="alert('Генерация озвучки будет доступна в тарифах Unlimited')" class="hidden sm:inline-flex items-center space-x-1 px-3 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-purple-900/30 transition">
-        <span>🎧</span>
-        <span>Audio</span>
-      </button>
-      
-      <button onclick="handleEpubExport()" class="flex items-center space-x-1.5 px-3 py-2 bg-purple-900/50 hover:bg-purple-800/60 text-purple-200 hover:text-white rounded-lg text-xs font-semibold border border-purple-500/40 transition">
-        <span>📖</span>
-        <span>Export ePub</span>
-      </button>
+                    <div class="about-item">
+                        <div style="font-size: 2em; margin-bottom: 8px;">🛡️</div>
+                        <h3 id="about-col2-title">Safety & Privacy</h3>
+                        <p id="about-col2-desc">
+                            Fully compliant with UK GDPR & the ICO Children's Code. Photos are strictly used to create illustrations, never train public models, and are immediately deleted.
+                        </p>
+                    </div>
 
-      <button onclick="openPaymentModal()" class="flex items-center space-x-1.5 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold transition">
-        <span>📦</span>
-        <span>Hardcover</span>
-      </button>
-    </div>
-
-  </footer>
-
-  <!-- МОДАЛЬНОЕ ОКНО ПЕЙВОЛЛА (PAYMENT MODAL) -->
-  <div id="paymentModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-purple-800/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative text-left">
-      
-      <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">✕</button>
-
-      <div class="text-center mb-6">
-        <span class="text-3xl">✨</span>
-        <h3 class="text-xl font-bold text-white magic-title mt-2">Выберите доступ к сказкам</h3>
-        <p class="text-xs text-slate-400 mt-1">Разблокируйте финал текущей истории и экспорт в ePub</p>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        <!-- Тариф Starter -->
-        <div class="border border-purple-800/40 hover:border-purple-500 rounded-xl p-4 bg-slate-950/40 flex flex-col justify-between transition cursor-pointer" onclick="selectPlan('Starter')">
-          <div>
-            <span class="text-xs font-semibold text-purple-400 uppercase tracking-wider">Starter</span>
-            <div class="text-2xl font-bold text-white mt-1">£4.99</div>
-            <p class="text-xs text-slate-400 mt-2">1 сказка навсегда, все главы, ePub-файл и цветной PDF.</p>
-          </div>
-          <button class="mt-4 w-full py-2 bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs font-semibold rounded-lg transition">Купить сказку</button>
-        </div>
-
-        <!-- Тариф Unlimited -->
-        <div class="border-2 border-purple-500 rounded-xl p-4 bg-purple-950/30 flex flex-col justify-between relative shadow-lg shadow-purple-900/20 cursor-pointer" onclick="selectPlan('Unlimited')">
-          <span class="absolute -top-2.5 right-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-[10px] text-white font-bold px-2 py-0.5 rounded-full">Хит</span>
-          <div>
-            <span class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Unlimited</span>
-            <div class="text-2xl font-bold text-white mt-1">£14.99 <span class="text-xs font-normal text-slate-400">/мес</span></div>
-            <p class="text-xs text-slate-400 mt-2">Безлимит сказок, аудиокниги, ePub и скидка на печатную версию.</p>
-          </div>
-          <button class="mt-4 w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg shadow-md transition">Подписаться</button>
-        </div>
-      </div>
-
-      <div class="text-center text-[11px] text-slate-500">
-        Безопасная оплата картой Stripe. Файлы сохраняются в вашем профиле.
-      </div>
-
-    </div>
-  </div>
-
-  <script>
-    const storyData = {
-      id: "demo-story-1",
-      isPaid: false,
-      chapters: [
-        {
-          title: "Глава 1: Таинственный зов",
-          image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80",
-          text: "Далеко за хрустальными холмами, где лучи заката касаются верхушек древних сосен, началась эта история. Маленький лисенок по имени Оскар нашел в корнях старого дуба странный светящийся желудь. Как только он коснулся его лапкой, воздух вокруг наполнился серебристым звоном..."
-        },
-        {
-          title: "Глава 2: Дорога через Мшистый лес",
-          image: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1000&q=80",
-          text: "Тропинка вела все глубже в лесную чащу. Деревья здесь шептались на неведомом языке, а под ногами переливались крошечные светлячки. Оскар знал, что впереди его ждет мост через Реку Снов, но никто не предупреждал его о том, что мост охраняет древняя сова..."
-        },
-        {
-          title: "Глава 3: Хранитель Реки Снов",
-          image: "https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=1000&q=80",
-          text: "На краю моста сидела огромная мудрая сова с глазами цвета теплого янтаря. 'Куда держишь путь, путник со светящимся желудем?' — спросила она низким бархатным голосом. Чтобы пройти дальше, Оскару предстояло разгадать самую сложную загадку леса..."
-        },
-        {
-          title: "Глава 4: Великая тайна Звездного пика",
-          image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80",
-          text: "Кульминация и финал сказки! Оскар поднялся на самый пик горы, и магия звезд осветила весь лес..."
-        }
-      ]
-    };
-
-    let currentChapterIndex = 0;
-
-    function renderChapter() {
-      const chapter = storyData.chapters[currentChapterIndex];
-      const isLastChapter = currentChapterIndex === storyData.chapters.length - 1;
-      const isLocked = isLastChapter && !storyData.isPaid;
-
-      document.getElementById("pageIndicator").innerText = `Глава ${currentChapterIndex + 1} из ${storyData.chapters.length}`;
-      document.getElementById("chapterTitle").innerText = chapter.title;
-      document.getElementById("prevBtn").disabled = currentChapterIndex === 0;
-
-      const paywallOverlay = document.getElementById("chapterPaywallOverlay");
-      const imgLock = document.getElementById("imageOverlayLock");
-      const textContainer = document.getElementById("chapterText");
-      const chapterImg = document.getElementById("chapterImage");
-
-      chapterImg.src = chapter.image;
-
-      if (isLocked) {
-        paywallOverlay.classList.remove("hidden");
-        imgLock.classList.remove("hidden");
-        textContainer.innerText = "";
-      } else {
-        paywallOverlay.classList.add("hidden");
-        imgLock.classList.add("hidden");
-        textContainer.innerText = chapter.text;
-      }
-
-      document.getElementById("chapterContentWrapper").scrollTop = 0;
-    }
-
-    function prevChapter() {
-      if (currentChapterIndex > 0) {
-        currentChapterIndex--;
-        renderChapter();
-      }
-    }
-
-    function nextChapter() {
-      if (currentChapterIndex < storyData.chapters.length - 1) {
-        currentChapterIndex++;
-        renderChapter();
-      } else if (!storyData.isPaid) {
-        openPaymentModal();
-      }
-    }
-
-    async function handleEpubExport() {
-      if (!storyData.isPaid) {
-        openPaymentModal();
-        return;
-      }
-
-      try {
-        const response = await fetch("/api/export-epub", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ story_id: storyData.id, is_paid: storyData.isPaid })
-        });
-
-        if (response.status === 402) {
-          openPaymentModal();
-          return;
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `StoryMagic_${storyData.id}.epub`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      } catch (err) {
-        console.error("Ошибка экспорта:", err);
-      }
-    }
-
-    function openPaymentModal() {
-      document.getElementById("paymentModal").classList.remove("hidden");
-    }
-
-    function closePaymentModal() {
-      document.getElementById("paymentModal").classList.add("hidden");
-    }
-
-    function selectPlan(planName) {
-      alert(`Переход к оформлению: ${planName}`);
-    }
-
-    renderChapter();
-  </script>
-</body>
-</html>
+                    <div class="about-item">
+                        <div style="font-size: 2em; margin-bottom: 8px;">📚</div>
+                        <h3 id="about-col3-title">Formats & Print</h3>
+                        <p id="about-col3-
