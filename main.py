@@ -289,8 +289,51 @@ async def serve_index():
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy_policy():
     """Отдельная страница с юридической политикой конфиденциальности (UK GDPR)."""
-    return HTMLResponse(content="""
+    html_content = """
     <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Privacy Policy — StoryMagic Hub</title>
+        <style>
+            body { font-family: 'Nunito', sans-serif; background: #130d24; color: #f8fafc; padding: 40px; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+            h1 { color: #ff9a9e; font-family: 'Comfortaa', cursive; margin-bottom: 20px; }
+            h2 { color: #a1c4fd; margin-top: 30px; }
+            p, li { color: #cbd5e1; margin-bottom: 12px; }
+            a { color: #ff8e53; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+            .back-btn { display: inline-block; margin-bottom: 20px; padding: 8px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; color: #fff; }
+        </style>
+    </head>
+    <body>
+        <a href="/" class="back-btn">← Back to StoryMagic</a>
+        <h1>Privacy Policy & Children’s Data Protection</h1>
+        <p><strong>Effective Date:</strong> October 2026</p>
+        
+        <h2>1. Overview & Commitment to UK GDPR</h2>
+        <p>StoryMagic Hub ("we", "our", "us") is fully committed to protecting the privacy and security of children and parents. We strictly adhere to the <strong>UK GDPR</strong> and the <strong>ICO Children’s Code</strong> (Age Appropriate Design Code).</p>
+
+        <h2>2. How We Handle Children's Photos</h2>
+        <p>Parents may optionally upload a photograph of their child to generate a personalized book illustration that resembles the child:</p>
+        <ul>
+            <li><strong>Temporary Processing:</strong> Photos are sent directly to secure AI vision models solely for the purpose of generating the character illustration.</li>
+            <li><strong>Immediate Deletion:</strong> Photos are <strong>never stored permanently</strong> on our servers and are deleted immediately after the generation process is complete.</li>
+            <li><strong>No Model Training:</strong> Uploaded photographs and personal data are <strong>never used</strong> to train public AI models.</li>
+        </ul>
+
+        <h2>3. Parental Consent</h2>
+        <p>In compliance with child protection regulations, book generation requires explicit confirmation that the user is the parent or legal guardian with authority to consent to the processing of the child's likeness.</p>
+
+        <h2>4. Data Security</h2>
+        <p>All data transmissions between your browser and our servers are encrypted using industry-standard SSL/TLS protocols. Payment data is securely processed via Stripe and is never stored by us.</p>
+
+        <h2>5. Contact Us</h2>
+        <p>If you have any questions regarding privacy or data deletion requests, please contact our data protection team.</p>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
     <html lang="en">
     <head>
         <meta charset="UTF-8">
