@@ -6,9 +6,9 @@ from typing import List, Optional
 from pydantic import BaseModel
 from ebooklib import epub
 
-from fastapi import FastAPI, Response, HTTPException, Form, File, UploadFile, status, HTMLResponse
+from fastapi import FastAPI, Response, HTTPException, Form, File, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 # Подключение Gemini API
 from google import genai
