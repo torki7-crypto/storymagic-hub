@@ -741,4 +741,700 @@
                     <div class="about-item">
                         <div style="font-size: 2em; margin-bottom: 8px;">📚</div>
                         <h3 id="about-col3-title">Formats & Print</h3>
-                        <p id="about-col3-
+                        <p id="about-col3-desc">
+                            Read on screen, export as an ePub file for tablet reading (iPad/Android), or order a beautifully bound physical hardcover delivered to your door.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="about-steps">
+                    <h3 id="about-steps-title">3 Simple Steps:</h3>
+                    <ol>
+                        <li id="about-step-1"><strong>Step 1:</strong> Enter child details and choose an inspiring story theme.</li>
+                        <li id="about-step-2"><strong>Step 2:</strong> Upload an optional photo & confirm parental consent.</li>
+                        <li id="about-step-3"><strong>Step 3:</strong> Enjoy a unique, beautifully illustrated storybook in minutes!</li>
+                    </ol>
+                </div>
+            </section>
+        </div>
+
+        <!-- Генератор сказки -->
+        <div id="tab-create" class="tab-content">
+            <div class="app-grid">
+                
+                <div class="panel-card">
+                    <h2 style="font-family:'Comfortaa', cursive; font-size:1.15em; margin-bottom:12px;" id="lbl-form-title">Book Settings</h2>
+                    
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-photo">📷 Child Photo (for likeness)</label>
+                        <div class="photo-upload-box" onclick="document.getElementById('photoInput').click()">
+                            <img id="photoThumb" class="photo-preview" alt="Preview">
+                            <span id="photoStatusText" style="font-size:0.85em; color:#ddd;">Click to select photo</span>
+                        </div>
+                        <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhotoSelect(event)">
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-hero-name">Hero Name</label>
+                        <input type="text" id="heroName" class="custom-input" value="Alice">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-hero-age">Age</label>
+                        <input type="number" id="childAge" class="custom-input" value="7">
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-story-theme">Story Theme</label>
+                        <select id="themeSelect" class="custom-select" onchange="checkCustomTheme()">
+                            <optgroup label="🌱 Therapeutic Stories" id="grp-therapy">
+                                <option value="Fear of the dark & night shadows" id="opt-theme-dark" selected>Fear of the dark & night shadows</option>
+                                <option value="First day at nursery / school" id="opt-theme-school">First day at nursery / school</option>
+                                <option value="Anger, tantrums & big feelings" id="opt-theme-anger">Anger, tantrums & big feelings</option>
+                                <option value="Tidying up toys & order" id="opt-theme-toys">Tidying up toys & order</option>
+                                <option value="Kindness, sharing & making friends" id="opt-theme-share">Kindness, sharing & making friends</option>
+                            </optgroup>
+                            <optgroup label="🚀 Magical Adventures" id="grp-adv">
+                                <option value="Enchanted forest & wise talking cat" id="opt-theme-forest">Enchanted forest & wise talking cat</option>
+                                <option value="Space voyage to the Star Island" id="opt-theme-space">Space voyage to the Star Island</option>
+                                <option value="Expedition to the gentle dinosaurs" id="opt-theme-dino">Expedition to the gentle dinosaurs</option>
+                            </optgroup>
+                            <option value="custom" id="opt-custom">✍️ Custom Story Idea...</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group" id="customThemeBox" style="display:none;">
+                        <input type="text" id="customThemeInput" class="custom-input" placeholder="Describe the story...">
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-art-style">Art Style</label>
+                        <select id="artStyle" class="custom-select">
+                            <option value="Watercolor children book illustration" id="opt-style1" selected>Watercolor / Fairy Tale</option>
+                            <option value="Pixar 3D cute animated render" id="opt-style2">3D Animation</option>
+                            <option value="Classic pencil gouache fairy tale" id="opt-style3">Classic Gouache</option>
+                        </select>
+                    </div>
+
+                    <!-- Юридическое согласие (UK GDPR) -->
+                    <div class="legal-box">
+                        <label class="legal-label">
+                            <input type="checkbox" id="legalConsent" checked required>
+                            <span id="lbl-consent-text">
+                                I confirm that I am the parent or legal guardian and consent to photo processing for book illustration. Photos are deleted immediately and never shared publicly.
+                            </span>
+                        </label>
+                    </div>
+
+                    <button class="magic-btn" onclick="generateStory()" id="btn-create-story">🪄 Generate Book</button>
+                    <div id="statusMsg" class="status-msg"></div>
+                </div>
+
+                <div class="panel-card book-container">
+                    
+                    <div class="book-spread">
+                        <div class="book-left-img">
+                            <img id="currentImage" src="https://picsum.photos/seed/magictale/800/800" alt="Illustration">
+                        </div>
+
+                        <div class="book-right-page">
+                            <div class="book-header-line">
+                                <span class="book-badge" id="pageBadge">Cover</span>
+                                <span style="font-size:0.85em; color:#8d7b68;" id="book-brand-lbl">StoryMagic Kids</span>
+                            </div>
+
+                            <!-- Скроллируемый контейнер для длинного текста -->
+                            <div class="book-body-text" id="currentText">
+                                Fill in the parameters on the left and click "Generate Book". The storybook will unfold here in a full two-page spread with large, child-friendly typography.
+                            </div>
+
+                            <!-- Замок пейволла для последнего эпизода -->
+                            <div class="paywall-lock-overlay" id="paywallLockOverlay">
+                                <div class="paywall-lock-icon">🔒</div>
+                                <div class="paywall-lock-title" id="lbl-lock-title">Final Chapter Locked</div>
+                                <div class="paywall-lock-desc" id="lbl-lock-desc">
+                                    Unlock the magical finale of this story, full audio narration, and ePub download!
+                                </div>
+                                <button class="paywall-unlock-btn" onclick="openPaymentModal()" id="btn-unlock-finale">
+                                    ✨ Unlock Full Book
+                                </button>
+                            </div>
+
+                            <div class="book-nav-footer">
+                                <button class="turn-btn" onclick="prevSlide()" id="btn-prev">❮ Back</button>
+                                <span id="pageCounter" style="font-weight:700; color:#5c4d3c;">1 / 1</span>
+                                <button class="turn-btn" onclick="nextSlide()" id="btn-next">Next ❯</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Нижний ряд из 4 кнопок (всегда на экране) -->
+                    <div class="action-bar">
+                        <button class="action-btn" onclick="toggleAudioStory()">🎧 <span id="btn-audio-lbl">Audio Story</span></button>
+                        <button class="action-btn" onclick="printBook()">🖨️ <span id="btn-print-lbl">Print / Save PDF</span></button>
+                        <button class="action-btn btn-epub" onclick="exportEpub()">📥 <span id="btn-epub-lbl">Export ePub</span></button>
+                        <button class="action-btn btn-order" onclick="switchTab('order')">🚚 <span id="btn-order-lbl">Order Hardcover</span></button>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Библиотека -->
+        <div id="tab-library" class="tab-content">
+            <h2 style="font-family:'Comfortaa', cursive;" id="lib-title">📚 Your Created Books</h2>
+            <p style="color:#bcaaa4; font-size:0.95em; margin-bottom:18px;" id="lib-desc">History of all stories created on this device.</p>
+            <div id="libraryContainer" class="library-grid"></div>
+        </div>
+
+        <!-- Заказ печати -->
+        <div id="tab-order" class="tab-content">
+            <div class="hero-box" style="text-align:left; max-width:620px;">
+                <h2 style="font-family:'Comfortaa', cursive; margin-bottom:12px;" id="order-title">🚚 Order a Printed Hardcover Book</h2>
+                <p style="color:#ded1f7; font-size:1em; margin-bottom:20px;" id="order-desc">We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.</p>
+                
+                <div class="input-group">
+                    <label class="input-label" id="lbl-order-addr">Delivery Address</label>
+                    <input type="text" class="custom-input" id="order-addr-input" placeholder="Street, Apt, City, Postcode">
+                </div>
+                <div class="input-group">
+                    <label class="input-label" id="lbl-order-type">Cover Type</label>
+                    <select class="custom-select">
+                        <option id="opt-order-hard">Matte Hardcover — £14.99</option>
+                        <option id="opt-order-prem">Premium Gloss with Foil — £19.99</option>
+                    </select>
+                </div>
+                <button class="magic-btn" onclick="openPaymentModal()" style="margin-top:16px;" id="btn-order-pay">Proceed to Payment</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Модалка оплаты -->
+    <div id="paymentModal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-card">
+            <div class="modal-close" onclick="closePaymentModal()">✕</div>
+            <h2 style="font-family:'Comfortaa', cursive; margin-bottom:6px;" id="pay-title">Choose Your Plan</h2>
+            <p style="font-size:0.85em; color:#ccc;" id="pay-subtitle">Unlock the final chapter, ePub downloads, and voice narration</p>
+
+            <div class="pricing-grid">
+                <div class="pricing-tier">
+                    <h3 id="plan1-title">Starter</h3>
+                    <div class="price-val">£4.99</div>
+                    <p style="font-size:0.8em; color:#ccc;" id="plan1-desc">5 personalized stories + audio</p>
+                    <button class="magic-btn" style="margin-top:12px; padding:8px;" onclick="activatePaidAccess('Starter')" id="plan1-btn">Buy Now</button>
+                </div>
+                <div class="pricing-tier featured">
+                    <h3 id="plan2-title">Unlimited</h3>
+                    <div class="price-val">£12.99</div>
+                    <p style="font-size:0.8em; color:#ccc;" id="plan2-desc">Unlimited stories + ePub exports</p>
+                    <button class="magic-btn" style="margin-top:12px; padding:8px;" onclick="activatePaidAccess('Unlimited')" id="plan2-btn">Select Plan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    var currentPages = [];
+    var currentIndex = 0;
+    var currentLang = 'en';
+    var isSpeaking = false;
+    var selectedPhotoFile = null;
+    var currentBookTitle = "Magical Story";
+    var isPaidUser = false; // Флаг оплаты (по умолчанию закрывает последний эпизод и экспорт ePub)
+
+    var dictionary = {
+        en: {
+            navAbout: 'Home / About',
+            navCreate: 'Create Story',
+            navLibrary: 'My Books',
+            navOrder: 'Order Hardcover',
+            btnTopup: '💎 Top Up',
+            heroTitle: 'Personalized Therapeutic Books for Children',
+            heroDesc: 'Upload your child\'s photo, and we will craft a gentle, inspiring story where a hero resembling your child conquers fears and discovers superpowers.',
+            heroCta: '🚀 Start Creating',
+            step1Title: '1. Photo & Hero',
+            step1Desc: 'Upload a picture and enter child\'s name for tailored character resemblance.',
+            step2Title: '2. Gentle Narrative',
+            step2Desc: 'Choose therapeutic themes: dark fears, first day of school, anger, sharing.',
+            step3Title: '3. Read or Order',
+            step3Desc: 'Read online, download as an ePub file, or order a hardcover print book.',
+            aboutTitle: 'About StoryMagic',
+            aboutTagline: 'Personalized therapeutic tales helping children grow confident, resilient, and happy.',
+            aboutCol1Title: 'Why Story Therapy?',
+            aboutCol1Desc: 'Each story is uniquely crafted for your child. Story therapy gently resolves childhood fears, builds emotional intelligence, and encourages kindness.',
+            aboutCol2Title: 'Safety & Privacy',
+            aboutCol2Desc: 'Fully compliant with UK GDPR & the ICO Children\'s Code. Photos are strictly used to create illustrations, never train public models, and are immediately deleted.',
+            aboutCol3Title: 'Formats & Print',
+            aboutCol3Desc: 'Read on screen, export as an ePub file for tablet reading (iPad/Android), or order a beautifully bound physical hardcover delivered to your door.',
+            aboutStepsTitle: '3 Simple Steps:',
+            aboutStep1: '<strong>Step 1:</strong> Enter child details and choose an inspiring story theme.',
+            aboutStep2: '<strong>Step 2:</strong> Upload an optional photo & confirm parental consent.',
+            aboutStep3: '<strong>Step 3:</strong> Enjoy a unique, beautifully illustrated storybook in minutes!',
+            lblFormTitle: 'Book Settings',
+            lblPhoto: '📷 Child Photo (for likeness)',
+            photoChoose: 'Click to select photo',
+            lblHeroName: 'Hero Name',
+            valHeroName: 'Alice',
+            lblHeroAge: 'Age',
+            lblStoryTheme: 'Story Theme',
+            grpTherapy: '🌱 Therapeutic Stories (Emotional Growth)',
+            themeDark: 'Fear of the dark & night shadows',
+            themeSchool: 'First day at nursery / school',
+            themeAnger: 'Anger, tantrums & big feelings',
+            themeToys: 'Tidying up toys & order',
+            themeShare: 'Kindness, sharing & making friends',
+            grpAdv: '🚀 Magical Adventures',
+            themeForest: 'Enchanted forest & wise talking cat',
+            themeSpace: 'Space voyage to the Star Island',
+            themeDino: 'Expedition to the gentle dinosaurs',
+            optCustom: '✍️ Custom Story Idea...',
+            lblArtStyle: 'Art Style',
+            optStyle1: 'Watercolor / Fairy Tale',
+            optStyle2: '3D Animation',
+            optStyle3: 'Classic Gouache',
+            lblConsentText: 'I confirm that I am the parent or legal guardian and consent to photo processing for book illustration. Photos are deleted immediately and never shared publicly.',
+            consentAlert: 'Please confirm parental/guardian consent to proceed.',
+            btnCreateStory: '🪄 Generate Book',
+            badgeCover: 'Chapter 1',
+            badgePage: 'Chapter',
+            defaultWelcome: 'Fill in the parameters on the left and click "Generate Book". The storybook will unfold here in a full two-page spread with large, child-friendly typography.',
+            btnPrev: '❮ Back',
+            btnNext: 'Next ❯',
+            btnAudioLbl: 'Audio Story',
+            btnPrintLbl: 'Print / Save PDF',
+            btnEpubLbl: 'Export ePub',
+            btnOrderLbl: 'Order Hardcover',
+            lockTitle: 'Final Chapter Locked',
+            lockDesc: 'Unlock the magical finale of this story, full audio narration, and ePub download!',
+            lockBtn: '✨ Unlock Full Book',
+            libTitle: '📚 Your Created Books',
+            libDesc: 'History of all stories created on this device.',
+            libEmpty: 'No stories saved yet. Create your first book!',
+            orderTitle: '🚚 Order a Printed Hardcover Book',
+            orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.',
+            lblOrderAddr: 'Delivery Address',
+            placeholderAddr: 'Street, Apt, City, Postcode',
+            lblOrderType: 'Cover Type',
+            optOrderHard: 'Matte Hardcover — £14.99',
+            optOrderPrem: 'Premium Gloss with Foil — £19.99',
+            btnOrderPay: 'Proceed to Payment',
+            payTitle: 'Choose Your Plan',
+            paySubtitle: 'Unlock the final chapter, ePub downloads, and voice narration',
+            plan1Title: 'Starter',
+            plan1Desc: '5 personalized stories + ePub',
+            plan1Btn: 'Buy Now',
+            plan2Title: 'Unlimited',
+            plan2Desc: 'Unlimited stories + exports',
+            plan2Btn: 'Select Plan',
+            statusGen: '✨ Creating your personal story and illustrations...',
+            statusDone: '🎉 Book is ready!'
+        },
+        ru: {
+            navAbout: 'Главная',
+            navCreate: 'Создать сказку',
+            navLibrary: 'Просмотренные книжки',
+            navOrder: 'Заказать печать',
+            btnTopup: '💎 Пополнить',
+            heroTitle: 'Персональные терапевтические книги для детей',
+            heroDesc: 'Загрузите фото ребёнка, и мы создадим добрую поучительную сказку, в которой главный герой с его внешностью победит страхи и найдёт друзей.',
+            heroCta: '🚀 Начать создание',
+            step1Title: '1. Фотография и герой',
+            step1Desc: 'Укажите имя и прикрепите фото — герой книги будет похож на вашего ребёнка.',
+            step2Title: '2. Терапевтический сюжет',
+            step2Desc: 'Выберите тему: страх темноты, первый день в садике, капризы или дружба.',
+            step3Title: '3. Читайте или закажите',
+            step3Desc: 'Читайте в книжном развороте, скачивайте в ePub или оформите в печатном переплете.',
+            aboutTitle: 'О проекте StoryMagic',
+            aboutTagline: 'Персонализированные сказки, помогающие детям расти уверенными и спокойными.',
+            aboutCol1Title: 'В чем суть?',
+            aboutCol1Desc: 'Каждая история создается индивидуально под вашего ребенка. Сказкотерапия помогает мягко преодолевать страхи (темнота, адаптация в школе/саду), учит дружбе и вере в себя.',
+            aboutCol2Title: 'Конфиденциальность',
+            aboutCol2Desc: 'Мы строго соблюдаем UK GDPR и стандарты ICO Children\'s Code. Фотографии используются исключительно для генерации книги, никогда не обучают публичные модели и сразу удаляются.',
+            aboutCol3Title: 'Как получить книгу?',
+            aboutCol3Desc: 'Читайте онлайн, сохраняйте в ePub для планшетов (iPad/Android) или заказывайте подарочное печатное издание в твердом переплете с доставкой на дом.',
+            aboutStepsTitle: '3 простых шага:',
+            aboutStep1: '<strong>Шаг 1:</strong> Укажите имя, возраст ребенка и выберите развивающую тему.',
+            aboutStep2: '<strong>Шаг 2:</strong> Загрузите фото (по желанию) и подтвердите согласие родителя.',
+            aboutStep3: '<strong>Шаг 3:</strong> Получите готовую иллюстрированную книгу за пару минут!',
+            lblFormTitle: 'Параметры книги',
+            lblPhoto: '📷 Фото ребёнка (для сходства)',
+            photoChoose: 'Нажмите, чтобы выбрать фото',
+            lblHeroName: 'Имя героя',
+            valHeroName: 'Алиса',
+            lblHeroAge: 'Возраст',
+            lblStoryTheme: 'Тема сказки',
+            grpTherapy: '🌱 Терапевтические сказки (Уверенность и эмоции)',
+            themeDark: 'Страх темноты и ночных теней',
+            themeSchool: 'Первый день в садике / школе',
+            themeAnger: 'Злость, капризы и эмоции',
+            themeToys: 'Уборка игрушек и аккуратность',
+            themeShare: 'Умение делиться и дружба',
+            grpAdv: '🚀 Волшебные приключения',
+            themeForest: 'Зачарованный лес и мудрый кот',
+            themeSpace: 'Космическая экспедиция к звёздам',
+            themeDino: 'Экспедиция в мир динозавров',
+            optCustom: '✍️ Написать свою тему...',
+            lblArtStyle: 'Стиль графики',
+            optStyle1: 'Акварель / Сказка',
+            optStyle2: '3D Мультфильм',
+            optStyle3: 'Классическая гуашь',
+            lblConsentText: 'Я являюсь родителем или опекуном ребёнка и даю согласие на обработку фото для создания книги. Фото удаляется сразу после обработки и не сохраняется в открытых базах.',
+            consentAlert: 'Пожалуйста, подтвердите согласие родителя/опекуна на обработку фото.',
+            btnCreateStory: '🪄 Создать сказку',
+            badgeCover: 'Глава 1',
+            badgePage: 'Глава',
+            defaultWelcome: 'Заполните параметры слева и нажмите «Создать сказку». Книга развернётся здесь в формате настоящего книжного разворота с крупным и удобным для чтения шрифтом.',
+            btnPrev: '❮ Назад',
+            btnNext: 'Вперед ❯',
+            btnAudioLbl: 'Аудиосказка',
+            btnPrintLbl: 'Печать / Сохранить',
+            btnEpubLbl: 'Скачать ePub',
+            btnOrderLbl: 'Заказать книжку',
+            lockTitle: 'Финальная глава закрыта',
+            lockDesc: 'Разблокируйте волшебный финал сказки, озвучку и скачивание книги в формате ePub!',
+            lockBtn: '✨ Разблокировать финал',
+            libTitle: '📚 Ваши созданные книги',
+            libDesc: 'История всех книг, сгенерированных на этом устройстве.',
+            libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
+            orderTitle: '🚚 Заказ книги в твердом переплете',
+            orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим прямо до вашей двери.',
+            lblOrderAddr: 'Адрес доставки',
+            placeholderAddr: 'Улица, дом, квартира, индекс',
+            lblOrderType: 'Тип переплета',
+            optOrderHard: 'Твердый матовый переплет — £14.99',
+            optOrderPrem: 'Премиум глянец с тиснением — £19.99',
+            btnOrderPay: 'Перейти к оплате',
+            payTitle: 'Выберите тариф',
+            paySubtitle: 'Разблокируйте финал истории, скачивание ePub и озвучку',
+            plan1Title: 'Starter',
+            plan1Desc: '5 персональных сказок + ePub',
+            plan1Btn: 'Купить',
+            plan2Title: 'Unlimited',
+            plan2Desc: 'Безлимит сказок + экспорт ePub',
+            plan2Btn: 'Выбрать',
+            statusGen: '✨ Создаем персональную сказку и волшебные иллюстрации...',
+            statusDone: '🎉 Сказка готова!'
+        },
+        pl: {
+            navAbout: 'Strona główna / O nas',
+            navCreate: 'Stwórz bajkę',
+            navLibrary: 'Moje książki',
+            navOrder: 'Zamów druk',
+            btnTopup: '💎 Doładuj',
+            heroTitle: 'Spersonalizowane bajki terapeutyczne dla dzieci',
+            heroDesc: 'Prześlij zdjęcie dziecka, a stworzymy ciepłą opowieść, w której bohater podobny do Twojego malucha pokonuje lęki i odkrywa swoje talenty.',
+            heroCta: '🚀 Rozpocznij tworzenie',
+            step1Title: '1. Zdjęcie i bohater',
+            step1Desc: 'Podaj imię i dodaj zdjęcie – bohater bajki będzie wyglądał jak Twoje dziecko.',
+            step2Title: '2. Wątek terapeutyczny',
+            step2Desc: 'Wybierz temat: lęk przed ciemnością, pierwszy dzień w szkole, złość lub dzielenie się.',
+            step3Title: '3. Czytaj lub zamów',
+            step3Desc: 'Czytaj online, pobierz plik ePub na tablet lub zamów książkę w twardej oprawie.',
+            aboutTitle: 'O projekcie StoryMagic',
+            aboutTagline: 'Terapeutyczne bajki wspierające pewność siebie i emocjonalny rozwój dzieci.',
+            aboutCol1Title: 'Dlaczego bajkoterapia?',
+            aboutCol1Desc: 'Każda historia powstaje indywidualnie. Bajkoterapia łagodnie oswaja lęki, uczy empatii, współpracy i buduje odporność psychiczną.',
+            aboutCol2Title: 'Bezpieczeństwo i prywatność',
+            aboutCol2Desc: 'Pełna zgodność z UK GDPR i ICO Children\'s Code. Zdjęcia służą wyłącznie do generowania ilustracji, nie trenują modeli AI i są natychmiast usuwane.',
+            aboutCol3Title: 'Formaty i druk',
+            aboutCol3Desc: 'Czytaj na ekranie, pobierz format ePub na tablet lub zamów pamiątkowe wydanie w twardej oprawie z dostawą pod drzwi.',
+            aboutStepsTitle: '3 proste kroki:',
+            aboutStep1: '<strong>Krok 1:</strong> Wpisz dane dziecka i wybierz temat opowieści.',
+            aboutStep2: '<strong>Krok 2:</strong> Załącz opcjonalne zdjęcie i potwierdź zgodę rodzica.',
+            aboutStep3: '<strong>Krok 3:</strong> Odbierz pięknie zilustrowaną bajkę w kilka minut!',
+            lblFormTitle: 'Ustawienia książki',
+            lblPhoto: '📷 Zdjęcie dziecka (do ilustracji)',
+            photoChoose: 'Kliknij, aby wybrać zdjęcie',
+            lblHeroName: 'Imię bohatera',
+            valHeroName: 'Zosia',
+            lblHeroAge: 'Wiek',
+            lblStoryTheme: 'Temat bajki',
+            grpTherapy: '🌱 Bajki terapeutyczne (Rozwój emocjonalny)',
+            themeDark: 'Strach przed ciemnością i cieniami',
+            themeSchool: 'Pierwszy dzień w przedszkolu / szkole',
+            themeAnger: 'Złość, napady złości i emocje',
+            themeToys: 'Sprzątanie zabawek i porządek',
+            themeShare: 'Dzielenie się i nawiązywanie przyjaźni',
+            grpAdv: '🚀 Magiczne przygody',
+            themeForest: 'Zaczarowany las i mądry kot',
+            themeSpace: 'Kosmiczna wyprawa na Gwiezdną Wyspę',
+            themeDino: 'Wyprawa do łagodnych dinozaurów',
+            optCustom: '✍️ Własny pomysł na bajkę...',
+            lblArtStyle: 'Styl graficzny',
+            optStyle1: 'Akwarela / Bajkowy',
+            optStyle2: 'Animacja 3D',
+            optStyle3: 'Klasyczny gwasz',
+            lblConsentText: 'Potwierdzam, że jestem rodzicem lub opiekunem prawnym i wyrażam zgodę na przetwarzanie zdjęcia do celów ilustracji. Zdjęcia są natychmiast usuwane.',
+            consentAlert: 'Proszę potwierdzić zgodę rodzica/opiekuna prawnego.',
+            btnCreateStory: '🪄 Wygeneruj bajkę',
+            badgeCover: 'Rozdział 1',
+            badgePage: 'Rozdział',
+            defaultWelcome: 'Wypełnij formularz po lewej stronie i kliknij «Wygeneruj bajkę». Książka otworzy się tutaj w formie rozkładówki z dużą, czytelną czcionką.',
+            btnPrev: '❮ Wstecz',
+            btnNext: 'Dalej ❯',
+            btnAudioLbl: 'Audiobook',
+            btnPrintLbl: 'Drukuj / Zapisz PDF',
+            btnEpubLbl: 'Pobierz ePub',
+            btnOrderLbl: 'Zamów książkę',
+            lockTitle: 'Ostatni rozdział zablokowany',
+            lockDesc: 'Odblokuj magiczny finał bajki, audiobook oraz pobieranie pliku ePub!',
+            lockBtn: '✨ Odblokuj pełną bajkę',
+            libTitle: '📚 Twoje stworzone książki',
+            libDesc: 'Historia książek wygenerowanych na tym urządzeniu.',
+            libEmpty: 'Brak zapisanych bajek. Stwórz swoją pierwszą książkę!',
+            orderTitle: '🚚 Zamów książkę w twardej oprawie',
+            orderDesc: 'Drukujemy na papierze kredowym premium 170 g/m² z soczystymi ilustracjami i dostarczamy prosto do domu.',
+            lblOrderAddr: 'Adres dostawy',
+            placeholderAddr: 'Ulica, numer, miasto, kod pocztowy',
+            lblOrderType: 'Rodzaj oprawy',
+            optOrderHard: 'Twarda matowa oprawa — £14.99',
+            optOrderPrem: 'Błyszcząca ze złoceniem — £19.99',
+            btnOrderPay: 'Przejdź do płatności',
+            payTitle: 'Wybierz pakiet',
+            paySubtitle: 'Odblokuj finał bajki, eksport ePub i głos lektora',
+            plan1Title: 'Starter',
+            plan1Desc: '5 bajek personalizowanych + ePub',
+            plan1Btn: 'Kup teraz',
+            plan2Title: 'Unlimited',
+            plan2Desc: 'Nielimitowane bajki + eksport ePub',
+            plan2Btn: 'Wybierz plan',
+            statusGen: '✨ Tworzymy unikalną opowieść i ilustracje...',
+            statusDone: '🎉 Książka jest gotowa!'
+        },
+        ro: {
+            navAbout: 'Acasă / Despre noi',
+            navCreate: 'Creează poveste',
+            navLibrary: 'Cărțile mele',
+            navOrder: 'Comandă tipar',
+            btnTopup: '💎 Încarcă',
+            heroTitle: 'Cărți terapeutice personalizate pentru copii',
+            heroDesc: 'Încarcă poza copilului și vom crea o poveste plină de căldură, în care un erou asemănător micuțului tău își învinge fricile și descoperă noi puteri.',
+            heroCta: '🚀 Începe crearea',
+            step1Title: '1. Fotografie și erou',
+            step1Desc: 'Introdu numele și încarcă o fotografie pentru o asemănare personalizată.',
+            step2Title: '2. Fir narativ terapeutic',
+            step2Desc: 'Alege tema: frica de întuneric, prima zi de școală, furie sau generozitate.',
+            step3Title: '3. Citește sau comandă',
+            step3Desc: 'Citește online, descarcă în format ePub pe tabletă sau comandă cartea tipărită.',
+            aboutTitle: 'Despre StoryMagic',
+            aboutTagline: 'Povești terapeutice personalizate care ajută copiii să crească încrezători și fericiți.',
+            aboutCol1Title: 'De ce terapia prin povești?',
+            aboutCol1Desc: 'Fiecare poveste este creată individual. Terapia prin povești rezolvă cu blândețe temerile, dezvoltă empatia și cultivă curajul.',
+            aboutCol2Title: 'Siguranță și confidențialitate',
+            aboutCol2Desc: 'În conformitate cu UK GDPR și normele ICO Children\'s Code. Fotografiile sunt utilizate exclusiv pentru ilustrații, nu antrenează modele publice și se șterg imediat.',
+            aboutCol3Title: 'Formate și tipar',
+            aboutCol3Desc: 'Citește pe ecran, exportă ca fișier ePub pentru tabletă (iPad/Android) sau comandă o ediție de colecție cu copertă cartonată.',
+            aboutStepsTitle: '3 pași simpli:',
+            aboutStep1: '<strong>Pasul 1:</strong> Completează datele copilului și alege o temă educativă.',
+            aboutStep2: '<strong>Pasul 2:</strong> Încarcă o fotografie opțională și confirmă acordul.',
+            aboutStep3: '<strong>Pasul 3:</strong> Bucură-te de o carte ilustrată unică în câteva minute!',
+            lblFormTitle: 'Setări carte',
+            lblPhoto: '📷 Poză copil (pentru asemănare)',
+            photoChoose: 'Apasă pentru a alege poza',
+            lblHeroName: 'Nume erou',
+            valHeroName: 'Ana',
+            lblHeroAge: 'Vârstă',
+            lblStoryTheme: 'Tema poveștii',
+            grpTherapy: '🌱 Povești terapeutice (Dezvoltare emoțională)',
+            themeDark: 'Frica de întuneric și umbre',
+            themeSchool: 'Prima zi la grădiniță / școală',
+            themeAnger: 'Furia, capriciile și emoțiile puternice',
+            themeToys: 'Curățenia jucăriilor și ordinea',
+            themeShare: 'Generozitatea și prietenia',
+            grpAdv: '🚀 Aventuri magice',
+            themeForest: 'Pădurea fermecată și motanul înțelept',
+            themeSpace: 'Călătorie spațială spre Insula Stelelor',
+            themeDino: 'Expediție în lumea dinozaurilor blânzi',
+            optCustom: '✍️ Idee personalizată...',
+            lblArtStyle: 'Stil grafic',
+            optStyle1: 'Acuarelă / De poveste',
+            optStyle2: 'Animație 3D',
+            optStyle3: 'Guașă clasică',
+            lblConsentText: 'Confirm că sunt părintele sau tutorele legal și sunt de acord cu procesarea fotografiei pentru ilustrarea cărții. Fotografia este ștearsă imediat.',
+            consentAlert: 'Vă rugăm să confirmați acordul părintelui/tutorelui.',
+            btnCreateStory: '🪄 Generează cartea',
+            badgeCover: 'Capitolul 1',
+            badgePage: 'Capitolul',
+            defaultWelcome: 'Completează formularul din stânga și apasă «Generează cartea». Povestea va apărea aici în format de carte deschisă, cu text mare și ușor de citit.',
+            btnPrev: '❮ Înapoi',
+            btnNext: 'Înainte ❯',
+            btnAudioLbl: 'Audiobook',
+            btnPrintLbl: 'Tipărește / Salvează PDF',
+            btnEpubLbl: 'Descarcă ePub',
+            btnOrderLbl: 'Comandă cartea',
+            lockTitle: 'Ultimul capitol este blocat',
+            lockDesc: 'Deblochează finalul magic al poveștii, narațiunea audio și descărcarea ePub!',
+            lockBtn: '✨ Deblochează cartea',
+            libTitle: '📚 Cărțile tale create',
+            libDesc: 'Istoricul poveștilor generate pe acest dispozitiv.',
+            libEmpty: 'Nicio carte salvată încă. Creează prima poveste!',
+            orderTitle: '🚚 Comandă cartea în copertă cartonată',
+            orderDesc: 'Tipărim pe hârtie lucioasă premium de 170 g/m² cu ilustrații vibrante și livrăm direct la ușa ta.',
+            lblOrderAddr: 'Adresă de livrare',
+            placeholderAddr: 'Stradă, număr, oraș, cod poștal',
+            lblOrderType: 'Tip copertă',
+            optOrderHard: 'Copertă cartonată mată — £14.99',
+            optOrderPrem: 'Copertă lucioasă cu folie aurie — £19.99',
+            btnOrderPay: 'Spre plată',
+            payTitle: 'Alege abonamentul',
+            paySubtitle: 'Deblochează finalul poveștii, descărcarea ePub și vocea',
+            plan1Title: 'Starter',
+            plan1Desc: '5 povești personalizate + ePub',
+            plan1Btn: 'Cumpără',
+            plan2Title: 'Unlimited',
+            plan2Desc: 'Povești nelimitate + export ePub',
+            plan2Btn: 'Alege planul',
+            statusGen: '✨ Scriem povestea și pictăm ilustrațiile...',
+            statusDone: '🎉 Cartea este gata!'
+        },
+        it: {
+            navAbout: 'Home / Chi siamo',
+            navCreate: 'Crea favola',
+            navLibrary: 'I miei libri',
+            navOrder: 'Ordina stampa',
+            btnTopup: '💎 Ricarica',
+            heroTitle: 'Libri terapeutici personalizzati per bambini',
+            heroDesc: 'Carica la foto del tuo bimbo e creeremo una dolce storia illustrata dove un eroe a sua somiglianza supera le paure e impara a fidarsi di sé.',
+            heroCta: '🚀 Inizia a creare',
+            step1Title: '1. Foto ed eroe',
+            step1Desc: 'Inserisci il nome e carica la foto per far somigliare l’eroe al tuo bambino.',
+            step2Title: '2. Trama terapeutica',
+            step2Desc: 'Scegli il tema: paura del buio, primo giorno di scuola, rabbia o condivisione.',
+            step3Title: '3. Leggi o ordina',
+            step3Desc: 'Sfoglia online, scarica in ePub sul tablet oppure ordina il volume cartaceo rilegato.',
+            aboutTitle: 'Cos\'è StoryMagic',
+            aboutTagline: 'Favole terapeutiche personalizzate per far crescere i bimbi sereni e sicuri di sé.',
+            aboutCol1Title: 'La favolaterapia',
+            aboutCol1Desc: 'Ogni storia è creata su misura. Le favole aiutano a elaborare paure, gestire le emozioni e stimolare l\'empatia con dolcezza e fantasia.',
+            aboutCol2Title: 'Privacy e sicurezza UK',
+            aboutCol2Desc: 'Pieno rispetto del GDPR e dell\'ICO Children\'s Code. Le foto sono usate solo per le illustrazioni, non addestrano modelli pubblici e vengono eliminate all\'istante.',
+            aboutCol3Title: 'Digitale e cartaceo',
+            aboutCol3Desc: 'Leggi direttamente dal browser, esporta il formato ePub per tablet (iPad/Android) o ricevi a casa un lussuoso libro con copertina rigida.',
+            aboutStepsTitle: '3 semplici passaggi:',
+            aboutStep1: '<strong>Passo 1:</strong> Inserisci i dati del bimbo e scegli un tema educativo.',
+            aboutStep2: '<strong>Passo 2:</strong> Carica una foto opzionale e conferma il consenso.',
+            aboutStep3: '<strong>Passo 3:</strong> Ricevi una meravigliosa favola illustrata in pochi minuti!',
+            lblFormTitle: 'Dettagli libro',
+            lblPhoto: '📷 Foto del bimbo (per somiglianza)',
+            photoChoose: 'Clicca per scegliere la foto',
+            lblHeroName: 'Nome dell\'eroe',
+            valHeroName: 'Sofia',
+            lblHeroAge: 'Età',
+            lblStoryTheme: 'Tema della favola',
+            grpTherapy: '🌱 Favole terapeutiche (Crescita emotiva)',
+            themeDark: 'Paura del buio e delle ombre',
+            themeSchool: 'Primo giorno all\'asilo / a scuola',
+            themeAnger: 'Rabbia, capricci e grandi emozioni',
+            themeToys: 'Riordinare i giochi con allegria',
+            themeShare: 'Gentilezza e saper condividere',
+            grpAdv: '🚀 Avventure magiche',
+            themeForest: 'Il bosco incantato e il gatto saggio',
+            themeSpace: 'Viaggio spaziale verso l\'Isola delle Stelle',
+            themeDino: 'Spedizione nel mondo dei dinosauri buoni',
+            optCustom: '✍️ Idea personalizzata...',
+            lblArtStyle: 'Stile grafico',
+            optStyle1: 'Acquerello fiabesco',
+            optStyle2: 'Animazione 3D',
+            optStyle3: 'Guazzo classico',
+            lblConsentText: 'Dichiaro di essere genitore/tutore legale e acconsento al trattamento della foto per la grafica del libro. La foto viene cancellata subito dopo l\'uso.',
+            consentAlert: 'Si prega di confermare il consenso del genitore/tutore.',
+            btnCreateStory: '🪄 Genera il libro',
+            badgeCover: 'Capitolo 1',
+            badgePage: 'Capitolo',
+            defaultWelcome: 'Compila i parametri a sinistra e clicca su «Genera il libro». La favola si aprirà qui in un vero formato a doppia pagina, con caratteri grandi e facili da leggere.',
+            btnPrev: '❮ Indietro',
+            btnNext: 'Avanti ❯',
+            btnAudioLbl: 'Audiofavola',
+            btnPrintLbl: 'Stampa / Salva PDF',
+            btnEpubLbl: 'Scarica ePub',
+            btnOrderLbl: 'Ordina libro',
+            lockTitle: 'Capitolo finale bloccato',
+            lockDesc: 'Sblocca il magico finale della favola, l\'audiofavola e il download in formato ePub!',
+            lockBtn: '✨ Sblocca il libro intero',
+            libTitle: '📚 I tuoi libri creati',
+            libDesc: 'Cronologia dei libri generati su questo dispositivo.',
+            libEmpty: 'Nessun libro salvato. Crea la tua prima favola!',
+            orderTitle: '🚚 Ordina il volume con copertina rigida',
+            orderDesc: 'Stampiamo su carta patinata brillante da 170 g/m² con colori vivaci e spediamo direttamente a casa tua.',
+            lblOrderAddr: 'Indirizzo di consegna',
+            placeholderAddr: 'Via, numero, città, CAP',
+            lblOrderType: 'Tipo di copertina',
+            optOrderHard: 'Copertina rigida opaca — £14.99',
+            optOrderPrem: 'Copertina lucida con rilievi — £19.99',
+            btnOrderPay: 'Vai al pagamento',
+            payTitle: 'Scegli il piano',
+            paySubtitle: 'Sblocca il finale, il download ePub e le audiofavole',
+            plan1Title: 'Starter',
+            plan1Desc: '5 favole personalizzate + ePub',
+            plan1Btn: 'Acquista',
+            plan2Title: 'Unlimited',
+            plan2Desc: 'Favole illimitate + export ePub',
+            plan2Btn: 'Scegli piano',
+            statusGen: '✨ Scrittura della favola e creazione illustrazioni...',
+            statusDone: '🎉 Il libro è pronto!'
+        },
+        tr: {
+            navAbout: 'Ana Sayfa / Hakkında',
+            navCreate: 'Masal Oluştur',
+            navLibrary: 'Kitaplarım',
+            navOrder: 'Baskı Siparişi',
+            btnTopup: '💎 Bakiye Yükle',
+            heroTitle: 'Çocuklar İçin Kişiselleştirilmiş Terapötik Kitaplar',
+            heroDesc: 'Çocuğunuzun fotoğrafını yükleyin; ona benzeyen sevimli bir kahramanın korkularını yenip özgüven kazandığı eğitici ve sıcak bir masal hazırlayalım.',
+            heroCta: '🚀 Oluşturmaya Başla',
+            step1Title: '1. Fotoğraf ve Kahraman',
+            step1Desc: 'İsim girin ve fotoğraf ekleyin; kahraman çocuğunuza benzesin.',
+            step2Title: '2. Terapötik Konu',
+            step2Desc: 'Konuyu seçin: karanlık korkusu, okula başlama, öfke kontrolü veya paylaşma.',
+            step3Title: '3. Oku veya Sipariş Ver',
+            step3Desc: 'Çevrim içi okuyun, ePub formatında tablete indirin veya ciltli kitap sipariş edin.',
+            aboutTitle: 'StoryMagic Hakkında',
+            aboutTagline: 'Çocukların özgüvenli ve mutlu büyümesine yardımcı olan kişiye özel masallar.',
+            aboutCol1Title: 'Masal Terapisi Nedir?',
+            aboutCol1Desc: 'Her masal çocuğunuza özel yazılır. Masal terapisi korkuları yatıştırır, duygusal zekayı geliştirir ve empatiyi güçlendirir.',
+            aboutCol2Title: 'Güvenlik ve Gizlilik',
+            aboutCol2Desc: 'UK GDPR ve ICO Children\'s Code kurallarına tam uyumluluk. Fotoğraflar yalnızca çizim oluşturmak içindir, asla genel modelleri eğitmez ve anında silinir.',
+            aboutCol3Title: 'Formatlar ve Baskı',
+            aboutCol3Desc: 'Web\'de okuyun, tabletler (iPad/Android) için ePub olarak indirin veya kapınıza kadar teslim edilen lüks ciltli baskısını edinin.',
+            aboutStepsTitle: '3 Kolay Adım:',
+            aboutStep1: '<strong>1. Adım:</strong> Çocuğun bilgilerini girin ve eğitici konuyu seçin.',
+            aboutStep2: '<strong>2. Adım:</strong> İsteğe bağlı fotoğraf yükleyin ve ebeveyn onayını verin.',
+            aboutStep3: '<strong>3. Adım:</strong> Birkaç dakika içinde benzersiz resimli kitabınız hazır!',
+            lblFormTitle: 'Kitap Seçenekleri',
+            lblPhoto: '📷 Çocuk Fotoğrafı (benzerlik için)',
+            photoChoose: 'Fotoğraf seçmek için tıklayın',
+            lblHeroName: 'Kahramanın Adı',
+            valHeroName: 'Elif',
+            lblHeroAge: 'Yaş',
+            lblStoryTheme: 'Masal Teması',
+            grpTherapy: '🌱 Terapötik Masallar (Duygusal Gelişim)',
+            themeDark: 'Karanlık ve gece gölgeleri korkusu',
+            themeSchool: 'Anaokuluna / okula ilk gün',
+            themeAnger: 'Öfke, inatlaşma ve güçlü duygular',
+            themeToys: 'Oyuncakları toplama ve düzen',
+            themeShare: 'Paylaşma, nezaket ve arkadaşlık',
+            grpAdv: '🚀 Büyülü Maceralar',
+            themeForest: 'Büyülü orman ve bilge konuşan kedi',
+            themeSpace: 'Yıldız Adası\'na uzay yolculuğu',
+            themeDino: 'Sevimli dinozorlar dünyasına keşif',
+            optCustom: '✍️ Kendi masal fikrini yaz...',
+            lblArtStyle: 'Çizim Stili',
+            optStyle1: 'Suluboya / Masalsı',
+            optStyle2: '3D Animasyon',
+            optStyle3: 'Klasik Guaj Boya',
+            lblConsentText: 'Çocuğun ebeveyni/yasal vasisi olduğumu ve fotoğrafın kitap çizimi için işlenmesine onay verdiğimi beyan ederim. Fotoğraflar işlemden hemen sonra silinir.',
+            consentAlert: 'Lütfen ebeveyn/vasi onay kutusunu işaretleyin.',
+            btnCreateStory: '🪄 Kitabı Oluştur',
+            badgeCover: '1. Bölüm',
+            badgePage: 'Bölüm',
+            defaultWelcome: 'Soldaki alanları doldurun ve «Kitabı Oluştur» butonuna tıklayın. Masal, burada çocuklara uygun büyük ve okunaklı yazıyla açılacaktır.',
+            btnPrev: '❮ Geri',
+            btnNext: 'İleri ❯',
+            btnAudioLbl: 'Sesli Masal',
+            btnPrintLbl: 'Yazdır / PDF Kaydet',
+            btnEpubLbl: 'ePub İndir',
+            btnOrderLbl: 'Kitap Siparişi',
+            lockTitle: 'Son Bölüm Kilitli',
+            lockDesc: 'Masalın büyülü finalini, sesli anlatımı ve ePub indirme özelliğini açın!',
+            lockBtn: '✨ Tüm Kitabı Aç',
+            libTitle
