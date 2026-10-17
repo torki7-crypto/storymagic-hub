@@ -1,12 +1,12 @@
 import os
 import io
 import uuid
-import json
+import urllib.parse
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from ebooklib import epub
 
-from fastapi import FastAPI, Response, HTTPException, status
+from fastapi import FastAPI, Response, HTTPException, Form, File, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -43,14 +43,15 @@ class ChapterData(BaseModel):
     chapter_number: int
     title: str
     paragraphs: List[str]
+    image_prompt: Optional[str] = ""
 
 class StoryBookData(BaseModel):
     title: str
-    language_code: str
+    language_code: str = "en"
     author: str = "StoryMagic Hub"
     description: Optional[str] = ""
     chapters: List[ChapterData]
-    is_paid: Optional[bool] = False  # Флаг оплаты для защиты пейволлом
+    is_paid: Optional[bool] = False
 
 
 # ==========================================
@@ -65,10 +66,6 @@ class EpubBuilder:
         line-height: 1.65;
         margin: 5%;
         color: #2D3748;
-        -webkit-hyphens: auto;
-        -moz-hyphens: auto;
-        -ms-hyphens: auto;
-        hyphens: auto;
         text-align: justify;
     }
     h1 {
@@ -81,8 +78,6 @@ class EpubBuilder:
         page-break-after: avoid;
     }
     p {
-        orphans: 2;
-        widows: 2;
         text-indent: 1.3em;
         margin: 0 0 0.8em 0;
         font-size: 1.15em;
@@ -92,19 +87,17 @@ class EpubBuilder:
     @classmethod
     def create_epub(cls, story: StoryBookData) -> bytes:
         book = epub.EpubBook()
-        lang = story.language_code.lower()
+        lang = (story.language_code or "en").lower()
 
-        # Метаданные книги
         book_id = str(uuid.uuid4())
         book.set_identifier(f"urn:uuid:{book_id}")
-        book.set_title(story.title)
+        book.set_title(story.title or "StoryMagic Book")
         book.set_language(lang)
-        book.add_author(story.author)
+        book.add_author(story.author or "StoryMagic Hub")
 
         if story.description:
             book.add_metadata("DC", "description", story.description)
 
-        # Стили
         css_item = epub.EpubItem(
             uid="style_main",
             file_name="style/main.css",
@@ -116,7 +109,6 @@ class EpubBuilder:
         spine = ["nav"]
         toc = []
 
-        # Сборка глав
         for ch in story.chapters:
             paragraphs_html = "".join([f"<p>{p.strip()}</p>" for p in ch.paragraphs if p.strip()])
             chapter_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
@@ -155,19 +147,25 @@ class EpubBuilder:
         
         book.spine = spine
 
-        # Запись в буфер байтов
         buffer = io.BytesIO()
         epub.write_epub(buffer, book, {})
         return buffer.getvalue()
 
 
 # ==========================================
-# 3. Маршруты API (Endpoints)
+# 3. Маршруты API (Генерация и Экспорт)
 # ==========================================
 
-@app.post("/api/generate-story", response_model=StoryBookData)
-async def generate_story(req: StoryGenerateRequest):
-    """Генерация структурированного текста сказки через Gemini API."""
+@app.post("/api/generate")
+async def generate_book_form(
+    hero_name: str = Form("Alice"),
+    age: int = Form(7),
+    theme: str = Form("Magical journey"),
+    style: str = Form("Watercolor children book illustration"),
+    lang: str = Form("en"),
+    photo: Optional[UploadFile] = File(None)
+):
+    """Основной маршрут для фронтенда (принимает FormData и возвращает страницы книги)."""
     try:
         lang_names = {
             "en": "English",
@@ -177,22 +175,37 @@ async def generate_story(req: StoryGenerateRequest):
             "it": "Italian",
             "tr": "Turkish"
         }
-        target_lang = lang_names.get(req.language_code, "English")
+        target_lang = lang_names.get(lang, "English")
+
+        # Если загружено фото ребенка — можем передать его в мультимодальный промпт Gemini
+        contents_list = []
+        if photo and photo.filename:
+            photo_bytes = await photo.read()
+            if photo_bytes:
+                contents_list.append(
+                    types.Part.from_bytes(
+                        data=photo_bytes,
+                        mime_type=photo.content_type or "image/jpeg"
+                    )
+                )
 
         prompt = f"""
-You are a warm, imaginative children's book author. Write an engaging, age-appropriate bedtime story for a {req.child_age}-year-old child named {req.child_name}.
-Topic/Adventure: {req.theme or 'A magical journey with loyal animal friends'}.
-Language: Write the ENTIRE story (title, chapter names, and all text) strictly in {target_lang}.
+You are a warm, imaginative children's therapeutic book author.
+Write an engaging, comforting bedtime story for a {age}-year-old child named {hero_name}.
+Story Theme: {theme}.
+Visual Art Style: {style}.
+Language: Write the ENTIRE story (title, chapter titles, and paragraphs) strictly in {target_lang}.
 
 Requirements:
-1. Divide the story into 3 or 4 chapters.
-2. Each chapter must have a creative title and 2 to 4 paragraphs.
-3. Keep the tone gentle, encouraging, and magical.
+1. Divide the story into exactly 4 chapters (episodes).
+2. Each chapter must have a warm title, 2-3 paragraphs of story text, and a short English 'image_prompt' describing the scene for an illustration.
+3. Make the final 4th chapter an inspiring climax and happy resolution where {hero_name} overcomes the challenge.
 """
+        contents_list.append(prompt)
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=prompt,
+            contents=contents_list,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=StoryBookData,
@@ -201,9 +214,62 @@ Requirements:
         )
 
         story_data = StoryBookData.model_validate_json(response.text)
-        story_data.language_code = req.language_code
-        story_data.is_paid = False
-        return story_data
+
+        pages = []
+        for idx, ch in enumerate(story_data.chapters):
+            full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
+            # Генерируем яркую иллюстрацию по промпту сцены
+            scene_desc = ch.image_prompt or f"{style} children book illustration of {hero_name} in {theme}, chapter {idx+1}"
+            encoded_prompt = urllib.parse.quote(f"{style}, cute children book art, {scene_desc}")
+            seed = abs(hash(f"{hero_name}_{theme}_{idx}")) % 99999
+            img_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=800&seed={seed}&nologo=true"
+
+            pages.append({
+                "page_number": idx + 1,
+                "title": ch.title,
+                "text": full_text,
+                "image_url": img_url
+            })
+
+        return {"success": True, "title": story_data.title, "pages": pages}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Story generation failed: {str(
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/export-epub")
+async def export_epub(story: StoryBookData):
+    """Превращает полученную сказку в скачиваемый файл ePub3 (защищено пейволлом)."""
+    if not story.is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Payment Required: Upgrade to Starter or Unlimited plan to export ePub."
+        )
+
+    try:
+        epub_bytes = EpubBuilder.create_epub(story)
+        safe_title = "".join(c for c in story.title if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
+        filename = f"{safe_title or 'magical_story'}.epub"
+
+        return Response(
+            content=epub_bytes,
+            media_type="application/epub+zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ePub build failed: {str(e)}")
+
+
+# ==========================================
+# 4. Раздача фронтенда
+# ==========================================
+
+@app.get("/")
+async def serve_index():
+    if os.path.exists("templates/index.html"):
+        return FileResponse("templates/index.html")
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
+    return {"message": "index.html not found"}
