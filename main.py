@@ -263,12 +263,21 @@ async def export_epub(story: StoryBookData):
 
 
 
-    # ==========================================
+# ==========================================
 # 4. Раздача фронтенда и юридических страниц
 # ==========================================
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    """Надежная раздача главной страницы index.html"""
+    if os.path.exists("templates/index.html"):
+        return FileResponse("templates/index.html")
+    return HTMLResponse("<h1>index.html not found in templates folder</h1>", status_code=404)
 
 
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy_policy():
     """Отдает страницу политики конфиденциальности из папки templates."""
-    return FileResponse("templates/privacy.html")
+    if os.path.exists("templates/privacy.html"):
+        return FileResponse("templates/privacy.html")
+    return HTMLResponse("<h1>privacy.html not found in templates folder</h1>", status_code=404)
