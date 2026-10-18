@@ -104,39 +104,55 @@ class EpubBuilder:
 # ==========================================
 
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
-    """Генерирует иллюстрацию через официальный клиент Google GenAI."""
-    try:
-        # Формируем детальный текстовый запрос для иллюстрации
-        illustration_prompt = (
-            f"A professional children's book illustration in {style} style. "
-            f"The main hero is a {age}-year-old child named {hero_name}. "
-            f"Scene: {prompt}. "
-            f"Colorful, magical, beautiful storybook artwork, highly detailed."
-        )
-        
-        # Используем модель генерации изображений от Google через стандартный клиент
-        response = client.models.generate_images(
-            model='imagen-3.0-generate-002',
-            prompt=illustration_prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                output_mime_type="image/jpeg",
-                aspect_ratio="1:1",
-                person_generation="allow_adult",
-            )
-        )
-        
-        for generated_image in response.generated_images:
-            image_bytes = generated_image.image.image_bytes
-            encoded_image = base64.b64encode(image_bytes).decode('utf-8')
-            return f"data:image/jpeg;base64,{encoded_image}"
-            
-    except Exception as e:
-        print(f"GenAI Image Generation Error: {e}")
-        # Если вдруг лимит или ошибка, используем уникальный красивый градиент/паттерн, а не скучные фото
-        return f"https://picsum.photos/seed/storybook_{index}_{age}/900/900"
+    """Generiruet unikalnuyu illyustratsiyu cherez Replicate API."""
+    token = os.environ.get("REPLICATE_API_TOKEN")
+    if not token:
+        return f"https://picsum.photos/seed/error_{index}/900/900"
 
-    return f"https://picsum.photos/seed/storybook_{index}_{age}/900/900"
+    try:
+        safe_prompt = prompt.replace('"', '').replace("'", "")
+        full_prompt = (
+            f"Children's book illustration in {style} style. "
+            f"A cute {age}-year-old child named {hero_name} as the main hero. "
+            f"Scene: {safe_prompt}. "
+            f"Magical lighting, vibrant and warm colors, highly detailed storybook art."
+        )
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Prefer": "wait"
+        }
+
+        payload = {
+            "version": "7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c92f9380d",
+            "input": {
+                "prompt": full_prompt,
+                "aspect_ratio": "1:1",
+                "output_format": "jpg",
+                "output_quality": 90
+            }
+        }
+
+        async with httpx.AsyncClient(timeout=40.0) as client_http:
+            response = await client_http.post(
+                "https://api.replicate.com/v1/predictions",
+                headers=headers,
+                json=payload
+            )
+            
+            if response.status_code == 201:
+                data = response.json()
+                output = data.get("output")
+                if output and isinstance(output, list):
+                    return output[0]
+                elif output and isinstance(output, str):
+                    return output
+
+    except Exception as e:
+        print(f"Replicate Exception: {e}")
+
+    return f"https://picsum.photos/seed/fallback_{index}_{age}/900/900"
         
 # ==========================================
 # 3. Маршруты API
