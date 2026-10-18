@@ -11,11 +11,9 @@ from fastapi import FastAPI, Response, HTTPException, Form, File, UploadFile, st
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 
-# Подключение Google GenAI и Vertex AI
+# Подключение Google GenAI
 from google import genai
 from google.genai import types
-import vertexai
-from vertexai.preview.vision_models import ImageGenerationModel, Image as VertexImage
 
 app = FastAPI(title="StoryMagic Hub Backend")
 
@@ -26,23 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Инициализация авторизации Google Cloud из переменной окружения на Railway
-CREDENTIALS_JSON = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-if CREDENTIALS_JSON:
-    try:
-        cred_dict = json.loads(CREDENTIALS_JSON)
-        project_id = cred_dict.get("project_id")
-        
-        creds_path = "/tmp/gcp_creds.json"
-        with open(creds_path, "w") as f:
-            f.write(CREDENTIALS_JSON)
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
-        
-        if project_id:
-            vertexai.init(project=project_id, location="us-central1")
-    except Exception as e:
-        print(f"Credentials Init Error: {e}")
 
 # Клиент Gemini для текста
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
@@ -119,42 +100,19 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.5. Генерация через Vertex AI Imagen 3 с фото
+# 2.5. Стабильный генератор красивых иллюстраций
 # ==========================================
 
-async def generate_vertex_image(prompt: str, style: str, hero_name: str, age: int, photo_bytes: Optional[bytes] = None) -> Optional[str]:
-    """Генерирует иллюстрацию через Vertex AI Imagen 3 с учетом загруженного фото."""
+async def generate_book_illustration(prompt: str, style: str, index: int) -> str:
+    """Генерирует стабильную, атмосферную иллюстрацию для главы."""
     try:
-        full_prompt = f"{style}, a {age}-year-old child named {hero_name}, children's book illustration. Scene: {prompt}"
-        model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-001")
-        
-        if photo_bytes:
-            source_image = VertexImage(photo_bytes)
-            result = model.edit_image(
-                base_image=source_image,
-                prompt=full_prompt,
-                number_of_images=1,
-                aspect_ratio="1:1",
-                safety_filter_level="block_medium_and_above",
-            )
-        else:
-            result = model.generate_images(
-                prompt=full_prompt,
-                number_of_images=1,
-                aspect_ratio="1:1",
-                safety_filter_level="block_medium_and_above",
-            )
-        
-        if result and len(result) > 0:
-            image_bytes = result[0]._image_bytes
-            encoded_image = base64.b64encode(image_bytes).decode('utf-8')
-            return f"data:image/png;base64,{encoded_image}"
-            
+        clean_desc = f"{style}, children book illustration, {prompt}"
+        encoded_prompt = urllib.parse.quote(clean_desc)
+        seed = 42 + index * 123
+        return f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=900&height=900&seed={seed}&nologo=true"
     except Exception as e:
-        print(f"Vertex Imagen 3 Error: {e}")
-        return None
-
-    return None
+        print(f"Image Error: {e}")
+        return f"https://picsum.photos/seed/story_{index}/900/900"
 
 
 # ==========================================
@@ -177,25 +135,22 @@ async def generate_book_form(
         }
         target_lang = lang_names.get(lang, "English")
 
-        # Читаем байты загруженного фото ВНУТРИ функции
-        raw_photo_bytes = None
         if photo and photo.filename:
-            raw_photo_bytes = await photo.read()
+            await photo.read()
 
+        # Профессиональный промпт для связной книги на 8 глав без повторения возраста
         prompt = f"""
-You are a professional children's therapeutic book author.
-Write a warm bedtime story for the main character named {hero_name} who is EXACTLY {age} years old.
+You are an award-winning children's book author. Write a single, cohesive, heartwarming story featuring a {age}-year-old main character named {hero_name}.
 Story Theme: {theme}.
-Language: Write the ENTIRE story (title, chapters, text) strictly in {target_lang}.
+Language: Write the ENTIRE book strictly in {target_lang}.
 
-CRITICAL RULES:
-1. The child MUST be explicitly referred to as {age}-years-old throughout the text.
-2. Divide the story into EXACTLY 8 chapters (episodes) to make a rich, complete book.
-
-Requirements for each chapter:
-- A warm title.
-- 2 paragraphs of story text.
-- A short English 'image_prompt' describing the scene for an illustration featuring {hero_name}.
+CRITICAL STRUCTURE RULES:
+1. The book must consist of EXACTLY 8 chapters forming ONE continuous, developing plot (beginning, journey, climax, resolution). Chapter 2 must follow Chapter 1, Chapter 3 must follow Chapter 2, and so on.
+2. DO NOT repeat the child's age or name awkwardly in every paragraph. Write naturally, like a real published children's book.
+3. For each chapter, provide:
+   - A captivating chapter title.
+   - 2-3 rich paragraphs of storytelling text.
+   - A short, vivid English 'image_prompt' describing the visual scene for that specific chapter's illustration.
 """
 
         gemini_response = client.models.generate_content(
@@ -213,13 +168,9 @@ Requirements for each chapter:
         pages = []
         for idx, ch in enumerate(story_data.chapters):
             full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
-            scene_desc = ch.image_prompt or f"{style} of {hero_name}, chapter {idx+1}"
+            scene_desc = ch.image_prompt or f"{style} scene {idx+1} for {hero_name}"
             
-            # Передаем байты фото в генератор Vertex AI
-            image_url = await generate_vertex_image(scene_desc, style, hero_name, age, raw_photo_bytes)
-            
-            if not image_url:
-                image_url = f"https://picsum.photos/seed/story_{idx}/900/900"
+            image_url = await generate_book_illustration(scene_desc, style, idx)
 
             pages.append({
                 "page_number": idx + 1,
