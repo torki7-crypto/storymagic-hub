@@ -25,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Клиент Gemini для текста
+# Клиент Gemini для текста и анализа фото
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
 
 
@@ -99,12 +99,10 @@ class EpubBuilder:
         return buffer.getvalue()
 
 
-
 # ==========================================
 # 2.5. Быстрый асинхронный генератор Replicate
 # ==========================================
 
-# Разрешаем запускать до 4 картинок параллельно
 replicate_semaphore = asyncio.Semaphore(4)
 
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
@@ -121,7 +119,6 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
         f"{safe_prompt}, magical storybook art, vibrant colors, vector and digital painting."
     )
 
-    # Убираем Prefer: wait, чтобы запрос не зависал на 30 секунд
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -150,16 +147,13 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
                 
                 print(f"Chapter {index+1} Replicate status: {response.status_code}")
                 
-                # 200, 201 и 202 — это успешные коды запуска генерации!
                 if response.status_code in [200, 201, 202]:
                     data = response.json()
                     output = data.get("output")
                     
-                    # Если картинка уже готова сразу
                     if output:
                         return output[0] if isinstance(output, list) else output
                     
-                    # Если статус "starting" или "processing", проверяем ссылку каждые 1.5 сек
                     poll_url = data.get("urls", {}).get("get")
                     if poll_url:
                         for attempt in range(25):
@@ -204,8 +198,20 @@ async def generate_book_form(
         }
         target_lang = lang_names.get(lang, "English")
 
+        contents_for_gemini = []
+        photo_instruction = ""
+
+        # Если загружено фото ребенка — передаем его в Gemini для анализа внешности
         if photo and photo.filename:
-            await photo.read()
+            photo_bytes = await photo.read()
+            if photo_bytes:
+                mime_type = photo.content_type or "image/jpeg"
+                contents_for_gemini.append(
+                    types.Part.from_bytes(data=photo_bytes, mime_type=mime_type)
+                )
+                photo_instruction = """
+4. PHOTO LIKENESS (CRITICAL): Look closely at the attached photo of the child. Identify their exact physical appearance: gender, hair color, hairstyle/length, eye color, skin tone, and any cute distinctive features (like glasses, curls, freckles). You MUST include this exact physical description at the beginning of EVERY SINGLE chapter's 'image_prompt' so the illustrated character looks just like the child in the photo across all 8 chapters!
+"""
 
         prompt = f"""
 You are an award-winning children's book author and illustrator. Write a single, cohesive, heartwarming story featuring a {age}-year-old main character named {hero_name}.
@@ -215,18 +221,20 @@ Language: Write the ENTIRE book strictly in {target_lang}.
 
 CRITICAL VISUAL RULES:
 1. The book must consist of EXACTLY 8 chapters forming ONE continuous plot.
-2. Every chapter MUST include a short, vivid, descriptive English 'image_prompt' (e.g., "Watercolor painting of Alice in a magical forest looking at glowing fireflies").
-3. The image_prompts must ensure visual continuity (e.g., same character appearance) and strictly adhere to the chosen {style}.
+2. Every chapter MUST include a short, vivid, descriptive English 'image_prompt' (e.g., "Watercolor painting of a 7-year-old girl with curly brown hair and green eyes named Alice in a magical forest looking at glowing fireflies").
+3. The image_prompts must ensure strict visual continuity (describe the exact same hair color, hairstyle, and clothing in every single chapter's prompt) and adhere to the chosen {style}.
+{photo_instruction}
 
 Requirements for each chapter:
 - A captivating chapter title.
 - 2-3 rich paragraphs of storytelling text.
-- A short, vivid English 'image_prompt' describing the visual scene for that specific chapter's illustration.
+- A short, vivid English 'image_prompt' describing the character's appearance and the visual scene for that specific chapter's illustration.
 """
+        contents_for_gemini.append(prompt)
 
         gemini_response = client.models.generate_content(
             model="gemini-3.8-flash",
-            contents=[prompt],
+            contents=contents_for_gemini,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=StoryBookData,
@@ -236,7 +244,7 @@ Requirements for each chapter:
 
         story_data = StoryBookData.model_validate_json(gemini_response.text)
 
-        # Запускаем генерацию всех 8 иллюстраций параллельно (по 3 штуки за раз)
+        # Запускаем генерацию всех 8 иллюстраций параллельно
         tasks = []
         for idx, ch in enumerate(story_data.chapters):
             scene_desc = ch.image_prompt or f"{style} scene {idx+1} for {hero_name}"
