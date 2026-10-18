@@ -1,7 +1,8 @@
 import os
 import io
 import uuid
-import urllib.parse
+import base64
+import json
 from typing import List, Optional
 from pydantic import BaseModel
 from ebooklib import epub
@@ -10,9 +11,11 @@ from fastapi import FastAPI, Response, HTTPException, Form, File, UploadFile, st
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 
-# Подключение Gemini API для текста
+# Подключение Google GenAI и Vertex AI
 from google import genai
 from google.genai import types
+import vertexai
+from vertexai.preview.vision_models import ImageGenerationModel, Image as VertexImage
 
 app = FastAPI(title="StoryMagic Hub Backend")
 
@@ -24,11 +27,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Инициализация авторизации Google Cloud из переменной окружения на Railway
+CREDENTIALS_JSON = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+if CREDENTIALS_JSON:
+    try:
+        cred_dict = json.loads(CREDENTIALS_JSON)
+        project_id = cred_dict.get("project_id")
+        
+        creds_path = "/tmp/gcp_creds.json"
+        with open(creds_path, "w") as f:
+            f.write(CREDENTIALS_JSON)
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+        
+        if project_id:
+            vertexai.init(project=project_id, location="us-central1")
+    except Exception as e:
+        print(f"Credentials Init Error: {e}")
+
+# Клиент Gemini для текста
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
 
 
 # ==========================================
-# 1. Модели данных (на 8 глав)
+# 1. Модели данных (8 глав)
 # ==========================================
 
 class ChapterData(BaseModel):
@@ -98,30 +119,42 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.5. Стабильный генератор иллюстраций без лимитов
+# 2.5. Генерация через Vertex AI Imagen 3 с фото
 # ==========================================
 
-async def generate_illustration(prompt: str, style: str, hero_name: str, age: int, index: int) -> str:
-    """Гарантированно выдает красивую и качественную сказочную иллюстрацию без очередей."""
+async def generate_vertex_image(prompt: str, style: str, hero_name: str, age: int, photo_bytes: Optional[bytes] = None) -> Optional[str]:
+    """Генерирует иллюстрацию через Vertex AI Imagen 3 с учетом загруженного фото."""
     try:
-        # Подбираем красивую терапевтическую или приключенческую базу картинок высокого качества
-        illustration_seeds = [
-            "magical-forest-child-luminescence",
-            "cozy-bedtime-bedroom-stars",
-            "brave-little-hero-adventure",
-            "gentle-fairy-tale-watercolor-dream",
-            "mysterious-path-lights-wonder",
-            "happy-ending-warm-hug-joy",
-            "starlight-galaxy-magic-flight",
-            "friendly-animal-helper-forest"
-        ]
-        seed_keyword = illustration_seeds[index % len(illustration_seeds)]
+        full_prompt = f"{style}, a {age}-year-old child named {hero_name}, children's book illustration. Scene: {prompt}"
+        model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-001")
         
-        # Используем премиальный пул качественных иллюстраций Unsplash Source / Picsum с высокой детализацией
-        return f"https://picsum.photos/seed/{seed_keyword}_{index}/900/900"
+        if photo_bytes:
+            source_image = VertexImage(photo_bytes)
+            result = model.edit_image(
+                base_image=source_image,
+                prompt=full_prompt,
+                number_of_images=1,
+                aspect_ratio="1:1",
+                safety_filter_level="block_medium_and_above",
+            )
+        else:
+            result = model.generate_images(
+                prompt=full_prompt,
+                number_of_images=1,
+                aspect_ratio="1:1",
+                safety_filter_level="block_medium_and_above",
+            )
+        
+        if result and len(result) > 0:
+            image_bytes = result[0]._image_bytes
+            encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+            return f"data:image/png;base64,{encoded_image}"
+            
     except Exception as e:
-        print(f"Image Error: {e}")
-        return f"https://picsum.photos/seed/magictale_{index}/900/900"
+        print(f"Vertex Imagen 3 Error: {e}")
+        return None
+
+    return None
 
 
 # ==========================================
@@ -144,10 +177,11 @@ async def generate_book_form(
         }
         target_lang = lang_names.get(lang, "English")
 
+        # Читаем байты загруженного фото ВНУТРИ функции
+        raw_photo_bytes = None
         if photo and photo.filename:
-            await photo.read()
+            raw_photo_bytes = await photo.read()
 
-        # Строгий промпт на 8 глав с точным возрастом
         prompt = f"""
 You are a professional children's therapeutic book author.
 Write a warm bedtime story for the main character named {hero_name} who is EXACTLY {age} years old.
@@ -181,7 +215,11 @@ Requirements for each chapter:
             full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
             scene_desc = ch.image_prompt or f"{style} of {hero_name}, chapter {idx+1}"
             
-            image_url = await generate_illustration(scene_desc, style, hero_name, age, idx)
+            # Передаем байты фото в генератор Vertex AI
+            image_url = await generate_vertex_image(scene_desc, style, hero_name, age, raw_photo_bytes)
+            
+            if not image_url:
+                image_url = f"https://picsum.photos/seed/story_{idx}/900/900"
 
             pages.append({
                 "page_number": idx + 1,
