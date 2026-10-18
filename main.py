@@ -104,24 +104,15 @@ class EpubBuilder:
 # ==========================================
 
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
-    """Генерирует гарантированно красивую, тематическую иллюстрацию в нужном стиле."""
+    """Генерирует стабильную, атмосферную иллюстрацию для главы."""
     try:
-        # Детальный промпт с указанием стиля и характеристик героя
-        full_scene_desc = (
-            f"{style}, children's book illustration with soft colors and magical feel. "
-            f"A main character matching the description: {age}-year-old {hero_name}. "
-            f"Scene content: {prompt}. "
-            f"High quality, detailed, enchanting."
-        )
-        
-        encoded_prompt = urllib.parse.quote(full_scene_desc)
-        # Используем более качественный эндпоинт с уникальным сидом для каждой страницы
-        seed = 12345 + index * 987
+        clean_desc = f"{style}, children book illustration of a {age}-year-old child named {hero_name}, {prompt}"
+        encoded_prompt = urllib.parse.quote(clean_desc)
+        seed = 42 + index * 123
         return f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=900&height=900&seed={seed}&nologo=true&model=flux"
     except Exception as e:
         print(f"Image Error: {e}")
-        # Запасной вариант
-        return f"https://picsum.photos/seed/childstory_{index}/900/900"
+        return f"https://picsum.photos/seed/story_{index}/900/900"
         
 # ==========================================
 # 3. Маршруты API
@@ -181,7 +172,8 @@ Requirements for each chapter:
             full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
             scene_desc = ch.image_prompt or f"{style} scene {idx+1} for {hero_name}"
             
-            image_url = await generate_book_illustration(scene_desc, style, idx)
+            # Передаем все необходимые аргументы в генератор картинки
+            image_url = await generate_book_illustration(scene_desc, style, idx, hero_name, age)
 
             pages.append({
                 "page_number": idx + 1,
