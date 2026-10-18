@@ -1,9 +1,8 @@
-import httpx
 import os
 import io
 import uuid
-import base64
-import json
+import asyncio
+import httpx
 from typing import List, Optional
 from pydantic import BaseModel
 from ebooklib import epub
@@ -100,68 +99,89 @@ class EpubBuilder:
         return buffer.getvalue()
 
 
-
-
 # ==========================================
-# 2.5. Стабильный генератор через Replicate API
+# 2.5. Быстрый асинхронный генератор Replicate
 # ==========================================
+
+# Ограничиваем до 3 одновременных запросов, чтобы Replicate не выдавал ошибку 429
+replicate_semaphore = asyncio.Semaphore(3)
 
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
-    """Генерирует иллюстрацию через официальный эндпоинт модели Replicate API."""
+    """Генерирует иллюстрацию через Replicate API с защитой от таймаутов и лимитов."""
     token = os.environ.get("REPLICATE_API_TOKEN")
     if not token:
-        print("ERROR: REPLICATE_API_TOKEN is missing in environment variables!")
+        print("ERROR: REPLICATE_API_TOKEN is missing!")
         return "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=900&auto=format&fit=crop&q=60"
 
-    try:
-        safe_prompt = prompt.replace('"', '').replace("'", "")
-        full_prompt = (
-            f"Children's book illustration in {style} style, "
-            f"cute {age}-year-old child named {hero_name}, "
-            f"{safe_prompt}, magical storybook art, vibrant colors, vector and digital painting."
-        )
+    safe_prompt = prompt.replace('"', '').replace("'", "")
+    full_prompt = (
+        f"Children's book illustration in {style} style, "
+        f"cute {age}-year-old child named {hero_name}, "
+        f"{safe_prompt}, magical storybook art, vibrant colors, vector and digital painting."
+    )
 
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Prefer": "wait"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Prefer": "wait=25"
+    }
+
+    payload = {
+        "input": {
+            "prompt": full_prompt,
+            "aspect_ratio": "1:1",
+            "output_format": "jpg",
+            "output_quality": 90
         }
+    }
 
-        # Для эндпоинта конкретной модели передаем только блок input
-        payload = {
-            "input": {
-                "prompt": full_prompt,
-                "aspect_ratio": "1:1",
-                "output_format": "jpg",
-                "output_quality": 90
-            }
-        }
+    async with replicate_semaphore:
+        # Небольшая пауза между стартами, чтобы не превысить лимит запросов в секунду
+        await asyncio.sleep(index * 0.4)
+        
+        try:
+            print(f"Sending request to Replicate for chapter {index+1}...")
+            async with httpx.AsyncClient(timeout=35.0) as client_http:
+                response = await client_http.post(
+                    "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
+                    headers=headers,
+                    json=payload
+                )
+                
+                print(f"Chapter {index+1} Replicate status: {response.status_code}")
+                
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    output = data.get("output")
+                    
+                    # Если картинка готова сразу — возвращаем ссылку
+                    if output:
+                        return output[0] if isinstance(output, list) else output
+                    
+                    # Если модель еще дорисовывает (status: processing), проверяем готовность
+                    poll_url = data.get("urls", {}).get("get")
+                    if poll_url:
+                        for _ in range(10):
+                            await asyncio.sleep(2.0)
+                            poll_res = await client_http.get(poll_url, headers=headers)
+                            if poll_res.status_code == 200:
+                                poll_data = poll_res.json()
+                                status_str = poll_data.get("status")
+                                if status_str == "succeeded":
+                                    out = poll_data.get("output")
+                                    return out[0] if isinstance(out, list) else out
+                                elif status_str in ["failed", "canceled"]:
+                                    print(f"Chapter {index+1} generation failed on Replicate.")
+                                    break
+                else:
+                    print(f"Chapter {index+1} API error: {response.text}")
 
-        print(f"Sending request to Replicate for chapter {index+1}...")
-        async with httpx.AsyncClient(timeout=60.0) as client_http:
-            response = await client_http.post(
-                "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
-                headers=headers,
-                json=payload
-            )
-            
-            print(f"Replicate status: {response.status_code}")
-            
-            if response.status_code in [200, 201]:
-                data = response.json()
-                output = data.get("output")
-                if output and isinstance(output, list):
-                    return output[0]
-                elif output and isinstance(output, str):
-                    return output
-            else:
-                print(f"Replicate API error details: {response.text}")
-
-    except Exception as e:
-        print(f"Replicate Exception occurred: {str(e)}")
+        except Exception as e:
+            print(f"Chapter {index+1} Exception: {str(e)}")
 
     return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=900&auto=format&fit=crop&q=60"
-        
+
+
 # ==========================================
 # 3. Маршруты API
 # ==========================================
@@ -185,7 +205,6 @@ async def generate_book_form(
         if photo and photo.filename:
             await photo.read()
 
-       # Профессиональный промпт, который заставляет Gemini писать и ДУМАТЬ как иллюстратор
         prompt = f"""
 You are an award-winning children's book author and illustrator. Write a single, cohesive, heartwarming story featuring a {age}-year-old main character named {hero_name}.
 Story Theme: {theme}.
@@ -204,7 +223,7 @@ Requirements for each chapter:
 """
 
         gemini_response = client.models.generate_content(
-            model="gemini-3.8-flash",
+            model="gemini-2.5-flash",
             contents=[prompt],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -215,19 +234,22 @@ Requirements for each chapter:
 
         story_data = StoryBookData.model_validate_json(gemini_response.text)
 
+        # Запускаем генерацию всех 8 иллюстраций параллельно (по 3 штуки за раз)
+        tasks = []
+        for idx, ch in enumerate(story_data.chapters):
+            scene_desc = ch.image_prompt or f"{style} scene {idx+1} for {hero_name}"
+            tasks.append(generate_book_illustration(scene_desc, style, idx, hero_name, age))
+
+        image_urls = await asyncio.gather(*tasks)
+
         pages = []
         for idx, ch in enumerate(story_data.chapters):
             full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
-            scene_desc = ch.image_prompt or f"{style} scene {idx+1} for {hero_name}"
-            
-            # Передаем все необходимые аргументы в генератор картинки
-            image_url = await generate_book_illustration(scene_desc, style, idx, hero_name, age)
-
             pages.append({
                 "page_number": idx + 1,
                 "title": ch.title,
                 "text": full_text,
-                "image_url": image_url
+                "image_url": image_urls[idx]
             })
 
         return {"success": True, "title": story_data.title, "pages": pages}
