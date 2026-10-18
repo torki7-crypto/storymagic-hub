@@ -268,7 +268,7 @@ async def export_epub(story: StoryBookData):
 # ==========================================
 
 
-   @app.get("/privacy", response_class=HTMLResponse)
+@app.get("/privacy", response_class=HTMLResponse)
 async def privacy_policy():
     """Отдает страницу политики конфиденциальности из папки templates."""
     return FileResponse("templates/privacy.html")
