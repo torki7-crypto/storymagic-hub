@@ -4,3 +4,4 @@ pydantic
 ebooklib
 google-genai
 google-cloud-aiplatform
+python-multipart
