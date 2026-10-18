@@ -1,3 +1,4 @@
+import httpx
 import os
 import io
 import uuid
@@ -103,12 +104,15 @@ class EpubBuilder:
 # 2.5. Стабильный генератор через официальный клиент Google GenAI
 # ==========================================
 
+# ==========================================
+# 2.5. Стабильный генератор через Replicate API
+# ==========================================
+
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
-    """Генерирует иллюстрацию через Replicate API без скрытых подмен фото."""
+    """Генерирует иллюстрацию через официальный Replicate API."""
     token = os.environ.get("REPLICATE_API_TOKEN")
     if not token:
-        print("ERROR: REPLICATE_API_TOKEN is missing!")
-        # Возвращаем стильную цветную заглушку-градиент, а не фото из интернета
+        print("ERROR: REPLICATE_API_TOKEN is missing in environment variables!")
         return "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=900&auto=format&fit=crop&q=60"
 
     try:
@@ -125,8 +129,9 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
             "Prefer": "wait"
         }
 
+        # Используем современный формат вызова модели по имени в Replicate
         payload = {
-            "version": "7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c92f9380d",
+            "model": "black-forest-labs/flux-schnell",
             "input": {
                 "prompt": full_prompt,
                 "aspect_ratio": "1:1",
@@ -136,7 +141,7 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
         }
 
         print(f"Sending request to Replicate for chapter {index+1}...")
-        async with httpx.AsyncClient(timeout=45.0) as client_http:
+        async with httpx.AsyncClient(timeout=60.0) as client_http:
             response = await client_http.post(
                 "https://api.replicate.com/v1/predictions",
                 headers=headers,
@@ -146,18 +151,20 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
             print(f"Replicate status: {response.status_code}")
             print(f"Replicate body: {response.text}")
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()
                 output = data.get("output")
                 if output and isinstance(output, list):
                     return output[0]
                 elif output and isinstance(output, str):
                     return output
+            else:
+                print(f"Replicate API error details: {response.text}")
 
     except Exception as e:
-        print(f"Replicate Exception: {e}")
+        print(f"Replicate Exception occurred: {str(e)}")
 
-    # Если произошла ошибка запроса, вернем текстовую или визуальную ошибку
+    # Запасной вариант на случай сбоя сети
     return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=900&auto=format&fit=crop&q=60"
         
 # ==========================================
