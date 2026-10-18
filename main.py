@@ -200,31 +200,26 @@ async def generate_book_form(
     lang: str = Form("en"),
     photo: Optional[UploadFile] = File(None)
 ):
-    """Основной маршрут для фронтенда (принимает FormData и возвращает страницы книги)."""
+    """Основной маршрут для фронтенда (принимает FormData и возвращает страницы книги с Imagen 3)."""
     try:
         lang_names = {
-            "en": "English",
-            "ru": "Russian",
-            "pl": "Polish",
-            "ro": "Romanian",
-            "it": "Italian",
-            "tr": "Turkish"
+            "en": "English", "ru": "Russian", "pl": "Polish",
+            "ro": "Romanian", "it": "Italian", "tr": "Turkish"
         }
         target_lang = lang_names.get(lang, "English")
 
-        # Если загружено фото ребенка — можем передать его в мультимодальный промпт Gemini
+        # Если загружено фото ребенка — используем его как референс (опционально, в v2)
         contents_list = []
+        # В v1 мы пока не передаем фото в сам промпт Imagen, но сохраняем его для будущего
         if photo and photo.filename:
             photo_bytes = await photo.read()
             if photo_bytes:
-                contents_list.append(
-                    types.Part.from_bytes(
-                        data=photo_bytes,
-                        mime_type=photo.content_type or "image/jpeg"
-                    )
-                )
+                 # Пока не используем фото в промпте Imagen для консистентности,
+                 # но подтверждаем, что безопасно прочитали его.
+                 pass
 
-        prompt = f"""
+        # 1. Генерируем текст сказки через Gemini
+        prompt_text = f"""
 You are a warm, imaginative children's therapeutic book author.
 Write an engaging, comforting bedtime story for a {age}-year-old child named {hero_name}.
 Story Theme: {theme}.
@@ -232,15 +227,14 @@ Visual Art Style: {style}.
 Language: Write the ENTIRE story (title, chapter titles, and paragraphs) strictly in {target_lang}.
 
 Requirements:
-1. Divide the story into exactly 4 chapters (episodes).
+1. Divide the story into exactly 4 chapters.
 2. Each chapter must have a warm title, 2-3 paragraphs of story text, and a short English 'image_prompt' describing the scene for an illustration.
-3. Make the final 4th chapter an inspiring climax and happy resolution where {hero_name} overcomes the challenge.
+3. Make the final 4th chapter an inspiring climax and happy resolution.
 """
-        contents_list.append(prompt)
-
-        response = client.models.generate_content(
+        
+        gemini_response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=contents_list,
+            contents=[prompt_text],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=StoryBookData,
@@ -248,53 +242,32 @@ Requirements:
             )
         )
 
-        story_data = StoryBookData.model_validate_json(response.text)
+        story_data = StoryBookData.model_validate_json(gemini_response.text)
 
+        # 2. Генерируем иллюстрации для каждой главы через Imagen 3 (ПОСЛЕДОВАТЕЛЬНО)
         pages = []
         for idx, ch in enumerate(story_data.chapters):
             full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
-            # Генерируем яркую иллюстрацию по промпту сцены
+            
+            # Определяем промпт для картинки: из Gemini или дефолтный
             scene_desc = ch.image_prompt or f"{style} children book illustration of {hero_name} in {theme}, chapter {idx+1}"
-            encoded_prompt = urllib.parse.quote(f"{style}, cute children book art, {scene_desc}")
-            seed = abs(hash(f"{hero_name}_{theme}_{idx}")) % 99999
-            img_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=800&seed={seed}&nologo=true"
+            
+            # ВЫЗЫВАЕМ НОВЫЙ ГЕНЕРАТОР GOOGLE
+            image_url = await generate_google_image(scene_desc, style)
 
+            # Добавляем страницу (картинка вернется в формате base64)
             pages.append({
                 "page_number": idx + 1,
                 "title": ch.title,
                 "text": full_text,
-                "image_url": img_url
+                "image_url": image_url # Теперь здесь base64-строка из Google Imagen
             })
 
         return {"success": True, "title": story_data.title, "pages": pages}
 
     except Exception as e:
+        print(f"Full Generation Error: {str(e)}") # Логируем ошибку в консоль Railway
         return {"success": False, "error": str(e)}
-
-
-@app.post("/api/export-epub")
-async def export_epub(story: StoryBookData):
-    """Превращает полученную сказку в скачиваемый файл ePub3 (защищено пейволлом)."""
-    if not story.is_paid:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Payment Required: Upgrade to Starter or Unlimited plan to export ePub."
-        )
-
-    try:
-        epub_bytes = EpubBuilder.create_epub(story)
-        safe_title = "".join(c for c in story.title if c.isalnum() or c in (' ', '_', '-')).strip().replace(' ', '_')
-        filename = f"{safe_title or 'magical_story'}.epub"
-
-        return Response(
-            content=epub_bytes,
-            media_type="application/epub+zip",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"ePub build failed: {str(e)}")
 
 
 
