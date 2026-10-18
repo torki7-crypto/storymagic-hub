@@ -267,18 +267,46 @@ async def export_epub(story: StoryBookData):
 # 4. Раздача фронтенда и юридических страниц
 # ==========================================
 
-@app.get("/")
-async def serve_index():
-    if os.path.exists("templates/index.html"):
-        return FileResponse("templates/index.html")
-    if os.path.exists("index.html"):
-        return FileResponse("index.html")
-    return {"message": "index.html not found"}
 
-
-@app.get("/privacy", response_class=HTMLResponse)
+   @app.get("/privacy", response_class=HTMLResponse)
 async def privacy_policy():
-    """Отдает страницу политики конфиденциальности из папки templates."""
-    if os.path.exists("templates/privacy.html"):
-        return FileResponse("templates/privacy.html")
-    return HTMLResponse("<h1>Error: privacy.html not found in templates folder</h1>", status_code=404)
+    """Отдает страницу политики конфиденциальности."""
+    return HTMLResponse(content="""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - StoryMagic Hub</title>
+    <style>
+        body { font-family: sans-serif; background: #130d24; color: #f8fafc; padding: 40px; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+        h1 { color: #ff9a9e; margin-bottom: 20px; }
+        h2 { color: #a1c4fd; margin-top: 30px; }
+        p, li { color: #cbd5e1; margin-bottom: 12px; }
+        .back-btn { display: inline-block; margin-bottom: 20px; padding: 8px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; color: #fff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-btn">&larr; Back to StoryMagic</a>
+    <h1>Privacy Policy & Children's Data Protection</h1>
+    <p><strong>Effective Date:</strong> October 2026</p>
+    
+    <h2>1. Overview & Commitment to UK GDPR</h2>
+    <p>StoryMagic Hub is fully committed to protecting the privacy and security of children and parents. We strictly adhere to the UK GDPR and the ICO Children's Code.</p>
+
+    <h2>2. How We Handle Children's Photos</h2>
+    <p>Parents may optionally upload a photograph of their child to generate a personalized book illustration:</p>
+    <ul>
+        <li><strong>Temporary Processing:</strong> Photos are sent directly to secure AI vision models solely for illustration generation.</li>
+        <li><strong>Immediate Deletion:</strong> Photos are never stored permanently on our servers and are deleted immediately after generation.</li>
+        <li><strong>No Model Training:</strong> Uploaded photographs are never used to train public AI models.</li>
+    </ul>
+
+    <h2>3. Parental Consent</h2>
+    <p>Book generation requires explicit confirmation that the user is the parent or legal guardian with authority to consent to the processing of the child's likeness.</p>
+
+    <h2>4. Data Security</h2>
+    <p>All data transmissions are encrypted using industry-standard protocols. Payment data is securely processed via Stripe.</p>
+</body>
+</html>
+    """)
