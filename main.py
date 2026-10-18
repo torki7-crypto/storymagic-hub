@@ -104,10 +104,11 @@ class EpubBuilder:
 # ==========================================
 
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
-    """Generiruet unikalnuyu illyustratsiyu cherez Replicate API."""
+    """Генерирует иллюстрацию через Replicate API с выводом ошибок в лог."""
     token = os.environ.get("REPLICATE_API_TOKEN")
     if not token:
-        return f"https://picsum.photos/seed/error_{index}/900/900"
+        print("DEBUG ERROR: REPLICATE_API_TOKEN is missing on Railway!")
+        return f"https://picsum.photos/seed/error_notoken_{index}/900/900"
 
     try:
         safe_prompt = prompt.replace('"', '').replace("'", "")
@@ -134,12 +135,16 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
             }
         }
 
-        async with httpx.AsyncClient(timeout=40.0) as client_http:
+        print(f"DEBUG: Sending request to Replicate for chapter {index+1}...")
+        async with httpx.AsyncClient(timeout=45.0) as client_http:
             response = await client_http.post(
                 "https://api.replicate.com/v1/predictions",
                 headers=headers,
                 json=payload
             )
+            
+            print(f"DEBUG: Replicate response status: {response.status_code}")
+            print(f"DEBUG: Replicate response body: {response.text}")
             
             if response.status_code == 201:
                 data = response.json()
@@ -148,9 +153,11 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
                     return output[0]
                 elif output and isinstance(output, str):
                     return output
+            else:
+                print(f"DEBUG ERROR: Replicate failed with code {response.status_code}")
 
     except Exception as e:
-        print(f"Replicate Exception: {e}")
+        print(f"DEBUG CRITICAL EXCEPTION in Replicate call: {str(e)}")
 
     return f"https://picsum.photos/seed/fallback_{index}_{age}/900/900"
         
