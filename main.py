@@ -154,17 +154,17 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.5. Модуль анализа фото и генерации иллюстраций
+# 2.5. Модуль анализа фото и генерации через Google
 # ==========================================
 
 async def analyze_child_photo(photo_bytes: bytes, mime_type: str) -> str:
-    """Анализирует загруженную фотографию ребенка через Gemini для переноса внешности в иллюстрации."""
+    """Анализирует фотографию ребенка через Gemini для сохранения похожести."""
     try:
         response = client.models.generate_content(
             model="gemini-3.8-flash",
             contents=[
                 types.Part.from_bytes(data=photo_bytes, mime_type=mime_type),
-                "Describe this child's appearance briefly for a children's book illustrator (hair color, hair style, eye color, facial features, gender/age appearance). Keep it to 1-2 descriptive sentences in English."
+                "Describe this child's appearance briefly for an illustrator (hair color, hair style, eye color, facial features, approximate age). Keep it to 1 concise sentence in English."
             ]
         )
         if response and response.text:
@@ -173,18 +173,31 @@ async def analyze_child_photo(photo_bytes: bytes, mime_type: str) -> str:
         print(f"Photo Analysis Error: {e}")
     return "a cute child"
 
-async def generate_book_image(prompt: str, style: str, hero_appearance: str) -> Optional[str]:
-    """Генерирует иллюстрацию с учетом внешности ребенка из фотографии."""
+async def generate_google_image(prompt: str, style: str, hero_appearance: str) -> Optional[str]:
+    """Генерирует изображение через официальный генератор изображений Google."""
     try:
-        # Интегрируем описание внешности в промпт для иллюстрации
-        combined_prompt = f"{style}, featuring a main character matching this description: {hero_appearance}. Scene: {prompt}"
-        clean_prompt = urllib.parse.quote(combined_prompt)
-        seed = abs(hash(prompt + hero_appearance)) % 99999
+        full_prompt = f"{style}, children's book illustration featuring {hero_appearance}. Scene: {prompt}"
         
-        return f"https://image.pollinations.ai/prompt/{clean_prompt}?width=800&height=800&seed={seed}&nologo=true"
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-image",
+            contents=[full_prompt],
+            config=types.GenerateContentConfig(
+                number_of_images=1,
+                aspect_ratio="1:1"
+            )
+        )
+        
+        if response and response.images and len(response.images) > 0:
+            image_bytes = response.images[0].image_bytes
+            encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+            return f"data:image/png;base64,{encoded_image}"
+            
     except Exception as e:
-        print(f"Image Generation Error: {e}")
+        print(f"Google Image Generation Error: {e}")
+        # Запасной вариант на случай сетевого сбоя Google API
         return "https://picsum.photos/seed/magictale/800/800"
+
+    return "https://picsum.photos/seed/magictale/800/800"
 
 
 # ==========================================
@@ -200,7 +213,7 @@ async def generate_book_form(
     lang: str = Form("en"),
     photo: Optional[UploadFile] = File(None)
 ):
-    """Основной маршрут: анализирует фото, пишет сказку и создает иллюстрации с портретным сходством."""
+    """Основной маршрут: анализ фото, текст и картинки через Google."""
     try:
         lang_names = {
             "en": "English", "ru": "Russian", "pl": "Polish",
@@ -208,7 +221,7 @@ async def generate_book_form(
         }
         target_lang = lang_names.get(lang, "English")
 
-        # 1. Анализируем фото ребенка, если оно загружено
+        # 1. Анализируем фото ребенка для похожести
         hero_appearance = f"{age}-year-old child named {hero_name}"
         if photo and photo.filename:
             photo_bytes = await photo.read()
@@ -218,7 +231,7 @@ async def generate_book_form(
                 if analyzed_desc:
                     hero_appearance = f"{hero_name} ({analyzed_desc})"
 
-        # 2. Генерируем текст сказки через Gemini
+        # 2. Генерируем текст сказки через Gemini 3.8-flash
         prompt = f"""
 You are a warm, imaginative children's therapeutic book author.
 Write an engaging, comforting bedtime story for a {hero_appearance}.
@@ -228,7 +241,7 @@ Language: Write the ENTIRE story (title, chapter titles, and paragraphs) strictl
 
 Requirements:
 1. Divide the story into exactly 4 chapters (episodes).
-2. Each chapter must have a warm title, 2-3 paragraphs of story text, and a short English 'image_prompt' describing the scene for an illustration featuring {hero_name}.
+2. Each chapter must have a warm title, 2-3 paragraphs of story text, and a short English 'image_prompt' describing the scene featuring {hero_name}.
 3. Make the final 4th chapter an inspiring climax and happy resolution where {hero_name} overcomes the challenge.
 """
 
@@ -244,13 +257,13 @@ Requirements:
 
         story_data = StoryBookData.model_validate_json(gemini_response.text)
 
-        # 3. Генерируем иллюстрации для каждой главы с учетом внешности с фото
+        # 3. Генерируем иллюстрации для каждой главы
         pages = []
         for idx, ch in enumerate(story_data.chapters):
             full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
             scene_desc = ch.image_prompt or f"{style} illustration of {hero_name} in {theme}, chapter {idx+1}"
             
-            image_url = await generate_book_image(scene_desc, style, hero_appearance)
+            image_url = await generate_google_image(scene_desc, style, hero_appearance)
 
             pages.append({
                 "page_number": idx + 1,
