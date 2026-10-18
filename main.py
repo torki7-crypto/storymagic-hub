@@ -100,16 +100,14 @@ class EpubBuilder:
         return buffer.getvalue()
 
 
-# ==========================================
-# 2.5. Стабильный генератор через официальный клиент Google GenAI
-# ==========================================
+
 
 # ==========================================
 # 2.5. Стабильный генератор через Replicate API
 # ==========================================
 
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
-    """Генерирует иллюстрацию через официальный Replicate API."""
+    """Генерирует иллюстрацию через официальный эндпоинт модели Replicate API."""
     token = os.environ.get("REPLICATE_API_TOKEN")
     if not token:
         print("ERROR: REPLICATE_API_TOKEN is missing in environment variables!")
@@ -129,9 +127,8 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
             "Prefer": "wait"
         }
 
-        # Используем современный формат вызова модели по имени в Replicate
+        # Для эндпоинта конкретной модели передаем только блок input
         payload = {
-            "model": "black-forest-labs/flux-schnell",
             "input": {
                 "prompt": full_prompt,
                 "aspect_ratio": "1:1",
@@ -143,13 +140,12 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
         print(f"Sending request to Replicate for chapter {index+1}...")
         async with httpx.AsyncClient(timeout=60.0) as client_http:
             response = await client_http.post(
-                "https://api.replicate.com/v1/predictions",
+                "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
                 headers=headers,
                 json=payload
             )
             
             print(f"Replicate status: {response.status_code}")
-            print(f"Replicate body: {response.text}")
             
             if response.status_code in [200, 201]:
                 data = response.json()
@@ -164,7 +160,6 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
     except Exception as e:
         print(f"Replicate Exception occurred: {str(e)}")
 
-    # Запасной вариант на случай сбоя сети
     return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=900&auto=format&fit=crop&q=60"
         
 # ==========================================
