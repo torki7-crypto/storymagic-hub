@@ -153,6 +153,41 @@ class EpubBuilder:
 
 
 # ==========================================
+# 2.5. Модуль генерации изображений (Google Imagen 3)
+# ==========================================
+
+async def generate_google_image(prompt: str, style: str) -> Optional[str]:
+    """Генерирует изображение через Google Imagen 3 и возвращает base64."""
+    try:
+        # Формируем полный, оптимизированный промпт для Imagen
+        full_prompt = f"{style}, children's book illustration style. {prompt}"
+        
+        # Вызываем модель генерации изображений от Google
+        response = client.models.generate_content(
+            model="imagen-3.0-generate-001", # Официальное имя модели Imagen 3
+            contents=[full_prompt],
+            config=types.GenerateContentConfig(
+                number_of_images=1,
+                aspect_ratio="1:1" # Квадратные иллюстрации
+                # Здесь можно добавить дополнительные настройки стиля, если потребуется
+            )
+        )
+        
+        if response and response.images and len(response.images) > 0:
+            # Google возвращает объект Image, берем байты первого изображения
+            image_bytes = response.images[0].image_bytes
+            import base64
+            # Кодируем байты в base64 для передачи в JSON-ответе
+            encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+            # Возвращаем URL в формате data:image/png;base64,...
+            return f"data:image/png;base64,{encoded_image}"
+            
+    except Exception as e:
+        print(f"Google Image Generation Error: {e}")
+        return None # В случае ошибки вернем None
+
+    return None
+# ==========================================
 # 3. Маршруты API (Генерация и Экспорт)
 # ==========================================
 
