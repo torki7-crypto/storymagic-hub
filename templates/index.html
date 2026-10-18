@@ -1063,29 +1063,57 @@
         });
     }
 
-    function toggleAudioStory() {
-        if (!currentPages.length) return;
+    // НОВАЯ ЖИВАЯ ИИ-ОЗВУЧКА ЧЕРЕЗ СЕРВЕРНЫЙ EDGE-TTS
+    var currentAudio = null;
+
+    async function toggleAudioStory() {
+        if (!currentPages || currentPages.length === 0) return;
         if (currentPages.length > 1 && currentIndex === currentPages.length - 1 && !isPaidUser) {
             openPaymentModal();
             return;
         }
-        if (!('speechSynthesis' in window)) {
-            alert('Speech synthesis not supported on this browser');
-            return;
-        }
-        if (isSpeaking) {
-            window.speechSynthesis.cancel();
+
+        // Если аудио уже играет — останавливаем
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
             isSpeaking = false;
             return;
         }
+
         var text = currentPages[currentIndex].text;
-        var utterance = new SpeechSynthesisUtterance(text);
-        var langMap = { 'en': 'en-GB', 'ru': 'ru-RU', 'pl': 'pl-PL', 'ro': 'ro-RO', 'it': 'it-IT', 'tr': 'tr-TR' };
-        utterance.lang = langMap[currentLang] || 'en-GB';
-        utterance.onend = function() { isSpeaking = false; };
-        window.speechSynthesis.speak(utterance);
-        isSpeaking = true;
-    }
+        var btnAudio = document.getElementById('btn-audio-lbl');
+        var originalLabel = btnAudio ? btnAudio.innerText : 'Audio Story';
+        if (btnAudio) btnAudio.innerText = '⏳ Loading Voice...';
+
+        try {
+            var response = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, lang: currentLang })
+            });
+
+            if (!response.ok) throw new Error('TTS generation failed');
+
+            var blob = await response.blob();
+            var audioUrl = window.URL.createObjectURL(blob);
+            currentAudio = new Audio(audioUrl);
+            
+            isSpeaking = true;
+            if (btnAudio) btnAudio.innerText = '⏹ Stop Audio';
+
+            currentAudio.play();
+            
+            currentAudio.onended = function() {
+                isSpeaking = false;
+                currentAudio = null;
+                if (btnAudio) btnAudio.innerText = originalLabel;
+            };
+        } catch (err) {
+            alert('Audio Error: ' + err.message);
+            if (btnAudio) btnAudio.innerText = originalLabel;
+            isSpeaking = false;
+        }
 
     function printBook() {
         if (!currentPages.length) {
