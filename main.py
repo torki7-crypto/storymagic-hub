@@ -99,15 +99,16 @@ class EpubBuilder:
         return buffer.getvalue()
 
 
+
 # ==========================================
 # 2.5. Быстрый асинхронный генератор Replicate
 # ==========================================
 
-# Ограничиваем до 3 одновременных запросов, чтобы Replicate не выдавал ошибку 429
-replicate_semaphore = asyncio.Semaphore(3)
+# Разрешаем запускать до 4 картинок параллельно
+replicate_semaphore = asyncio.Semaphore(4)
 
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
-    """Генерирует иллюстрацию через Replicate API с защитой от таймаутов и лимитов."""
+    """Генерирует иллюстрацию через Replicate API с поддержкой статуса 202."""
     token = os.environ.get("REPLICATE_API_TOKEN")
     if not token:
         print("ERROR: REPLICATE_API_TOKEN is missing!")
@@ -120,10 +121,10 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
         f"{safe_prompt}, magical storybook art, vibrant colors, vector and digital painting."
     )
 
+    # Убираем Prefer: wait, чтобы запрос не зависал на 30 секунд
     headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Prefer": "wait=25"
+        "Content-Type": "application/json"
     }
 
     payload = {
@@ -136,12 +137,11 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
     }
 
     async with replicate_semaphore:
-        # Небольшая пауза между стартами, чтобы не превысить лимит запросов в секунду
-        await asyncio.sleep(index * 0.4)
+        await asyncio.sleep(index * 0.3)
         
         try:
             print(f"Sending request to Replicate for chapter {index+1}...")
-            async with httpx.AsyncClient(timeout=35.0) as client_http:
+            async with httpx.AsyncClient(timeout=45.0) as client_http:
                 response = await client_http.post(
                     "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
                     headers=headers,
@@ -150,28 +150,30 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
                 
                 print(f"Chapter {index+1} Replicate status: {response.status_code}")
                 
-                if response.status_code in [200, 201]:
+                # 200, 201 и 202 — это успешные коды запуска генерации!
+                if response.status_code in [200, 201, 202]:
                     data = response.json()
                     output = data.get("output")
                     
-                    # Если картинка готова сразу — возвращаем ссылку
+                    # Если картинка уже готова сразу
                     if output:
                         return output[0] if isinstance(output, list) else output
                     
-                    # Если модель еще дорисовывает (status: processing), проверяем готовность
+                    # Если статус "starting" или "processing", проверяем ссылку каждые 1.5 сек
                     poll_url = data.get("urls", {}).get("get")
                     if poll_url:
-                        for _ in range(10):
-                            await asyncio.sleep(2.0)
+                        for attempt in range(25):
+                            await asyncio.sleep(1.5)
                             poll_res = await client_http.get(poll_url, headers=headers)
                             if poll_res.status_code == 200:
                                 poll_data = poll_res.json()
                                 status_str = poll_data.get("status")
                                 if status_str == "succeeded":
                                     out = poll_data.get("output")
+                                    print(f"Chapter {index+1} image READY!")
                                     return out[0] if isinstance(out, list) else out
                                 elif status_str in ["failed", "canceled"]:
-                                    print(f"Chapter {index+1} generation failed on Replicate.")
+                                    print(f"Chapter {index+1} failed on Replicate: {poll_data.get('error')}")
                                     break
                 else:
                     print(f"Chapter {index+1} API error: {response.text}")
