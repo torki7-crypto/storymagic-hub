@@ -1,8 +1,6 @@
-fastapi>=0.110.0
-uvicorn[standard]>=0.28.0
-jinja2>=3.1.2
-pydantic>=2.0.0
-google-genai>=0.1.0
-ebooklib>=0.18
-python-multipart>=0.0.9
-requests>=2.31.0
+fastapi
+uvicorn
+pydantic
+ebooklib
+google-genai
+google-cloud-aiplatform
