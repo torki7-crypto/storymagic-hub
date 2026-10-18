@@ -100,21 +100,29 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.5. Стабильный генератор красивых иллюстраций
+# 2.5. Модуль генерации стабильных иллюстраций (Премиум-качество)
 # ==========================================
 
-async def generate_book_illustration(prompt: str, style: str, index: int) -> str:
-    """Генерирует стабильную, атмосферную иллюстрацию для главы."""
+async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
+    """Генерирует гарантированно красивую, тематическую иллюстрацию в нужном стиле."""
     try:
-        clean_desc = f"{style}, children book illustration, {prompt}"
-        encoded_prompt = urllib.parse.quote(clean_desc)
-        seed = 42 + index * 123
-        return f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=900&height=900&seed={seed}&nologo=true"
+        # Детальный промпт с указанием стиля и характеристик героя
+        full_scene_desc = (
+            f"{style}, children's book illustration with soft colors and magical feel. "
+            f"A main character matching the description: {age}-year-old {hero_name}. "
+            f"Scene content: {prompt}. "
+            f"High quality, detailed, enchanting."
+        )
+        
+        encoded_prompt = urllib.parse.quote(full_scene_desc)
+        # Используем более качественный эндпоинт с уникальным сидом для каждой страницы
+        seed = 12345 + index * 987
+        return f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=900&height=900&seed={seed}&nologo=true&model=flux"
     except Exception as e:
         print(f"Image Error: {e}")
-        return f"https://picsum.photos/seed/story_{index}/900/900"
-
-
+        # Запасной вариант
+        return f"https://picsum.photos/seed/childstory_{index}/900/900"
+        
 # ==========================================
 # 3. Маршруты API
 # ==========================================
@@ -138,19 +146,22 @@ async def generate_book_form(
         if photo and photo.filename:
             await photo.read()
 
-        # Профессиональный промпт для связной книги на 8 глав без повторения возраста
+       # Профессиональный промпт, который заставляет Gemini писать и ДУМАТЬ как иллюстратор
         prompt = f"""
-You are an award-winning children's book author. Write a single, cohesive, heartwarming story featuring a {age}-year-old main character named {hero_name}.
+You are an award-winning children's book author and illustrator. Write a single, cohesive, heartwarming story featuring a {age}-year-old main character named {hero_name}.
 Story Theme: {theme}.
+Visual Style: {style} (e.g., Watercolor, Fairy Tale).
 Language: Write the ENTIRE book strictly in {target_lang}.
 
-CRITICAL STRUCTURE RULES:
-1. The book must consist of EXACTLY 8 chapters forming ONE continuous, developing plot (beginning, journey, climax, resolution). Chapter 2 must follow Chapter 1, Chapter 3 must follow Chapter 2, and so on.
-2. DO NOT repeat the child's age or name awkwardly in every paragraph. Write naturally, like a real published children's book.
-3. For each chapter, provide:
-   - A captivating chapter title.
-   - 2-3 rich paragraphs of storytelling text.
-   - A short, vivid English 'image_prompt' describing the visual scene for that specific chapter's illustration.
+CRITICAL VISUAL RULES:
+1. The book must consist of EXACTLY 8 chapters forming ONE continuous plot.
+2. Every chapter MUST include a short, vivid, descriptive English 'image_prompt' (e.g., "Watercolor painting of Alice in a magical forest looking at glowing fireflies").
+3. The image_prompts must ensure visual continuity (e.g., same character appearance) and strictly adhere to the chosen {style}.
+
+Requirements for each chapter:
+- A captivating chapter title.
+- 2-3 rich paragraphs of storytelling text.
+- A short, vivid English 'image_prompt' describing the visual scene for that specific chapter's illustration.
 """
 
         gemini_response = client.models.generate_content(
