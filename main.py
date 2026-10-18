@@ -281,6 +281,4 @@ async def privacy_policy():
     """Отдает страницу политики конфиденциальности из папки templates."""
     if os.path.exists("templates/privacy.html"):
         return FileResponse("templates/privacy.html")
-    if os.path.exists("privacy.html"):
-        return FileResponse("privacy.html")
-    return HTMLResponse("<h1>Privacy Policy file not found</h1>", status_code=404)
+    return HTMLResponse("<h1>Error: privacy.html not found in templates folder</h1>", status_code=404)
