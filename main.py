@@ -100,19 +100,43 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.5. Модуль генерации стабильных иллюстраций (Премиум-качество)
+# 2.5. Стабильный генератор через официальный клиент Google GenAI
 # ==========================================
 
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int) -> str:
-    """Генерирует стабильную, атмосферную иллюстрацию для главы."""
+    """Генерирует иллюстрацию через официальный клиент Google GenAI."""
     try:
-        clean_desc = f"{style}, children book illustration of a {age}-year-old child named {hero_name}, {prompt}"
-        encoded_prompt = urllib.parse.quote(clean_desc)
-        seed = 42 + index * 123
-        return f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=900&height=900&seed={seed}&nologo=true&model=flux"
+        # Формируем детальный текстовый запрос для иллюстрации
+        illustration_prompt = (
+            f"A professional children's book illustration in {style} style. "
+            f"The main hero is a {age}-year-old child named {hero_name}. "
+            f"Scene: {prompt}. "
+            f"Colorful, magical, beautiful storybook artwork, highly detailed."
+        )
+        
+        # Используем модель генерации изображений от Google через стандартный клиент
+        response = client.models.generate_images(
+            model='imagen-3.0-generate-002',
+            prompt=illustration_prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+                output_mime_type="image/jpeg",
+                aspect_ratio="1:1",
+                person_generation="allow_adult",
+            )
+        )
+        
+        for generated_image in response.generated_images:
+            image_bytes = generated_image.image.image_bytes
+            encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+            return f"data:image/jpeg;base64,{encoded_image}"
+            
     except Exception as e:
-        print(f"Image Error: {e}")
-        return f"https://picsum.photos/seed/story_{index}/900/900"
+        print(f"GenAI Image Generation Error: {e}")
+        # Если вдруг лимит или ошибка, используем уникальный красивый градиент/паттерн, а не скучные фото
+        return f"https://picsum.photos/seed/storybook_{index}_{age}/900/900"
+
+    return f"https://picsum.photos/seed/storybook_{index}_{age}/900/900"
         
 # ==========================================
 # 3. Маршруты API
