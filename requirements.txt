@@ -7,3 +7,4 @@ google-cloud-aiplatform
 python-multipart
 httpx
 edge-tts
+weasyprint
