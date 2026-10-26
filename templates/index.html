@@ -238,7 +238,7 @@
             margin-bottom: 4px;
             color: #f1e4ff;
         }
-        .custom-input, .custom-select {
+        .custom-input, .custom-select, .custom-textarea {
             width: 100%;
             padding: 9px 12px;
             background: rgba(255, 255, 255, 0.08);
@@ -247,6 +247,7 @@
             color: #fff;
             font-size: 0.9em;
             outline: none;
+            font-family: inherit;
         }
         .custom-select option, .custom-select optgroup { background: #241438; color: #fff; }
 
@@ -696,6 +697,12 @@
                         <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhotoSelect(event)">
                     </div>
 
+                    <!-- НОВОЕ ПОЛЕ: Посвящение от родителей -->
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-dedication">❤️ Parental Dedication (Optional)</label>
+                        <textarea id="customDedication" class="custom-textarea" rows="2" placeholder="e.g. To our dearest daughter Alice on your 7th birthday! Love, Mom & Dad"></textarea>
+                    </div>
+
                     <div class="input-group">
                         <label class="input-label" id="lbl-hero-name">Hero Name</label>
                         <input type="text" id="heroName" class="custom-input" value="Alice">
@@ -850,6 +857,8 @@
     var selectedPhotoFile = null;
     var currentBookTitle = "Magical Story";
     var isPaidUser = false;
+    var currentDedicationText = "";
+    var currentPsychologyQuestions = [];
 
     function setText(id, val) {
         var el = document.getElementById(id);
@@ -990,12 +999,18 @@
         var heroNameVal = (heroInput && heroInput.value.trim()) ? heroInput.value.trim() : 'Hero';
         currentBookTitle = heroNameVal + ' - ' + selectedTheme;
 
+        var dedicationInput = document.getElementById('customDedication');
+        var dedicationVal = dedicationInput ? dedicationInput.value.trim() : '';
+
         var formData = new FormData();
         formData.append('hero_name', heroNameVal);
         formData.append('age', document.getElementById('childAge').value || 7);
         formData.append('theme', selectedTheme);
         formData.append('style', document.getElementById('artStyle').value);
         formData.append('lang', currentLang);
+        if (dedicationVal) {
+            formData.append('custom_dedication', dedicationVal);
+        }
 
         if (selectedPhotoFile) {
             formData.append('photo', selectedPhotoFile);
@@ -1007,9 +1022,11 @@
             if (result.success && result.pages) {
                 currentPages = result.pages;
                 if (result.title) currentBookTitle = result.title;
+                currentDedicationText = result.dedication_text || dedicationVal;
+                currentPsychologyQuestions = result.psychology_questions || [];
                 setText('statusMsg', d.statusDone);
                 showSlide(0);
-                saveBookToLibrary(heroNameVal, selectedTheme, currentPages);
+                saveBookToLibrary(heroNameVal, selectedTheme, currentPages, currentDedicationText, currentPsychologyQuestions);
             } else {
                 setText('statusMsg', '❌ ' + (result.error || 'Error'));
             }
@@ -1018,7 +1035,7 @@
         }
     }
 
-    function saveBookToLibrary(hero, theme, pages) {
+    function saveBookToLibrary(hero, theme, pages, dedication, questions) {
         try {
             var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
             lib.unshift({
@@ -1027,6 +1044,8 @@
                 theme: theme,
                 cover: pages[0].image_url,
                 pages: pages,
+                dedication_text: dedication,
+                psychology_questions: questions,
                 date: new Date().toLocaleDateString()
             });
             localStorage.setItem('storymagic_lib', JSON.stringify(lib.slice(0, 10)));
@@ -1054,6 +1073,8 @@
             el.onclick = function() {
                 currentPages = book.pages;
                 currentBookTitle = book.hero + ' - ' + book.theme;
+                currentDedicationText = book.dedication_text || '';
+                currentPsychologyQuestions = book.psychology_questions || [];
                 switchTab('create');
                 showSlide(0);
             };
@@ -1142,7 +1163,8 @@
             language_code: currentLang,
             author: 'StoryMagic Hub',
             description: 'Personalized therapeutic children book',
-            cover_image: currentPages[0] ? currentPages[0].image_url : null,
+            dedication_text: currentDedicationText || '',
+            psychology_questions: currentPsychologyQuestions || [],
             chapters: chapters,
             is_paid: isPaidUser
         };
@@ -1195,6 +1217,7 @@
             aboutStep2: '<strong>Step 2:</strong> Upload an optional photo & confirm parental consent.',
             aboutStep3: '<strong>Step 3:</strong> Enjoy a unique, beautifully illustrated storybook in minutes!',
             lblFormTitle: 'Book Settings', lblPhoto: '📷 Child Photo (for likeness)', photoChoose: 'Click to select photo',
+            lblDedication: '❤️ Parental Dedication (Optional)',
             lblHeroName: 'Hero Name', valHeroName: 'Alice', lblHeroAge: 'Age', lblStoryTheme: 'Story Theme',
             grpTherapy: '🌱 Therapeutic Stories', themeDark: 'Fear of the dark & night shadows', themeSchool: 'First day at nursery / school',
             themeAnger: 'Anger, tantrums & big feelings', themeToys: 'Tidying up toys & order', themeShare: 'Kindness, sharing & making friends',
@@ -1233,6 +1256,7 @@
             aboutStep2: '<strong>Шаг 2:</strong> Загрузите фото (по желанию) и подтвердите согласие родителя.',
             aboutStep3: '<strong>Шаг 3:</strong> Получите готовую иллюстрированную книгу за пару минут!',
             lblFormTitle: 'Параметры книги', lblPhoto: '📷 Фото ребёнка (для сходства)', photoChoose: 'Нажмите, чтобы выбрать фото',
+            lblDedication: '❤️ Посвящение от родителей (необязательно)',
             lblHeroName: 'Имя героя', valHeroName: 'Алиса', lblHeroAge: 'Возраст', lblStoryTheme: 'Тема сказки',
             grpTherapy: '🌱 Терапевтические сказки', themeDark: 'Страх темноты и ночных теней', themeSchool: 'Первый день в садике / школе',
             themeAnger: 'Злость, капризы и эмоции', themeToys: 'Уборка игрушек и аккуратность', themeShare: 'Умение делиться и дружба',
@@ -1258,7 +1282,7 @@
             navAbout: 'Start / O nas', navCreate: 'Stwórz bajkę', navLibrary: 'Moje książki', navOrder: 'Zamów druk', btnTopup: '💎 Doładuj',
             heroTitle: 'Spersonalizowane bajki terapeutyczne dla dzieci', heroDesc: 'Prześlij zdjęcie dziecka, a stworzymy ciepłą opowieść, w której bohater pokonuje lęki.', heroCta: '🚀 Rozpocznij tworzenie',
             step1Title: '1. Zdjęcie i bohater', step1Desc: 'Podaj imię i dodaj zdjęcie dziecka.', step2Title: '2. Wątek terapeutyczny', step2Desc: 'Wybierz temat bajki terapeutycznej.', step3Title: '3. Czytaj lub zamów', step3Desc: 'Czytaj online, pobierz ePub lub zamów druk.',
-            lblFormTitle: 'Ustawienia książki', lblPhoto: '📷 Zdjęcie dziecka', photoChoose: 'Kliknij, aby wybrać zdjęcie', lblHeroName: 'Imię bohatera', valHeroName: 'Zosia', lblHeroAge: 'Wiek', lblStoryTheme: 'Temat bajki',
+            lblFormTitle: 'Ustawienia książki', lblPhoto: '📷 Zdjęcie dziecka', photoChoose: 'Kliknij, aby wybrać zdjęcie', lblDedication: '❤️ Dedykacja od rodziców', lblHeroName: 'Imię bohatera', valHeroName: 'Zosia', lblHeroAge: 'Wiek', lblStoryTheme: 'Temat bajki',
             btnCreateStory: '🪄 Wygeneruj bajkę', badgeCover: 'Rozdział 1', badgePage: 'Rozdział', defaultWelcome: 'Wypełnij formularz po lewej stronie i kliknij «Wygeneruj bajkę».',
             btnPrev: '❮ Wstecz', btnNext: 'Dalej ❯', btnAudioLbl: 'Audiobook', btnEpubLbl: 'Pobierz ePub', btnOrderLbl: 'Zamów książkę',
             lockTitle: 'Ostatni rozdział zablokowany', lockDesc: 'Odblokuj finał bajki, audiobook oraz pobieranie pliku ePub!', lockBtn: '✨ Odblokuj pełną bajkę',
@@ -1267,7 +1291,7 @@
         ro: {
             navAbout: 'Acasă', navCreate: 'Creează poveste', navLibrary: 'Cărțile mele', navOrder: 'Comandă tipar', btnTopup: '💎 Încarcă',
             heroTitle: 'Cărți terapeutice personalizate pentru copii', heroDesc: 'Încarcă poza copilului și vom crea o poveste plină de căldură.', heroCta: '🚀 Începe crearea',
-            lblFormTitle: 'Setări carte', lblPhoto: '📷 Poză copil', photoChoose: 'Apasă для a alege poza', lblHeroName: 'Nume erou', valHeroName: 'Ana', lblHeroAge: 'Vârstă', lblStoryTheme: 'Tema poveștii',
+            lblFormTitle: 'Setări carte', lblPhoto: '📷 Poză copil', photoChoose: 'Apasă pentru a alege poza', lblDedication: '❤️ Dedicație de la părinți', lblHeroName: 'Nume erou', valHeroName: 'Ana', lblHeroAge: 'Vârstă', lblStoryTheme: 'Tema poveștii',
             btnCreateStory: '🪄 Generează cartea', badgeCover: 'Capitolul 1', badgePage: 'Capitolul', defaultWelcome: 'Completează formularul din stânga și apasă «Generează cartea».',
             btnPrev: '❮ Înapoi', btnNext: 'Înainte ❯', btnAudioLbl: 'Audiobook', btnEpubLbl: 'Descarcă ePub', btnOrderLbl: 'Comandă cartea',
             lockTitle: 'Ultimul capitol este blocat', lockDesc: 'Deblochează finalul magic al poveștii și descărcarea ePub!', lockBtn: '✨ Deblochează cartea',
@@ -1276,7 +1300,7 @@
         it: {
             navAbout: 'Home', navCreate: 'Crea favola', navLibrary: 'I miei libri', navOrder: 'Ordina stampa', btnTopup: '💎 Ricarica',
             heroTitle: 'Libri terapeutici personalizzati per bambini', heroDesc: 'Carica la foto del tuo bimbo e creeremo una dolce storia illustrata.', heroCta: '🚀 Inizia a creare',
-            lblFormTitle: 'Dettagli libro', lblPhoto: '📷 Foto del bimbo', photoChoose: 'Clicca per scegliere la foto', lblHeroName: 'Nome dell\'eroe', valHeroName: 'Sofia', lblHeroAge: 'Età', lblStoryTheme: 'Tema della favola',
+            lblFormTitle: 'Dettagli libro', lblPhoto: '📷 Foto del bimbo', photoChoose: 'Clicca per scegliere la foto', lblDedication: '❤️ Dedica dei genitori', lblHeroName: 'Nome dell\'eroe', valHeroName: 'Sofia', lblHeroAge: 'Età', lblStoryTheme: 'Tema della favola',
             btnCreateStory: '🪄 Genera il libro', badgeCover: 'Capitolo 1', badgePage: 'Capitolo', defaultWelcome: 'Compila i parametri a sinistra e clicca su «Genera il libro».',
             btnPrev: '❮ Indietro', btnNext: 'Avanti ❯', btnAudioLbl: 'Audiofavola', btnEpubLbl: 'Scarica ePub', btnOrderLbl: 'Ordina libro',
             lockTitle: 'Capitolo finale bloccato', lockDesc: 'Sblocca il magico finale della favola e il download ePub!', lockBtn: '✨ Sblocca il libro intero',
@@ -1285,7 +1309,7 @@
         tr: {
             navAbout: 'Ana Sayfa', navCreate: 'Masal Oluştur', navLibrary: 'Kitaplarım', navOrder: 'Baskı Siparişi', btnTopup: '💎 Bakiye Yükle',
             heroTitle: 'Çocuklar İçin Kişiselleştirilmiş Terapötik Kitaplar', heroDesc: 'Çocuğunuzun fotoğrafını yükleyin, eğitici ve sıcak bir masal hazırlayalım.', heroCta: '🚀 Oluşturmaya Başla',
-            lblFormTitle: 'Kitap Seçenekleri', lblPhoto: '📷 Çocuk Fotoğrafı', photoChoose: 'Fotoğraf seçmek için tıklayın', lblHeroName: 'Kahramanın Adı', valHeroName: 'Elif', lblHeroAge: 'Yaş', lblStoryTheme: 'Masal Teması',
+            lblFormTitle: 'Kitap Seçenekleri', lblPhoto: '📷 Çocuk Fotoğrafı', photoChoose: 'Fotoğraf seçmek için tıklayın', lblDedication: '❤️ Aile İthafı', lblHeroName: 'Kahramanın Adı', valHeroName: 'Elif', lblHeroAge: 'Yaş', lblStoryTheme: 'Masal Teması',
             btnCreateStory: '🪄 Kitabı Oluştur', badgeCover: '1. Bölüm', badgePage: 'Bölüm', defaultWelcome: 'Soldaki alanları doldurun ve «Kitabı Oluştur» butonuna tıklayın.',
             btnPrev: '❮ Geri', btnNext: 'İleri ❯', btnAudioLbl: 'Sesli Masal', btnEpubLbl: 'ePub İndir', btnOrderLbl: 'Kitap Siparişi',
             lockTitle: 'Son Bölüm Kilitli', lockDesc: 'Masalın büyülü finalini ve ePub indirme özelliğini açın!', lockBtn: '✨ Tüm Kitabı Aç',
@@ -1332,6 +1356,7 @@
         setText('lbl-form-title', d.lblFormTitle);
         setText('lbl-photo', d.lblPhoto);
         if (!selectedPhotoFile) setText('photoStatusText', d.photoChoose);
+        setText('lbl-dedication', d.lblDedication);
 
         setText('lbl-hero-name', d.lblHeroName);
         var heroInput = document.getElementById('heroName');
