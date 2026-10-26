@@ -697,7 +697,7 @@
                         <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhotoSelect(event)">
                     </div>
 
-                    <!-- НОВОЕ ПОЛЕ: Посвящение от родителей -->
+                    <!-- Посвящение от родителей -->
                     <div class="input-group">
                         <label class="input-label" id="lbl-dedication">❤️ Parental Dedication (Optional)</label>
                         <textarea id="customDedication" class="custom-textarea" rows="2" placeholder="e.g. To our dearest daughter Alice on your 7th birthday! Love, Mom & Dad"></textarea>
@@ -810,8 +810,12 @@
                 <p style="color:#ded1f7; font-size:1em; margin-bottom:20px;" id="order-desc">We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.</p>
                 
                 <div class="input-group">
+                    <label class="input-label" id="lbl-order-email">Email для заказа</label>
+                    <input type="text" class="custom-input" id="order-email-input" placeholder="test@example.com" value="test@example.com">
+                </div>
+                <div class="input-group">
                     <label class="input-label" id="lbl-order-addr">Delivery Address</label>
-                    <input type="text" class="custom-input" id="order-addr-input" placeholder="Street, Apt, City, Postcode">
+                    <input type="text" class="custom-input" id="order-addr-input" placeholder="Street, Apt, City, Postcode" value="123 Test Street, London, E1 6AN">
                 </div>
                 <div class="input-group">
                     <label class="input-label" id="lbl-order-type">Cover Type</label>
@@ -820,7 +824,7 @@
                         <option id="opt-order-prem">Premium Gloss with Foil — £19.99</option>
                     </select>
                 </div>
-                <button type="button" class="magic-btn" onclick="openPaymentModal()" style="margin-top:16px;" id="btn-order-pay">Proceed to Payment</button>
+                <button type="button" class="magic-btn" onclick="submitLuluOrder()" style="margin-top:16px;" id="btn-order-pay">Proceed to Payment / Sandbox Order</button>
             </div>
         </div>
     </main>
@@ -1199,6 +1203,79 @@
         }
     }
 
+    // Интеграция заказа в Sandbox Lulu
+    async function submitLuluOrder() {
+        if (!currentPages || currentPages.length === 0) {
+            alert(currentLang === 'ru' ? 'Сначала сгенерируйте книгу!' : 'Please generate a book first!');
+            return;
+        }
+
+        var emailInput = document.getElementById('order-email-input');
+        var addrInput = document.getElementById('order-addr-input');
+        
+        var email = emailInput ? emailInput.value.trim() : 'test@example.com';
+        var street = addrInput ? addrInput.value.trim() : '123 Test Street, London';
+
+        if (!email) {
+            alert('Введите Email');
+            return;
+        }
+
+        var chapters = currentPages.map(function(page, index) {
+            var paragraphs = page.text.split('\n\n').filter(Boolean);
+            return {
+                chapter_number: index + 1,
+                title: page.title || ('Chapter ' + (index + 1)),
+                paragraphs: paragraphs.length ? paragraphs : [page.text],
+                image_url: page.image_url
+            };
+        });
+
+        var storyBookData = {
+            title: currentBookTitle || 'StoryMagic Book',
+            language_code: currentLang,
+            author: 'StoryMagic Hub',
+            description: 'Personalized therapeutic children book',
+            dedication_text: currentDedicationText || '',
+            psychology_questions: currentPsychologyQuestions || [],
+            chapters: chapters,
+            is_paid: true // Разрешаем отправку для теста
+        };
+
+        var shippingAddress = {
+            name: "Test Customer",
+            street1: street,
+            city: "London",
+            postcode: "E1 6AN",
+            country_code: "GB"
+        };
+
+        var payload = {
+            story: storyBookData,
+            contact_email: email,
+            shipping_address: shippingAddress
+        };
+
+        try {
+            var response = await fetch('/api/lulu-create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            var result = await response.json();
+            if (response.ok && result.success) {
+                alert('Заказ успешно отправлен в Sandbox Lulu! ID заказа: ' + (result.lulu_response.id || 'создан'));
+                console.log('Lulu response:', result.lulu_response);
+            } else {
+                alert('Ошибка при оформлении заказа: ' + (result.detail || 'Неизвестная ошибка'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Произошла ошибка соединения с сервером.');
+        }
+    }
+
     var dictionary = {
         en: {
             navAbout: 'Home / About', navCreate: 'Create Story', navLibrary: 'My Books', navOrder: 'Order Hardcover', btnTopup: '💎 Top Up',
@@ -1272,7 +1349,7 @@
             libTitle: '📚 Ваши созданные книги', libDesc: 'История всех книг, сгенерированных на этом устройстве.', libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
             orderTitle: '🚚 Заказ книги в твердом переплете', orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим до двери.',
             lblOrderAddr: 'Адрес доставки', placeholderAddr: 'Улица, дом, квартира, индекс', lblOrderType: 'Тип переплета',
-            optOrderHard: 'Твердый матовый переплет — £14.99', optOrderPrem: 'Премиум глянец с тиснением — £19.99', btnOrderPay: 'Перейти к оплате',
+            optOrderHard: 'Твердый матовый переплет — £14.99', optOrderPrem: 'Премиум глянец с тиснением — £19.99', btnOrderPay: 'Отправить заказ в Sandbox Lulu',
             payTitle: 'Выберите тариф', paySubtitle: 'Разблокируйте финал истории, скачивание ePub и озвучку',
             plan1Title: 'Starter', plan1Desc: '5 персональных сказок + ePub', plan1Btn: 'Купить',
             plan2Title: 'Unlimited', plan2Desc: 'Безлимит сказок + экспорт ePub', plan2Btn: 'Выбрать',
