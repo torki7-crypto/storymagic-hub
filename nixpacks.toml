@@ -1,0 +1,10 @@
+[phases.setup]
+nixPkgs = [
+    "python3",
+    "pango",
+    "gdk-pixbuf",
+    "cairo",
+    "glib",
+    "libffi",
+    "shared-mime-info"
+]
