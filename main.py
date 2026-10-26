@@ -58,7 +58,7 @@ class TTSRequest(BaseModel):
 
 
 # ==========================================
-# 2. Модуль сборки ePub3 (Заголовки внутри глав)
+# 2. Модуль сборки ePub3 (С мультиязычным финалом и заголовками в главах)
 # ==========================================
 
 
@@ -164,7 +164,6 @@ class EpubBuilder:
                     [f"<p>{p.strip()}</p>" for p in ch.paragraphs if p.strip()]
                 )
                 
-                # Заголовок выводится прямо перед картинкой и текстом главы
                 chapter_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -187,8 +186,19 @@ class EpubBuilder:
                 spine.append(chapter_item)
                 toc.append(chapter_item)
 
-            # 3. Терапевтический блок с вопросами в конце
+            # 3. Терапевтический блок с вопросами в конце (с учетом языка книги)
             if story.psychology_questions:
+                psych_headers = {
+                    "ru": ("💡 Вопросы для душевного разговора", "Эти вопросы помогут обсудить сказку с ребенком и закрепить ее терапевтический эффект:"),
+                    "pl": ("💡 Pytania do szczerej rozmowy", "Te pytania pomogą omówić bajkę z dzieckiem i utrwalić jej efekt terapeutyczny:"),
+                    "ro": ("💡 Întrebări pentru o discuție sinceră", "Aceste întrebări vă vor ajuta să discutați povestea cu copilul și să-i consolidați efectul terapeutic:"),
+                    "it": ("💡 Domande per una conversazione intima", "Queste domande aiuteranno a discutere la fiaba con il bambino e a consolidare il suo effetto terapeutico:"),
+                    "tr": ("💡 İçten Bir Sohbet İçin Sorular", "Bu sorular, masalı çocuğunuzla tartışmanıza ve terapötik etkisini pekiştirmenize yardımcı olacaktır:")
+                }
+                default_header = ("💡 Questions for a Heart-to-Heart Talk", "These questions will help discuss the story with your child and reinforce its therapeutic effect:")
+                
+                h_title, h_desc = psych_headers.get(lang, default_header)
+
                 questions_html = "".join([f"<li>{q}</li>" for q in story.psychology_questions])
                 psych_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
@@ -196,8 +206,8 @@ class EpubBuilder:
 <head><title>Talk with Child</title><link rel="stylesheet" href="style/main.css" type="text/css"/></head>
 <body>
     <div class="psychology-page">
-        <h2>💡 Вопросы для душевного разговора</h2>
-        <p>Эти вопросы помогут обсудить сказку с ребенком и закрепить ее терапевтический эффект:</p>
+        <h2>{h_title}</h2>
+        <p>{h_desc}</p>
         <ul>{questions_html}</ul>
     </div>
 </body>
@@ -435,7 +445,7 @@ Language: Write the ENTIRE book strictly in {target_lang}.
 
 ADDITIONAL SECTIONS TO GENERATE:
 1. {dedication_prompt_rule}
-2. 'psychology_questions': Generate exactly 3 gentle, open-ended psychological questions for parents to discuss with a {age}-year-old child at the end of the story based on the theme.
+2. 'psychology_questions': Generate exactly 3 gentle, open-ended psychological questions for parents to discuss with a {age}-year-old child at the end of the story based on the theme (written in {target_lang}).
 
 CRITICAL VISUAL & ANATOMY RULES FOR IMAGE PROMPTS:
 1. The book must consist of EXACTLY 8 chapters forming ONE continuous plot.
