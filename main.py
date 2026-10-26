@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from google import genai
 from google.genai import types
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 app = FastAPI(title="StoryMagic Hub Backend")
 
@@ -29,7 +29,7 @@ client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
 
 
 # ==========================================
-# 1. Модели данных (8 глав)
+# 1. Модели данных (Безопасные дефолты Pydantic v2)
 # ==========================================
 
 
@@ -45,7 +45,9 @@ class StoryBookData(BaseModel):
     title: str
     language_code: str = "en"
     author: str = "StoryMagic Hub"
-    description: Optional[str] = ""
+    description: Optional[str] = Field(default="")
+    dedication_text: Optional[str] = Field(default="")
+    psychology_questions: List[str] = Field(default_factory=list)  # Безопасный дефолтный список
     chapters: List[ChapterData]
     is_paid: Optional[bool] = False
 
@@ -56,7 +58,7 @@ class TTSRequest(BaseModel):
 
 
 # ==========================================
-# 2. Модуль сборки ePub3 (С ПОДДЕРЖКОЙ BASE64 И ССЫЛОК)
+# 2. Модуль сборки ePub3 (С защитой от пустых блоков)
 # ==========================================
 
 
@@ -64,9 +66,12 @@ class EpubBuilder:
     CSS_STYLES = """
     body { font-family: Georgia, serif; line-height: 1.6; margin: 5%; color: #2D3748; }
     h1 { color: #4A5568; text-align: center; margin-bottom: 1em; }
+    h2 { color: #4A5568; text-align: center; margin-top: 1.5em; }
     .img-container { text-align: center; margin: 1.5em 0; }
     img { max-width: 100%; height: auto; border-radius: 12px; }
     p { text-indent: 1.2em; margin-bottom: 0.8em; font-size: 1.1em; }
+    .dedication-page { text-align: center; font-style: italic; margin-top: 4em; padding: 2em; background: #FAF5FF; border-radius: 12px; }
+    .psychology-page { background: #F0FFF4; padding: 1.5em; border-radius: 12px; margin-top: 2em; }
     """
 
     @classmethod
@@ -92,6 +97,35 @@ class EpubBuilder:
         async with httpx.AsyncClient(
             timeout=30.0, follow_redirects=True
         ) as http_client:
+            
+            # 1. Страница Посвящения (если текст не пустой)
+            dedication = (story.dedication_text or "").strip()
+            if dedication:
+                safe_dedication = dedication.replace("\n", "<br/>")
+                dedication_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>Dedication</title><link rel="stylesheet" href="style/main.css" type="text/css"/></head>
+<body>
+    <div class="dedication-page">
+        <h2>❤️</h2>
+        <p>{safe_dedication}</p>
+    </div>
+</body>
+</html>"""
+                dedication_item = epub.EpubHtml(
+                    title="Dedication",
+                    file_name="dedication.xhtml",
+                    lang=lang,
+                    uid="dedication",
+                )
+                dedication_item.content = dedication_xhtml.encode("utf-8")
+                dedication_item.add_item(css_item)
+                book.add_item(dedication_item)
+                spine.append(dedication_item)
+                toc.append(dedication_item)
+
+            # 2. Главы книги
             for idx, ch in enumerate(story.chapters):
                 ch_num = ch.chapter_number or (idx + 1)
                 img_html = ""
@@ -102,9 +136,7 @@ class EpubBuilder:
                         header, b64_data = ch.image_url.split(",", 1)
                         img_bytes = base64.b64decode(b64_data)
                     except Exception as e:
-                        print(
-                            f"Failed to decode base64 image for chapter {ch_num}: {e}"
-                        )
+                        print(f"Failed to decode base64 image for chapter {ch_num}: {e}")
 
                 elif ch.image_url and ch.image_url.startswith("http"):
                     try:
@@ -112,9 +144,7 @@ class EpubBuilder:
                         if img_res.status_code == 200:
                             img_bytes = img_res.content
                     except Exception as e:
-                        print(
-                            f"Failed to download image for ePub chapter {ch_num}: {e}"
-                        )
+                        print(f"Failed to download image for ePub chapter {ch_num}: {e}")
 
                 if img_bytes:
                     img_filename = f"images/chapter_{ch_num}.jpg"
@@ -127,7 +157,7 @@ class EpubBuilder:
                     book.add_item(img_item)
                     img_html = f'<div class="img-container"><img src="{img_filename}" alt="{ch.title}"/></div>'
 
-                    if idx == 0:
+                    if idx == 0 and not dedication:
                         book.set_cover("cover.jpg", img_bytes)
 
                 paragraphs_html = "".join(
@@ -155,6 +185,33 @@ class EpubBuilder:
                 spine.append(chapter_item)
                 toc.append(chapter_item)
 
+            # 3. Терапевтический блок с вопросами в конце
+            if story.psychology_questions:
+                questions_html = "".join([f"<li>{q}</li>" for q in story.psychology_questions])
+                psych_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>Talk with Child</title><link rel="stylesheet" href="style/main.css" type="text/css"/></head>
+<body>
+    <div class="psychology-page">
+        <h2>💡 Вопросы для душевного разговора</h2>
+        <p>Эти вопросы помогут обсудить сказку с ребенком и закрепить ее терапевтический эффект:</p>
+        <ul>{questions_html}</ul>
+    </div>
+</body>
+</html>"""
+                psych_item = epub.EpubHtml(
+                    title="Questions for Discussion",
+                    file_name="psychology_questions.xhtml",
+                    lang=lang,
+                    uid="psychology",
+                )
+                psych_item.content = psych_xhtml.encode("utf-8")
+                psych_item.add_item(css_item)
+                book.add_item(psych_item)
+                spine.append(psych_item)
+                toc.append(psych_item)
+
         book.toc = tuple(toc)
         book.add_item(epub.EpubNcx())
         book.add_item(epub.EpubNav())
@@ -174,7 +231,6 @@ CACHED_IMAGE_MODELS: Optional[List[str]] = None
 
 
 def get_available_image_models() -> List[str]:
-    """Запрашивает у Google AI Studio точный список моделей картинок, доступных для вашего ключа."""
     global CACHED_IMAGE_MODELS
     if CACHED_IMAGE_MODELS is not None:
         return CACHED_IMAGE_MODELS
@@ -186,7 +242,6 @@ def get_available_image_models() -> List[str]:
             clean_name = name.replace("models/", "")
             if "image" in clean_name.lower() or "imagen" in clean_name.lower():
                 found.append(clean_name)
-        print(f"AVAILABLE GOOGLE IMAGE MODELS FOR THIS KEY: {found}")
     except Exception as e:
         print(f"Error listing Google models: {e}")
 
@@ -230,7 +285,6 @@ async def generate_book_illustration(
             )
         contents.append(full_prompt)
 
-        # 1. Запрашиваем реальные модели Google и вызываем через generate_content (как требует новый SDK)
         google_models = await asyncio.to_thread(get_available_image_models)
 
         for model_name in google_models:
@@ -240,9 +294,7 @@ async def generate_book_illustration(
                         client.models.generate_content,
                         model=model_name,
                         contents=(
-                            contents
-                            if "gemini" in model_name
-                            else [full_prompt]
+                            contents if "gemini" in model_name else [full_prompt]
                         ),
                         config=types.GenerateContentConfig(
                             response_modalities=modalities,
@@ -260,26 +312,17 @@ async def generate_book_illustration(
                                 b64_img = base64.b64encode(
                                     part.inline_data.data
                                 ).decode("utf-8")
-                                mime = (
-                                    part.inline_data.mime_type or "image/jpeg"
-                                )
-                                print(
-                                    f"SUCCESS: Chapter {index+1} generated via Google {model_name}"
-                                )
+                                mime = part.inline_data.mime_type or "image/jpeg"
                                 return f"data:{mime};base64,{b64_img}"
                 except Exception as e:
                     err_str = str(e)
                     if "404" in err_str or "NOT_FOUND" in err_str:
                         break
-                    print(
-                        f"[{model_name} {modalities}] Ch {index+1} info: {err_str[:140]}"
-                    )
 
-        # 2. Если ключ Google на бесплатном тарифе (или не поддерживает картинки в UK) — используем Replicate
+        # Fallback 1: Replicate
         rep_token = os.environ.get("REPLICATE_API_TOKEN")
         if rep_token:
             try:
-                print(f"Using Replicate fallback for chapter {index+1}...")
                 headers = {
                     "Authorization": f"Bearer {rep_token}",
                     "Content-Type": "application/json",
@@ -307,40 +350,28 @@ async def generate_book_illustration(
                         if poll_url:
                             for _ in range(25):
                                 await asyncio.sleep(1.5)
-                                p_res = await client_http.get(
-                                    poll_url, headers=headers
-                                )
+                                p_res = await client_http.get(poll_url, headers=headers)
                                 if p_res.status_code == 200:
                                     p_data = p_res.json()
                                     if p_data.get("status") == "succeeded":
                                         out = p_data.get("output")
-                                        return (
-                                            out[0]
-                                            if isinstance(out, list)
-                                            else out
-                                        )
-                                    elif p_data.get("status") in [
-                                        "failed",
-                                        "canceled",
-                                    ]:
+                                        return out[0] if isinstance(out, list) else out
+                                    elif p_data.get("status") in ["failed", "canceled"]:
                                         break
             except Exception as e:
-                print(f"[Replicate fallback] Ch {index+1} error: {e}")
+                print(f"[Replicate fallback] error: {e}")
 
-        # 3. Безотказный бесплатный генератор Flux (скачиваем байты на сервере, чтобы браузер не блокировал)
+        # Fallback 2: Pollinations Flux
         try:
-            print(f"Using Pollinations Flux fallback for chapter {index+1}...")
             encoded = urllib.parse.quote(full_prompt[:400])
             flux_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&seed={index+101}&nologo=true&model=flux"
-            async with httpx.AsyncClient(
-                timeout=35.0, follow_redirects=True
-            ) as client_http:
+            async with httpx.AsyncClient(timeout=35.0, follow_redirects=True) as client_http:
                 f_res = await client_http.get(flux_url)
                 if f_res.status_code == 200 and f_res.content:
                     b64_img = base64.b64encode(f_res.content).decode("utf-8")
                     return f"data:image/jpeg;base64,{b64_img}"
         except Exception as e:
-            print(f"[Flux fallback] Ch {index+1} error: {e}")
+            print(f"[Flux fallback] error: {e}")
 
     return "https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg"
 
@@ -357,6 +388,7 @@ async def generate_book_form(
     theme: str = Form("Magical journey"),
     style: str = Form("Watercolor children book illustration"),
     lang: str = Form("en"),
+    custom_dedication: Optional[str] = Form(None),
     photo: Optional[UploadFile] = File(None),
 ):
     try:
@@ -381,31 +413,39 @@ async def generate_book_form(
                 photo_bytes = raw_bytes
                 photo_mime = photo.content_type or "image/jpeg"
                 contents_for_gemini.append(
-                    types.Part.from_bytes(
-                        data=photo_bytes, mime_type=photo_mime
-                    )
+                    types.Part.from_bytes(data=photo_bytes, mime_type=photo_mime)
                 )
                 photo_instruction = """
-4. PHOTO LIKENESS (CRITICAL): Look closely at the attached photo of the child. Identify their exact physical appearance: gender, hair color, hairstyle/length, eye color, skin tone, and any cute distinctive features (like glasses, curls, freckles). You MUST include this exact physical description at the beginning of EVERY SINGLE chapter's 'image_prompt' so the illustrated character looks just like the child in the photo across all 8 chapters!
+4. PHOTO LIKENESS (CRITICAL): Look closely at the attached photo of the child. Identify their exact physical appearance: gender, hair color, hairstyle/length, eye color, skin tone, and any cute distinctive features. You MUST include this exact physical description at the beginning of EVERY SINGLE chapter's 'image_prompt'!
 """
+
+        dedication_prompt_rule = (
+            f"Dedication text provided by parents: '{custom_dedication}'."
+            if custom_dedication
+            else "Create a short, touching, warm parent dedication text for field 'dedication_text'."
+        )
 
         prompt = f"""
 You are an award-winning children's book author and illustrator. Write a single, cohesive, heartwarming story featuring a {age}-year-old main character named {hero_name}.
 Story Theme: {theme}.
-Visual Style: {style} (e.g., Watercolor, Fairy Tale).
+Visual Style: {style}.
 Language: Write the ENTIRE book strictly in {target_lang}.
+
+ADDITIONAL SECTIONS TO GENERATE:
+1. {dedication_prompt_rule}
+2. 'psychology_questions': Generate exactly 3 gentle, open-ended psychological questions for parents to discuss with a {age}-year-old child at the end of the story based on the theme.
 
 CRITICAL VISUAL & ANATOMY RULES FOR IMAGE PROMPTS:
 1. The book must consist of EXACTLY 8 chapters forming ONE continuous plot.
 2. Every chapter MUST include a short, vivid, descriptive English 'image_prompt'.
 3. The image_prompts must ensure strict visual continuity and adhere to the chosen {style}.
 {photo_instruction}
-5. ANATOMY & POSE CLARITY: In every 'image_prompt', describe simple, clear, natural poses (e.g., "standing calmly", "sitting at a wooden table", "walking on a forest path"). Avoid complex tangled poses. Explicitly mention clear anatomical structure so the image generator draws the exact number of legs and arms.
+5. ANATOMY & POSE CLARITY: In every 'image_prompt', describe simple, clear, natural poses.
 
 Requirements for each chapter:
 - A captivating chapter title.
 - 2-3 rich paragraphs of storytelling text.
-- A short, vivid English 'image_prompt' describing the character's appearance, simple natural pose, and the visual scene.
+- A short, vivid English 'image_prompt'.
 """
         contents_for_gemini.append(prompt)
 
@@ -421,11 +461,12 @@ Requirements for each chapter:
 
         story_data = StoryBookData.model_validate_json(gemini_response.text)
 
+        if custom_dedication and custom_dedication.strip():
+            story_data.dedication_text = custom_dedication.strip()
+
         tasks = []
         for idx, ch in enumerate(story_data.chapters):
-            scene_desc = (
-                ch.image_prompt or f"{style} scene {idx+1} for {hero_name}"
-            )
+            scene_desc = ch.image_prompt or f"{style} scene {idx+1} for {hero_name}"
             tasks.append(
                 generate_book_illustration(
                     scene_desc,
@@ -453,7 +494,13 @@ Requirements for each chapter:
                 }
             )
 
-        return {"success": True, "title": story_data.title, "pages": pages}
+        return {
+            "success": True, 
+            "title": story_data.title, 
+            "dedication_text": story_data.dedication_text,
+            "psychology_questions": story_data.psychology_questions,
+            "pages": pages
+        }
 
     except Exception as e:
         print(f"Generation Error: {str(e)}")
