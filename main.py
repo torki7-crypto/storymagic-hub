@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import io
 import os
 from typing import List, Optional
@@ -55,7 +56,7 @@ class TTSRequest(BaseModel):
 
 
 # ==========================================
-# 2. Модуль сборки ePub3 (С КАРТИНКАМИ!)
+# 2. Модуль сборки ePub3 (С ПОДДЕРЖКОЙ NANO BANANA И BASE64!)
 # ==========================================
 
 
@@ -88,35 +89,48 @@ class EpubBuilder:
         spine = ["nav"]
         toc = []
 
-        # Асинхронно скачиваем все иллюстрации, чтобы вшить их внутрь файла ePub
         async with httpx.AsyncClient(
             timeout=30.0, follow_redirects=True
         ) as http_client:
             for idx, ch in enumerate(story.chapters):
                 ch_num = ch.chapter_number or (idx + 1)
                 img_html = ""
+                img_bytes = None
 
-                if ch.image_url and ch.image_url.startswith("http"):
+                # 1. Если картинка пришла от Nano Banana в формате data:image/...;base64
+                if ch.image_url and ch.image_url.startswith("data:image"):
+                    try:
+                        header, b64_data = ch.image_url.split(",", 1)
+                        img_bytes = base64.b64decode(b64_data)
+                    except Exception as e:
+                        print(
+                            f"Failed to decode base64 image for chapter {ch_num}: {e}"
+                        )
+
+                # 2. Если картинка — обычная http-ссылка (запасной вариант)
+                elif ch.image_url and ch.image_url.startswith("http"):
                     try:
                         img_res = await http_client.get(ch.image_url)
                         if img_res.status_code == 200:
-                            img_filename = f"images/chapter_{ch_num}.jpg"
-                            img_item = epub.EpubItem(
-                                uid=f"img_{ch_num}",
-                                file_name=img_filename,
-                                media_type="image/jpeg",
-                                content=img_res.content,
-                            )
-                            book.add_item(img_item)
-                            img_html = f'<div class="img-container"><img src="{img_filename}" alt="{ch.title}"/></div>'
-
-                            # Ставим первую картинку как обложку книги
-                            if idx == 0:
-                                book.set_cover("cover.jpg", img_res.content)
+                            img_bytes = img_res.content
                     except Exception as e:
                         print(
                             f"Failed to download image for ePub chapter {ch_num}: {e}"
                         )
+
+                if img_bytes:
+                    img_filename = f"images/chapter_{ch_num}.jpg"
+                    img_item = epub.EpubItem(
+                        uid=f"img_{ch_num}",
+                        file_name=img_filename,
+                        media_type="image/jpeg",
+                        content=img_bytes,
+                    )
+                    book.add_item(img_item)
+                    img_html = f'<div class="img-container"><img src="{img_filename}" alt="{ch.title}"/></div>'
+
+                    if idx == 0:
+                        book.set_cover("cover.jpg", img_bytes)
 
                 paragraphs_html = "".join(
                     [f"<p>{p.strip()}</p>" for p in ch.paragraphs if p.strip()]
@@ -154,98 +168,75 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.5. Быстрый асинхронный генератор Replicate (С ЗАЩИТОЙ АНАТОМИИ)
+# 2.5. Генератор иллюстраций Nano Banana (gemini-2.5-flash-image)
 # ==========================================
 
-replicate_semaphore = asyncio.Semaphore(4)
-
-# Позитивные правила анатомии специально для архитектуры Flux-Schnell
-ANATOMY_PROMPT_BOOST = (
-    "anatomically correct proportions, natural human and animal anatomy, "
-    "child with two arms and two legs in a natural pose, "
-    "animals with four well-defined legs, "
-    "clean silhouette, clear separation between characters, "
-    "masterpiece children's book art, high detail, crisp clean lines"
-)
+image_semaphore = asyncio.Semaphore(3)
 
 
 async def generate_book_illustration(
-    prompt: str, style: str, index: int, hero_name: str, age: int
+    prompt: str,
+    style: str,
+    index: int,
+    hero_name: str,
+    age: int,
+    photo_bytes: Optional[bytes] = None,
+    photo_mime: str = "image/jpeg",
 ) -> str:
-    """Генерирует иллюстрацию через Replicate API с поддержкой статуса 202 и защитой пропорций."""
-    token = os.environ.get("REPLICATE_API_TOKEN")
-    if not token:
-        print("ERROR: REPLICATE_API_TOKEN is missing!")
-        return "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=900&auto=format&fit=crop&q=60"
-
+    """Генерирует иллюстрацию через Nano Banana (gemini-2.5-flash-image) с поддержкой фото ребенка."""
     safe_prompt = prompt.replace('"', "").replace("'", "")
     full_prompt = (
-        f"Children's book illustration in {style} style. "
+        f"Create a high-quality square children's book illustration in {style} style. "
         f"Main character: cute {age}-year-old child named {hero_name}. "
         f"Scene: {safe_prompt}. "
-        f"{ANATOMY_PROMPT_BOOST}, magical storybook atmosphere, vibrant warm colors."
+        f"Anatomically correct proportions, natural human and animal anatomy, "
+        f"strictly two arms and two legs for the child, four legs for animals, "
+        f"clean composition, vibrant warm colors, masterpiece storybook art, no text or watermarks."
     )
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
-
-    payload = {
-        "input": {
-            "prompt": full_prompt,
-            "aspect_ratio": "1:1",
-            "num_inference_steps": 4,
-            "output_format": "jpg",
-            "output_quality": 90,
-            "go_fast": True,
-        }
-    }
-
-    async with replicate_semaphore:
-        await asyncio.sleep(index * 0.3)
-
+    async with image_semaphore:
+        await asyncio.sleep(index * 0.4)
         try:
-            print(f"Sending request to Replicate for chapter {index+1}...")
-            async with httpx.AsyncClient(timeout=45.0) as client_http:
-                response = await client_http.post(
-                    "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
-                    headers=headers,
-                    json=payload,
+            print(f"Generating Nano Banana image for chapter {index+1}...")
+            contents = []
+
+            # Если загружено фото ребенка — передаем его напрямую в генератор для сходства!
+            if photo_bytes:
+                contents.append(
+                    types.Part.from_bytes(
+                        data=photo_bytes, mime_type=photo_mime
+                    )
+                )
+                full_prompt += (
+                    " CRITICAL: Preserve the child's exact facial features, hair color, hairstyle, "
+                    "and eye color from the attached reference photo while rendering them in the requested illustration style!"
                 )
 
-                if response.status_code in [200, 201, 202]:
-                    data = response.json()
-                    output = data.get("output")
+            contents.append(full_prompt)
 
-                    if output:
-                        return (
-                            output[0] if isinstance(output, list) else output
-                        )
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model="gemini-2.5-flash-image",
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    response_modalities=["IMAGE"],
+                    temperature=0.7,
+                ),
+            )
 
-                    poll_url = data.get("urls", {}).get("get")
-                    if poll_url:
-                        for attempt in range(25):
-                            await asyncio.sleep(1.5)
-                            poll_res = await client_http.get(
-                                poll_url, headers=headers
-                            )
-                            if poll_res.status_code == 200:
-                                poll_data = poll_res.json()
-                                status_str = poll_data.get("status")
-                                if status_str == "succeeded":
-                                    out = poll_data.get("output")
-                                    return (
-                                        out[0]
-                                        if isinstance(out, list)
-                                        else out
-                                    )
-                                elif status_str in ["failed", "canceled"]:
-                                    break
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data and part.inline_data.data:
+                        b64_img = base64.b64encode(
+                            part.inline_data.data
+                        ).decode("utf-8")
+                        mime = part.inline_data.mime_type or "image/jpeg"
+                        return f"data:{mime};base64,{b64_img}"
+
         except Exception as e:
-            print(f"Chapter {index+1} Exception: {str(e)}")
+            print(f"Nano Banana Chapter {index+1} Exception: {str(e)}")
 
-    return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=900&auto=format&fit=crop&q=60"
+    return "https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg"
 
 
 # ==========================================
@@ -275,13 +266,18 @@ async def generate_book_form(
 
         contents_for_gemini = []
         photo_instruction = ""
+        photo_bytes = None
+        photo_mime = "image/jpeg"
 
         if photo and photo.filename:
-            photo_bytes = await photo.read()
-            if photo_bytes:
-                mime_type = photo.content_type or "image/jpeg"
+            raw_bytes = await photo.read()
+            if raw_bytes:
+                photo_bytes = raw_bytes
+                photo_mime = photo.content_type or "image/jpeg"
                 contents_for_gemini.append(
-                    types.Part.from_bytes(data=photo_bytes, mime_type=mime_type)
+                    types.Part.from_bytes(
+                        data=photo_bytes, mime_type=photo_mime
+                    )
                 )
                 photo_instruction = """
 4. PHOTO LIKENESS (CRITICAL): Look closely at the attached photo of the child. Identify their exact physical appearance: gender, hair color, hairstyle/length, eye color, skin tone, and any cute distinctive features (like glasses, curls, freckles). You MUST include this exact physical description at the beginning of EVERY SINGLE chapter's 'image_prompt' so the illustrated character looks just like the child in the photo across all 8 chapters!
@@ -298,7 +294,7 @@ CRITICAL VISUAL & ANATOMY RULES FOR IMAGE PROMPTS:
 2. Every chapter MUST include a short, vivid, descriptive English 'image_prompt'.
 3. The image_prompts must ensure strict visual continuity and adhere to the chosen {style}.
 {photo_instruction}
-5. ANATOMY & POSE CLARITY: In every 'image_prompt', describe simple, clear, natural poses (e.g., "standing calmly", "sitting at a wooden table", "walking on a forest path", "portrait from waist up"). Avoid complex tangled action poses or overlapping limbs. Explicitly mention clear anatomical structure so the image generator draws the exact number of legs and arms.
+5. ANATOMY & POSE CLARITY: In every 'image_prompt', describe simple, clear, natural poses (e.g., "standing calmly", "sitting at a wooden table", "walking on a forest path"). Avoid complex tangled poses. Explicitly mention clear anatomical structure so the image generator draws the exact number of legs and arms.
 
 Requirements for each chapter:
 - A captivating chapter title.
@@ -326,7 +322,13 @@ Requirements for each chapter:
             )
             tasks.append(
                 generate_book_illustration(
-                    scene_desc, style, idx, hero_name, age
+                    scene_desc,
+                    style,
+                    idx,
+                    hero_name,
+                    age,
+                    photo_bytes,
+                    photo_mime,
                 )
             )
 
