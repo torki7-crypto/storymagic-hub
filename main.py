@@ -29,7 +29,7 @@ client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
 
 
 # ==========================================
-# 1. Модели данных (Безопасные дефолты Pydantic v2)
+# 1. Модели данных
 # ==========================================
 
 
@@ -47,7 +47,7 @@ class StoryBookData(BaseModel):
     author: str = "StoryMagic Hub"
     description: Optional[str] = Field(default="")
     dedication_text: Optional[str] = Field(default="")
-    psychology_questions: List[str] = Field(default_factory=list)  # Безопасный дефолтный список
+    psychology_questions: List[str] = Field(default_factory=list)
     chapters: List[ChapterData]
     is_paid: Optional[bool] = False
 
@@ -58,18 +58,18 @@ class TTSRequest(BaseModel):
 
 
 # ==========================================
-# 2. Модуль сборки ePub3 (С защитой от пустых блоков)
+# 2. Модуль сборки ePub3 (Заголовки внутри глав)
 # ==========================================
 
 
 class EpubBuilder:
     CSS_STYLES = """
     body { font-family: Georgia, serif; line-height: 1.6; margin: 5%; color: #2D3748; }
-    h1 { color: #4A5568; text-align: center; margin-bottom: 1em; }
+    h1 { color: #4A5568; font-size: 1.3em; text-align: left; margin-bottom: 0.6em; margin-top: 0.2em; border-bottom: 1px solid #E2E8F0; padding-bottom: 0.3em; }
     h2 { color: #4A5568; text-align: center; margin-top: 1.5em; }
-    .img-container { text-align: center; margin: 1.5em 0; }
+    .img-container { text-align: center; margin: 1.2em 0; }
     img { max-width: 100%; height: auto; border-radius: 12px; }
-    p { text-indent: 1.2em; margin-bottom: 0.8em; font-size: 1.1em; }
+    p { text-indent: 1.2em; margin-bottom: 0.8em; font-size: 1.05em; }
     .dedication-page { text-align: center; font-style: italic; margin-top: 4em; padding: 2em; background: #FAF5FF; border-radius: 12px; }
     .psychology-page { background: #F0FFF4; padding: 1.5em; border-radius: 12px; margin-top: 2em; }
     """
@@ -125,7 +125,7 @@ class EpubBuilder:
                 spine.append(dedication_item)
                 toc.append(dedication_item)
 
-            # 2. Главы книги
+            # 2. Главы книги (Заголовок, картинка и текст на одной странице)
             for idx, ch in enumerate(story.chapters):
                 ch_num = ch.chapter_number or (idx + 1)
                 img_html = ""
@@ -163,6 +163,8 @@ class EpubBuilder:
                 paragraphs_html = "".join(
                     [f"<p>{p.strip()}</p>" for p in ch.paragraphs if p.strip()]
                 )
+                
+                # Заголовок выводится прямо перед картинкой и текстом главы
                 chapter_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
