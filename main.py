@@ -14,6 +14,7 @@ from google import genai
 from google.genai import types
 import httpx
 from pydantic import BaseModel, Field
+from weasyprint import HTML
 
 app = FastAPI(title="StoryMagic Hub Backend")
 
@@ -57,8 +58,14 @@ class TTSRequest(BaseModel):
     lang: str = "en"
 
 
+class LuluOrderRequest(BaseModel):
+    story: StoryBookData
+    contact_email: str
+    shipping_address: dict  # name, street1, city, postcode, country_code, etc.
+
+
 # ==========================================
-# 2. Модуль сборки ePub3 (С мультиязычным финалом и заголовками в главах)
+# 2. Модуль сборки ePub3
 # ==========================================
 
 
@@ -98,7 +105,6 @@ class EpubBuilder:
             timeout=30.0, follow_redirects=True
         ) as http_client:
             
-            # 1. Страница Посвящения (если текст не пустой)
             dedication = (story.dedication_text or "").strip()
             if dedication:
                 safe_dedication = dedication.replace("\n", "<br/>")
@@ -125,7 +131,6 @@ class EpubBuilder:
                 spine.append(dedication_item)
                 toc.append(dedication_item)
 
-            # 2. Главы книги (Заголовок, картинка и текст на одной странице)
             for idx, ch in enumerate(story.chapters):
                 ch_num = ch.chapter_number or (idx + 1)
                 img_html = ""
@@ -186,7 +191,6 @@ class EpubBuilder:
                 spine.append(chapter_item)
                 toc.append(chapter_item)
 
-            # 3. Терапевтический блок с вопросами в конце (с учетом языка книги)
             if story.psychology_questions:
                 psych_headers = {
                     "ru": ("💡 Вопросы для душевного разговора", "Эти вопросы помогут обсудить сказку с ребенком и закрепить ее терапевтический эффект:"),
@@ -232,6 +236,134 @@ class EpubBuilder:
         buffer = io.BytesIO()
         epub.write_epub(buffer, book, {})
         return buffer.getvalue()
+
+
+# ==========================================
+# 2.3. Генератор Print-Ready PDF (5.5x8.5) для Lulu
+# ==========================================
+
+def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            @page {{
+                size: 5.75in 8.75in;
+                margin-top: 0.75in;
+                margin-bottom: 0.75in;
+                margin-left: 0.875in;
+                margin-right: 0.625in;
+                @bottom-center {{
+                    content: counter(page);
+                    font-family: Georgia, serif;
+                    font-size: 10pt;
+                    color: #4A5568;
+                }}
+            }}
+            body {{
+                font-family: Georgia, serif;
+                font-size: 12pt;
+                line-height: 1.6;
+                color: #2D3748;
+            }}
+            .page-break {{
+                page-break-after: always;
+            }}
+            h1 {{
+                font-size: 16pt;
+                color: #2D3748;
+                margin-bottom: 0.8em;
+                border-bottom: 1px solid #CBD5E1;
+                padding-bottom: 0.3em;
+            }}
+            .img-container {{
+                text-align: center;
+                margin: 1.2em 0;
+            }}
+            img {{
+                max-width: 100%;
+                max-height: 3.8in;
+                object-fit: cover;
+                border-radius: 8px;
+            }}
+            p {{
+                text-indent: 1.5em;
+                margin-bottom: 0.8em;
+            }}
+            .dedication-page, .psychology-page {{
+                page-break-before: always;
+                page-break-after: always;
+                text-align: center;
+                padding-top: 2in;
+            }}
+        </style>
+    </head>
+    <body>
+    """
+    
+    dedication = (story.dedication_text or "").strip()
+    if dedication:
+        html_content += f"""
+        <div class="dedication-page">
+            <h2>❤️</h2>
+            <p style="font-style: italic; font-size: 14pt;">{dedication.replace(chr(10), '<br/>')}</p>
+        </div>
+        """
+
+    for ch in story.chapters:
+        html_content += f"<div><h1>{ch.title}</h1>"
+        if ch.image_url:
+            html_content += f'<div class="img-container"><img src="{ch.image_url}" alt="{ch.title}" /></div>'
+        for p in ch.paragraphs:
+            html_content += f"<p>{p}</p>"
+        html_content += '</div><div class="page-break"></div>'
+
+    if story.psychology_questions:
+        questions_li = "".join([f"<li>{q}</li>" for q in story.psychology_questions])
+        html_content += f"""
+        <div class="psychology-page">
+            <h2>💡 Questions & Discussion</h2>
+            <ul style="text-align: left; display: inline-block;">{questions_li}</ul>
+        </div>
+        """
+
+    html_content += "</body></html>"
+    return HTML(string=html_content).write_pdf()
+
+
+# ==========================================
+# 2.4. Интеграция с Lulu Print API
+# ==========================================
+
+async def get_lulu_access_token() -> str:
+    is_sandbox = os.environ.get("LULU_ENV", "sandbox") == "sandbox"
+    token_url = (
+        "https://api.sandbox.lulu.com/auth/realms/glasstree/protocol/openid-connect/token"
+        if is_sandbox
+        else "https://api.lulu.com/auth/realms/glasstree/protocol/openid-connect/token"
+    )
+    
+    client_key = os.environ.get("LULU_CLIENT_KEY", "")
+    client_secret = os.environ.get("LULU_CLIENT_SECRET", "")
+    
+    credentials = f"{client_key}:{client_secret}"
+    encoded_creds = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+
+    headers = {
+        "Authorization": f"Basic {encoded_creds}",
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    data = {"grant_type": "client_credentials"}
+
+    async with httpx.AsyncClient() as client_http:
+        res = await client_http.post(token_url, headers=headers, data=data)
+        if res.status_code == 200:
+            return res.json().get("access_token")
+        else:
+            print(f"Lulu Token Error: {res.text}")
+            raise HTTPException(status_code=500, detail="Failed to connect to Lulu API")
 
 
 # ==========================================
@@ -331,7 +463,6 @@ async def generate_book_illustration(
                     if "404" in err_str or "NOT_FOUND" in err_str:
                         break
 
-        # Fallback 1: Replicate
         rep_token = os.environ.get("REPLICATE_API_TOKEN")
         if rep_token:
             try:
@@ -373,7 +504,6 @@ async def generate_book_illustration(
             except Exception as e:
                 print(f"[Replicate fallback] error: {e}")
 
-        # Fallback 2: Pollinations Flux
         try:
             encoded = urllib.parse.quote(full_prompt[:400])
             flux_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&seed={index+101}&nologo=true&model=flux"
@@ -556,6 +686,70 @@ async def export_epub(story: StoryBookData):
             "Content-Disposition": 'attachment; filename="StoryMagic_Book.epub"'
         },
     )
+
+
+@app.post("/api/export-print-pdf")
+async def export_print_pdf(story: StoryBookData):
+    if not story.is_paid:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Payment Required",
+        )
+    pdf_bytes = generate_print_pdf_bytes(story)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": 'attachment; filename="StoryMagic_Print_Ready_5.5x8.5.pdf"'
+        },
+    )
+
+
+@app.post("/api/lulu-create-order")
+async def lulu_create_order(req: LuluOrderRequest):
+    """Эндпоинт для отправки печатного заказа в Sandbox/Production Lulu API"""
+    if not req.story.is_paid:
+        raise HTTPException(status_code=402, detail="Payment Required")
+    
+    token = await get_lulu_access_token()
+    is_sandbox = os.environ.get("LULU_ENV", "sandbox") == "sandbox"
+    orders_url = (
+        "https://api.sandbox.lulu.com/print-jobs/"
+        if is_sandbox
+        else "https://api.lulu.com/print-jobs/"
+    )
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Lulu-Source": "StoryMagicHub"
+    }
+
+    # Генерируем печатный PDF для проверки
+    pdf_bytes = generate_print_pdf_bytes(req.story)
+    # В реальной интеграции PDF загружается в хранилище (например, S3 или Railway Storage), 
+    # и Lulu передается прямая публичная ссылка на скачивание файла.
+
+    payload = {
+        "contact_email": req.contact_email,
+        "shipping_address": req.shipping_address,
+        "line_items": [
+            {
+                "quantity": 1,
+                "pod_package_id": "0550X0850BWSCW060UWH440Mxx", # Пример ID пакета печати Lulu для 5.5x8.5
+                "cover_file": "https://your-public-storage.com/cover.pdf", 
+                "interior_file": "https://your-public-storage.com/interior.pdf"
+            }
+        ]
+    }
+
+    async with httpx.AsyncClient() as client_http:
+        res = await client_http.post(orders_url, headers=headers, json=payload)
+        if res.status_code in [200, 201]:
+            return {"success": True, "lulu_response": res.json()}
+        else:
+            print(f"Lulu Order Error: {res.text}")
+            raise HTTPException(status_code=400, detail=f"Lulu API Error: {res.text}")
 
 
 @app.get("/", response_class=HTMLResponse)
