@@ -168,7 +168,7 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.5. Генератор иллюстраций Nano Banana (gemini-2.5-flash-image)
+# 2.5. Генератор иллюстраций Nano Banana (с автоподбором актуальной модели)
 # ==========================================
 
 image_semaphore = asyncio.Semaphore(3)
@@ -183,7 +183,7 @@ async def generate_book_illustration(
     photo_bytes: Optional[bytes] = None,
     photo_mime: str = "image/jpeg",
 ) -> str:
-    """Генерирует иллюстрацию через Nano Banana (gemini-2.5-flash-image) с поддержкой фото ребенка."""
+    """Генерирует иллюстрацию через Nano Banana (Gemini Image) с поддержкой фото ребенка."""
     safe_prompt = prompt.replace('"', "").replace("'", "")
     full_prompt = (
         f"Create a high-quality square children's book illustration in {style} style. "
@@ -196,45 +196,75 @@ async def generate_book_illustration(
 
     async with image_semaphore:
         await asyncio.sleep(index * 0.4)
+
+        contents = []
+        if photo_bytes:
+            contents.append(
+                types.Part.from_bytes(data=photo_bytes, mime_type=photo_mime)
+            )
+            full_prompt += (
+                " CRITICAL: Preserve the child's exact facial features, hair color, hairstyle, "
+                "and eye color from the attached reference photo while rendering them in the requested illustration style!"
+            )
+        contents.append(full_prompt)
+
+        # Пробуем актуальные модели Nano Banana по очереди для нового API ключа
+        image_models = [
+            "gemini-3.8-flash",
+            "gemini-3.8-flash-image",
+            "gemini-2.5-flash-image-preview",
+            "gemini-2.0-flash-preview-image-generation",
+        ]
+
+        for model_name in image_models:
+            try:
+                print(
+                    f"Trying {model_name} for chapter {index+1} illustration..."
+                )
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        response_modalities=["IMAGE"],
+                        temperature=0.7,
+                    ),
+                )
+
+                if (
+                    response.candidates
+                    and response.candidates[0].content
+                    and response.candidates[0].content.parts
+                ):
+                    for part in response.candidates[0].content.parts:
+                        if part.inline_data and part.inline_data.data:
+                            b64_img = base64.b64encode(
+                                part.inline_data.data
+                            ).decode("utf-8")
+                            mime = part.inline_data.mime_type or "image/jpeg"
+                            return f"data:{mime};base64,{b64_img}"
+            except Exception as e:
+                print(f"Model {model_name} skipped for chapter {index+1}: {e}")
+                continue
+
+        # Запасной вызов через Imagen 3 на том же ключе Google
         try:
-            print(f"Generating Nano Banana image for chapter {index+1}...")
-            contents = []
-
-            # Если загружено фото ребенка — передаем его напрямую в генератор для сходства!
-            if photo_bytes:
-                contents.append(
-                    types.Part.from_bytes(
-                        data=photo_bytes, mime_type=photo_mime
-                    )
-                )
-                full_prompt += (
-                    " CRITICAL: Preserve the child's exact facial features, hair color, hairstyle, "
-                    "and eye color from the attached reference photo while rendering them in the requested illustration style!"
-                )
-
-            contents.append(full_prompt)
-
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model="gemini-2.5-flash-image",
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    response_modalities=["IMAGE"],
-                    temperature=0.7,
+            img_res = await asyncio.to_thread(
+                client.models.generate_images,
+                model="imagen-3.0-generate-002",
+                prompt=full_prompt,
+                config=types.GenerateImagesConfig(
+                    number_of_images=1,
+                    aspect_ratio="1:1",
+                    output_mime_type="image/jpeg",
                 ),
             )
-
-            if response.candidates and response.candidates[0].content.parts:
-                for part in response.candidates[0].content.parts:
-                    if part.inline_data and part.inline_data.data:
-                        b64_img = base64.b64encode(
-                            part.inline_data.data
-                        ).decode("utf-8")
-                        mime = part.inline_data.mime_type or "image/jpeg"
-                        return f"data:{mime};base64,{b64_img}"
-
+            if img_res.generated_images:
+                img_bytes = img_res.generated_images[0].image.image_bytes
+                b64_img = base64.b64encode(img_bytes).decode("utf-8")
+                return f"data:image/jpeg;base64,{b64_img}"
         except Exception as e:
-            print(f"Nano Banana Chapter {index+1} Exception: {str(e)}")
+            print(f"Imagen fallback error on chapter {index+1}: {e}")
 
     return "https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg"
 
@@ -303,8 +333,9 @@ Requirements for each chapter:
 """
         contents_for_gemini.append(prompt)
 
+        # Возвращена актуальная модель gemini-3.8-flash!
         gemini_response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=contents_for_gemini,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
