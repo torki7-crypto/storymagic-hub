@@ -3,13 +3,13 @@ import base64
 import io
 import os
 from typing import List, Optional
+import urllib.parse
 import uuid
 from ebooklib import epub
 import edge_tts
 from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
-# Подключение Google GenAI
 from google import genai
 from google.genai import types
 import httpx
@@ -56,7 +56,7 @@ class TTSRequest(BaseModel):
 
 
 # ==========================================
-# 2. Модуль сборки ePub3 (С ПОДДЕРЖКОЙ NANO BANANA И BASE64!)
+# 2. Модуль сборки ePub3 (С ПОДДЕРЖКОЙ BASE64 И ССЫЛОК)
 # ==========================================
 
 
@@ -97,7 +97,6 @@ class EpubBuilder:
                 img_html = ""
                 img_bytes = None
 
-                # 1. Если картинка пришла от Nano Banana в формате data:image/...;base64
                 if ch.image_url and ch.image_url.startswith("data:image"):
                     try:
                         header, b64_data = ch.image_url.split(",", 1)
@@ -107,7 +106,6 @@ class EpubBuilder:
                             f"Failed to decode base64 image for chapter {ch_num}: {e}"
                         )
 
-                # 2. Если картинка — обычная http-ссылка (запасной вариант)
                 elif ch.image_url and ch.image_url.startswith("http"):
                     try:
                         img_res = await http_client.get(ch.image_url)
@@ -168,10 +166,35 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.5. Генератор иллюстраций Nano Banana (с автоподбором актуальной модели)
+# 2.5. Умное определение моделей картинок + Fallback
 # ==========================================
 
 image_semaphore = asyncio.Semaphore(3)
+CACHED_IMAGE_MODELS: Optional[List[str]] = None
+
+
+def get_available_image_models() -> List[str]:
+    """Запрашивает у Google AI Studio точный список моделей картинок, доступных для вашего ключа."""
+    global CACHED_IMAGE_MODELS
+    if CACHED_IMAGE_MODELS is not None:
+        return CACHED_IMAGE_MODELS
+
+    found = []
+    try:
+        for m in client.models.list():
+            name = getattr(m, "name", "")
+            clean_name = name.replace("models/", "")
+            if "image" in clean_name.lower() or "imagen" in clean_name.lower():
+                found.append(clean_name)
+        print(f"AVAILABLE GOOGLE IMAGE MODELS FOR THIS KEY: {found}")
+    except Exception as e:
+        print(f"Error listing Google models: {e}")
+
+    if not found:
+        found = ["gemini-2.5-flash-image", "imagen-3.0-generate-002"]
+
+    CACHED_IMAGE_MODELS = found
+    return found
 
 
 async def generate_book_illustration(
@@ -183,7 +206,6 @@ async def generate_book_illustration(
     photo_bytes: Optional[bytes] = None,
     photo_mime: str = "image/jpeg",
 ) -> str:
-    """Генерирует иллюстрацию через Nano Banana (Gemini Image) с поддержкой фото ребенка."""
     safe_prompt = prompt.replace('"', "").replace("'", "")
     full_prompt = (
         f"Create a high-quality square children's book illustration in {style} style. "
@@ -208,63 +230,117 @@ async def generate_book_illustration(
             )
         contents.append(full_prompt)
 
-        # Пробуем актуальные модели Nano Banana по очереди для нового API ключа
-        image_models = [
-            "gemini-3.8-flash",
-            "gemini-3.8-flash-image",
-            "gemini-2.5-flash-image-preview",
-            "gemini-2.0-flash-preview-image-generation",
-        ]
+        # 1. Запрашиваем реальные модели Google и вызываем через generate_content (как требует новый SDK)
+        google_models = await asyncio.to_thread(get_available_image_models)
 
-        for model_name in image_models:
+        for model_name in google_models:
+            for modalities in [["TEXT", "IMAGE"], ["IMAGE"]]:
+                try:
+                    response = await asyncio.to_thread(
+                        client.models.generate_content,
+                        model=model_name,
+                        contents=(
+                            contents
+                            if "gemini" in model_name
+                            else [full_prompt]
+                        ),
+                        config=types.GenerateContentConfig(
+                            response_modalities=modalities,
+                            temperature=0.7,
+                        ),
+                    )
+
+                    if (
+                        response.candidates
+                        and response.candidates[0].content
+                        and response.candidates[0].content.parts
+                    ):
+                        for part in response.candidates[0].content.parts:
+                            if part.inline_data and part.inline_data.data:
+                                b64_img = base64.b64encode(
+                                    part.inline_data.data
+                                ).decode("utf-8")
+                                mime = (
+                                    part.inline_data.mime_type or "image/jpeg"
+                                )
+                                print(
+                                    f"SUCCESS: Chapter {index+1} generated via Google {model_name}"
+                                )
+                                return f"data:{mime};base64,{b64_img}"
+                except Exception as e:
+                    err_str = str(e)
+                    if "404" in err_str or "NOT_FOUND" in err_str:
+                        break
+                    print(
+                        f"[{model_name} {modalities}] Ch {index+1} info: {err_str[:140]}"
+                    )
+
+        # 2. Если ключ Google на бесплатном тарифе (или не поддерживает картинки в UK) — используем Replicate
+        rep_token = os.environ.get("REPLICATE_API_TOKEN")
+        if rep_token:
             try:
-                print(
-                    f"Trying {model_name} for chapter {index+1} illustration..."
-                )
-                response = await asyncio.to_thread(
-                    client.models.generate_content,
-                    model=model_name,
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        response_modalities=["IMAGE"],
-                        temperature=0.7,
-                    ),
-                )
-
-                if (
-                    response.candidates
-                    and response.candidates[0].content
-                    and response.candidates[0].content.parts
-                ):
-                    for part in response.candidates[0].content.parts:
-                        if part.inline_data and part.inline_data.data:
-                            b64_img = base64.b64encode(
-                                part.inline_data.data
-                            ).decode("utf-8")
-                            mime = part.inline_data.mime_type or "image/jpeg"
-                            return f"data:{mime};base64,{b64_img}"
+                print(f"Using Replicate fallback for chapter {index+1}...")
+                headers = {
+                    "Authorization": f"Bearer {rep_token}",
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "input": {
+                        "prompt": full_prompt,
+                        "aspect_ratio": "1:1",
+                        "output_format": "jpg",
+                        "output_quality": 90,
+                    }
+                }
+                async with httpx.AsyncClient(timeout=45.0) as client_http:
+                    res = await client_http.post(
+                        "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
+                        headers=headers,
+                        json=payload,
+                    )
+                    if res.status_code in [200, 201, 202]:
+                        data = res.json()
+                        out = data.get("output")
+                        if out:
+                            return out[0] if isinstance(out, list) else out
+                        poll_url = data.get("urls", {}).get("get")
+                        if poll_url:
+                            for _ in range(25):
+                                await asyncio.sleep(1.5)
+                                p_res = await client_http.get(
+                                    poll_url, headers=headers
+                                )
+                                if p_res.status_code == 200:
+                                    p_data = p_res.json()
+                                    if p_data.get("status") == "succeeded":
+                                        out = p_data.get("output")
+                                        return (
+                                            out[0]
+                                            if isinstance(out, list)
+                                            else out
+                                        )
+                                    elif p_data.get("status") in [
+                                        "failed",
+                                        "canceled",
+                                    ]:
+                                        break
             except Exception as e:
-                print(f"Model {model_name} skipped for chapter {index+1}: {e}")
-                continue
+                print(f"[Replicate fallback] Ch {index+1} error: {e}")
 
-        # Запасной вызов через Imagen 3 на том же ключе Google
+        # 3. Безотказный бесплатный генератор Flux (скачиваем байты на сервере, чтобы браузер не блокировал)
         try:
-            img_res = await asyncio.to_thread(
-                client.models.generate_images,
-                model="imagen-3.0-generate-002",
-                prompt=full_prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=1,
-                    aspect_ratio="1:1",
-                    output_mime_type="image/jpeg",
-                ),
-            )
-            if img_res.generated_images:
-                img_bytes = img_res.generated_images[0].image.image_bytes
-                b64_img = base64.b64encode(img_bytes).decode("utf-8")
-                return f"data:image/jpeg;base64,{b64_img}"
+            print(f"Using Pollinations Flux fallback for chapter {index+1}...")
+            encoded = urllib.parse.quote(full_prompt[:400])
+            flux_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&seed={index+101}&nologo=true&model=flux"
+            async with httpx.AsyncClient(
+                timeout=35.0, follow_redirects=True
+            ) as client_http:
+                f_res = await client_http.get(flux_url)
+                if f_res.status_code == 200 and f_res.content:
+                    b64_img = base64.b64encode(f_res.content).decode("utf-8")
+                    return f"data:image/jpeg;base64,{b64_img}"
         except Exception as e:
-            print(f"Imagen fallback error on chapter {index+1}: {e}")
+            print(f"[Flux fallback] Ch {index+1} error: {e}")
 
     return "https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg"
 
@@ -333,7 +409,6 @@ Requirements for each chapter:
 """
         contents_for_gemini.append(prompt)
 
-        # Возвращена актуальная модель gemini-3.8-flash!
         gemini_response = client.models.generate_content(
             model="gemini-3.8-flash",
             contents=contents_for_gemini,
@@ -387,7 +462,6 @@ Requirements for each chapter:
 
 @app.post("/api/tts")
 async def generate_tts(req: TTSRequest):
-    """Генерирует живую сказочную озвучку с мягким темпом речи."""
     voices = {
         "en": "en-US-AnaNeural",
         "ru": "ru-RU-SvetlanaNeural",
@@ -397,9 +471,7 @@ async def generate_tts(req: TTSRequest):
         "tr": "tr-TR-EmelNeural",
     }
     voice = voices.get(req.lang.lower(), "en-US-AnaNeural")
-
     clean_text = req.text.replace("«", "").replace("»", ". ")
-
     communicate = edge_tts.Communicate(clean_text, voice, rate="-10%")
     audio_stream = io.BytesIO()
 
