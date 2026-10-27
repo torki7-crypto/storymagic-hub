@@ -592,7 +592,7 @@ Requirements for each chapter:
         contents_for_gemini.append(prompt)
 
         gemini_response = client.models.generate_content(
-            model="gemini-3.8-flash",
+            model="gemini-2.5-flash",
             contents=contents_for_gemini,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -735,6 +735,7 @@ async def lulu_create_order(req: LuluOrderRequest):
         "shipping_address": req.shipping_address,
         "line_items": [
             {
+                "title": req.story.title,  # <--- Добавлено обязательное поле title
                 "quantity": 1,
                 "pod_package_id": "0550X0850BWSCW060UWH440Mxx", # Пример ID пакета печати Lulu для 5.5x8.5
                 "cover_file": "https://your-public-storage.com/cover.pdf", 
