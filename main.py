@@ -592,7 +592,7 @@ Requirements for each chapter:
         contents_for_gemini.append(prompt)
 
         gemini_response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",  # <--- Возвращаем актуальную рабочую модель
             contents=contents_for_gemini,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
