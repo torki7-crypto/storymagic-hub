@@ -61,12 +61,7 @@ class TTSRequest(BaseModel):
 class LuluOrderRequest(BaseModel):
     story: StoryBookData
     contact_email: str
-    phone_number: str
-    street1: str
-    city: str
-    postcode: str
-    country_code: str = "GB"  # По умолчанию Великобритания, либо из формы
-    shipping_name: str = "Customer"
+    shipping_address: dict  # Принимает словарь из index.html (name, street1, city, postcode, country_code, phone_number)
 
 
 # ==========================================
@@ -597,7 +592,7 @@ Requirements for each chapter:
         contents_for_gemini.append(prompt)
 
         gemini_response = client.models.generate_content(
-            model="gemini-3.8-flash",  # <--- Возвращаем актуальную рабочую модель
+            model="gemini-3.8-flash",
             contents=contents_for_gemini,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -730,29 +725,27 @@ async def lulu_create_order(req: LuluOrderRequest):
         "Lulu-Source": "StoryMagicHub"
     }
 
-    # Генерируем печатный PDF для проверки
+    # Генерируем печатный PDF
     pdf_bytes = generate_print_pdf_bytes(req.story)
 
-    # Обрезаем street1 до 30 символов, как требует Lulu API
-    safe_street1 = req.street1[:30]
+    # Страхуем длину street1 и street2 до 30 символов по требованиям Lulu API
+    addr = dict(req.shipping_address)
+    if "street1" in addr and addr["street1"]:
+        addr["street1"] = str(addr["street1"])[:30]
+    if "street2" in addr and addr["street2"]:
+        addr["street2"] = str(addr["street2"])[:30]
 
     payload = {
         "contact_email": req.contact_email,
-        "shipping_address": {
-            "name": req.shipping_name,
-            "street1": safe_street1,
-            "city": req.city,
-            "postcode": req.postcode,
-            "country_code": req.country_code,
-            "phone_number": req.phone_number
-        },
+        "shipping_level": "MAIL",
+        "shipping_address": addr,
         "line_items": [
             {
                 "title": req.story.title,
                 "quantity": 1,
-                "pod_package_id": "0550X0850BWSCW060UWH440Mxx",
-                "cover_file": "https://your-public-storage.com/cover.pdf", 
-                "interior_file": "https://your-public-storage.com/interior.pdf"
+                "pod_package_id": "0600X0900FCSTDPB080CW444GXX",
+                "cover": "https://your-public-storage.com/cover.pdf", 
+                "interior": "https://your-public-storage.com/interior.pdf"
             }
         ]
     }
