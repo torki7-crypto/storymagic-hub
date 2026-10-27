@@ -230,6 +230,11 @@
             flex-direction: column;
         }
         .input-group { margin-bottom: 11px; }
+        .input-row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
         .input-label {
             display: block;
             font-size: 0.78em;
@@ -585,6 +590,7 @@
             .book-right-page { height: 380px; }
             .steps-grid { grid-template-columns: 1fr; }
             .action-bar { grid-template-columns: 1fr; }
+            .input-row-2 { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -803,27 +809,73 @@
             <div id="libraryContainer" class="library-grid"></div>
         </div>
 
-        <!-- Заказ печати -->
+        <!-- Заказ печати (с раздельными полями для Lulu API) -->
         <div id="tab-order" class="tab-content">
             <div class="hero-box" style="text-align:left; max-width:620px;">
                 <h2 style="font-family:'Comfortaa', cursive; margin-bottom:12px;" id="order-title">🚚 Order a Printed Hardcover Book</h2>
                 <p style="color:#ded1f7; font-size:1em; margin-bottom:20px;" id="order-desc">We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.</p>
                 
-                <div class="input-group">
-                    <label class="input-label" id="lbl-order-email">Email для заказа</label>
-                    <input type="text" class="custom-input" id="order-email-input" placeholder="test@example.com" value="test@example.com">
+                <div class="input-row-2">
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-order-name">Recipient Full Name</label>
+                        <input type="text" class="custom-input" id="order-name-input" placeholder="John Smith" value="John Smith">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-order-email">Contact Email</label>
+                        <input type="email" class="custom-input" id="order-email-input" placeholder="test@example.com" value="test@example.com">
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label class="input-label" id="lbl-order-addr">Delivery Address</label>
-                    <input type="text" class="custom-input" id="order-addr-input" placeholder="Street, Apt, City, Postcode" value="123 Test Street, London, E1 6AN">
+
+                <div class="input-row-2">
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-order-phone">Phone Number (Required by Lulu)</label>
+                        <input type="tel" class="custom-input" id="order-phone-input" placeholder="+44 7700 900077" value="+447700900077">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-order-country">Country</label>
+                        <select class="custom-select" id="order-country-input">
+                            <option value="GB" selected>🇬🇧 United Kingdom (GB)</option>
+                            <option value="US">🇺🇸 United States (US)</option>
+                            <option value="PL">🇵🇱 Poland (PL)</option>
+                            <option value="RO">🇷🇴 Romania (RO)</option>
+                            <option value="IT">🇮🇹 Italy (IT)</option>
+                            <option value="DE">🇩🇪 Germany (DE)</option>
+                            <option value="FR">🇫🇷 France (FR)</option>
+                            <option value="TR">🇹🇷 Turkey (TR)</option>
+                        </select>
+                    </div>
                 </div>
+
+                <div class="input-row-2">
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-order-addr">Street Address Line 1 (Max 30 chars)</label>
+                        <input type="text" class="custom-input" id="order-addr-input" maxlength="30" placeholder="123 Test Street" value="123 Test Street">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-order-addr2">Apt / Suite / Line 2 (Optional)</label>
+                        <input type="text" class="custom-input" id="order-addr2-input" maxlength="30" placeholder="Flat 4B" value="">
+                    </div>
+                </div>
+
+                <div class="input-row-2">
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-order-city">City / Town</label>
+                        <input type="text" class="custom-input" id="order-city-input" placeholder="London" value="London">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" id="lbl-order-postcode">Postcode / ZIP</label>
+                        <input type="text" class="custom-input" id="order-postcode-input" placeholder="E1 6AN" value="E1 6AN">
+                    </div>
+                </div>
+
                 <div class="input-group">
                     <label class="input-label" id="lbl-order-type">Cover Type</label>
-                    <select class="custom-select">
+                    <select class="custom-select" id="order-cover-type">
                         <option id="opt-order-hard">Matte Hardcover — £14.99</option>
                         <option id="opt-order-prem">Premium Gloss with Foil — £19.99</option>
                     </select>
                 </div>
+
                 <button type="button" class="magic-btn" onclick="submitLuluOrder()" style="margin-top:16px;" id="btn-order-pay">Proceed to Payment / Sandbox Order</button>
             </div>
         </div>
@@ -1203,23 +1255,32 @@
         }
     }
 
-    // Интеграция заказа в Sandbox Lulu
+    // Интеграция заказа в Sandbox Lulu со всеми обязательными полями адреса и телефона
     async function submitLuluOrder() {
         if (!currentPages || currentPages.length === 0) {
             alert(currentLang === 'ru' ? 'Сначала сгенерируйте книгу!' : 'Please generate a book first!');
             return;
         }
 
-        var emailInput = document.getElementById('order-email-input');
-        var addrInput = document.getElementById('order-addr-input');
-        
-        var email = emailInput ? emailInput.value.trim() : 'test@example.com';
-        var street = addrInput ? addrInput.value.trim() : '123 Test Street, London';
+        var nameVal = (document.getElementById('order-name-input').value || '').trim() || 'Customer';
+        var emailVal = (document.getElementById('order-email-input').value || '').trim();
+        var phoneVal = (document.getElementById('order-phone-input').value || '').trim();
+        var street1Val = (document.getElementById('order-addr-input').value || '').trim();
+        var street2Val = (document.getElementById('order-addr2-input').value || '').trim();
+        var cityVal = (document.getElementById('order-city-input').value || '').trim();
+        var postcodeVal = (document.getElementById('order-postcode-input').value || '').trim();
+        var countryVal = (document.getElementById('order-country-input').value || 'GB').trim();
 
-        if (!email) {
-            alert('Введите Email');
+        if (!emailVal || !phoneVal || !street1Val || !cityVal || !postcodeVal) {
+            alert(currentLang === 'ru' 
+                ? 'Пожалуйста, заполните все обязательные поля: Email, телефон, улицу, город и индекс.' 
+                : 'Please fill in all required fields: Email, Phone, Street, City, and Postcode.');
             return;
         }
+
+        // Жестко ограничиваем длину street1 и street2 до 30 символов по требованиям Lulu API
+        var safeStreet1 = street1Val.substring(0, 30);
+        var safeStreet2 = street2Val.substring(0, 30);
 
         var chapters = currentPages.map(function(page, index) {
             var paragraphs = page.text.split('\n\n').filter(Boolean);
@@ -1239,22 +1300,30 @@
             dedication_text: currentDedicationText || '',
             psychology_questions: currentPsychologyQuestions || [],
             chapters: chapters,
-            is_paid: true // Разрешаем отправку для теста
+            is_paid: true
         };
 
         var shippingAddress = {
-            name: "Test Customer",
-            street1: street,
-            city: "London",
-            postcode: "E1 6AN",
-            country_code: "GB"
+            name: nameVal,
+            street1: safeStreet1,
+            city: cityVal,
+            postcode: postcodeVal,
+            country_code: countryVal,
+            phone_number: phoneVal
         };
+        if (safeStreet2) {
+            shippingAddress.street2 = safeStreet2;
+        }
 
         var payload = {
             story: storyBookData,
-            contact_email: email,
+            contact_email: emailVal,
             shipping_address: shippingAddress
         };
+
+        var btnOrder = document.getElementById('btn-order-pay');
+        var origBtnText = btnOrder ? btnOrder.innerText : 'Proceed to Payment';
+        if (btnOrder) btnOrder.innerText = '⏳ Sending to Lulu...';
 
         try {
             var response = await fetch('/api/lulu-create-order', {
@@ -1265,7 +1334,7 @@
 
             var result = await response.json();
             if (response.ok && result.success) {
-                alert('Заказ успешно отправлен в Sandbox Lulu! ID заказа: ' + (result.lulu_response.id || 'создан'));
+                alert('🎉 Заказ успешно отправлен в Sandbox Lulu! ID заказа: ' + (result.lulu_response.id || 'создан'));
                 console.log('Lulu response:', result.lulu_response);
             } else {
                 alert('Ошибка при оформлении заказа: ' + (result.detail || 'Неизвестная ошибка'));
@@ -1273,6 +1342,8 @@
         } catch (err) {
             console.error(err);
             alert('Произошла ошибка соединения с сервером.');
+        } finally {
+            if (btnOrder) btnOrder.innerText = origBtnText;
         }
     }
 
@@ -1309,8 +1380,10 @@
             lockTitle: 'Final Chapter Locked', lockDesc: 'Unlock the magical finale of this story, full audio narration, and ePub download!', lockBtn: '✨ Unlock Full Book',
             libTitle: '📚 Your Created Books', libDesc: 'History of all stories created on this device.', libEmpty: 'No stories saved yet. Create your first book!',
             orderTitle: '🚚 Order a Printed Hardcover Book', orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.',
-            lblOrderAddr: 'Delivery Address', placeholderAddr: 'Street, Apt, City, Postcode', lblOrderType: 'Cover Type',
-            optOrderHard: 'Matte Hardcover — £14.99', optOrderPrem: 'Premium Gloss with Foil — £19.99', btnOrderPay: 'Proceed to Payment',
+            lblOrderName: 'Recipient Full Name', lblOrderEmail: 'Contact Email', lblOrderPhone: 'Phone Number (Required)',
+            lblOrderCountry: 'Country', lblOrderAddr: 'Street Address Line 1 (Max 30 chars)', lblOrderAddr2: 'Apt / Suite / Line 2 (Optional)',
+            lblOrderCity: 'City / Town', lblOrderPostcode: 'Postcode / ZIP', lblOrderType: 'Cover Type',
+            optOrderHard: 'Matte Hardcover — £14.99', optOrderPrem: 'Premium Gloss with Foil — £19.99', btnOrderPay: 'Proceed to Payment / Sandbox Order',
             payTitle: 'Choose Your Plan', paySubtitle: 'Unlock the final chapter, ePub downloads, and voice narration',
             plan1Title: 'Starter', plan1Desc: '5 personalized stories + ePub', plan1Btn: 'Buy Now',
             plan2Title: 'Unlimited', plan2Desc: 'Unlimited stories + ePub exports', plan2Btn: 'Select Plan',
@@ -1348,7 +1421,9 @@
             lockTitle: 'Финальная глава закрыта', lockDesc: 'Разблокируйте волшебный финал сказки, озвучку и скачивание книги в формате ePub!', lockBtn: '✨ Разблокировать финал',
             libTitle: '📚 Ваши созданные книги', libDesc: 'История всех книг, сгенерированных на этом устройстве.', libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
             orderTitle: '🚚 Заказ книги в твердом переплете', orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим до двери.',
-            lblOrderAddr: 'Адрес доставки', placeholderAddr: 'Улица, дом, квартира, индекс', lblOrderType: 'Тип переплета',
+            lblOrderName: 'ФИО получателя', lblOrderEmail: 'Email для заказа', lblOrderPhone: 'Телефон (обязательно для курьера)',
+            lblOrderCountry: 'Страна', lblOrderAddr: 'Улица и дом (до 30 символов)', lblOrderAddr2: 'Квартира / корпус (необязательно)',
+            lblOrderCity: 'Город', lblOrderPostcode: 'Почтовый индекс (Postcode)', lblOrderType: 'Тип переплета',
             optOrderHard: 'Твердый матовый переплет — £14.99', optOrderPrem: 'Премиум глянец с тиснением — £19.99', btnOrderPay: 'Отправить заказ в Sandbox Lulu',
             payTitle: 'Выберите тариф', paySubtitle: 'Разблокируйте финал истории, скачивание ePub и озвучку',
             plan1Title: 'Starter', plan1Desc: '5 персональных сказок + ePub', plan1Btn: 'Купить',
@@ -1479,9 +1554,14 @@
 
         setText('order-title', d.orderTitle);
         setText('order-desc', d.orderDesc);
+        setText('lbl-order-name', d.lblOrderName);
+        setText('lbl-order-email', d.lblOrderEmail);
+        setText('lbl-order-phone', d.lblOrderPhone);
+        setText('lbl-order-country', d.lblOrderCountry);
         setText('lbl-order-addr', d.lblOrderAddr);
-        var addrInput = document.getElementById('order-addr-input');
-        if (addrInput) addrInput.placeholder = d.placeholderAddr;
+        setText('lbl-order-addr2', d.lblOrderAddr2);
+        setText('lbl-order-city', d.lblOrderCity);
+        setText('lbl-order-postcode', d.lblOrderPostcode);
         setText('lbl-order-type', d.lblOrderType);
         setText('opt-order-hard', d.optOrderHard);
         setText('opt-order-prem', d.optOrderPrem);
