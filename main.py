@@ -2,7 +2,7 @@ import asyncio
 import base64
 import io
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 import urllib.parse
 import uuid
 from ebooklib import epub
@@ -61,7 +61,7 @@ class TTSRequest(BaseModel):
 class LuluOrderRequest(BaseModel):
     story: StoryBookData
     contact_email: str
-    shipping_address: dict  # Принимает словарь из index.html (name, street1, city, postcode, country_code, phone_number)
+    shipping_address: dict
 
 
 # ==========================================
@@ -239,10 +239,23 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.3. Генератор Print-Ready PDF (5.5x8.5) для Lulu
+# 2.3. Генератор Print-Ready PDF и раздача файлов для Lulu
 # ==========================================
 
+LULU_PDF_STORAGE: Dict[str, bytes] = {}
+
+
+@app.get("/api/lulu-files/{file_id}.pdf")
+async def serve_lulu_pdf(file_id: str):
+    """Публичный эндпоинт, по которому Lulu скачивает interior.pdf и cover.pdf"""
+    pdf_data = LULU_PDF_STORAGE.get(file_id)
+    if not pdf_data:
+        raise HTTPException(status_code=404, detail="PDF file not found")
+    return Response(content=pdf_data, media_type="application/pdf")
+
+
 def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
+    """Генерирует внутренний блок книги 6x9 дюймов (с вылетами 6.25x9.25in) ровно по главам"""
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -250,11 +263,11 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
         <meta charset="utf-8">
         <style>
             @page {{
-                size: 5.75in 8.75in;
+                size: 6.25in 9.25in;
                 margin-top: 0.75in;
                 margin-bottom: 0.75in;
-                margin-left: 0.875in;
-                margin-right: 0.625in;
+                margin-left: 0.75in;
+                margin-right: 0.75in;
                 @bottom-center {{
                     content: counter(page);
                     font-family: Georgia, serif;
@@ -280,7 +293,7 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
             }}
             .img-container {{
                 text-align: center;
-                margin: 1.2em 0;
+                margin: 1.0em 0;
             }}
             img {{
                 max-width: 100%;
@@ -293,7 +306,6 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
                 margin-bottom: 0.8em;
             }}
             .dedication-page, .psychology-page {{
-                page-break-before: always;
                 page-break-after: always;
                 text-align: center;
                 padding-top: 2in;
@@ -308,28 +320,91 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
         html_content += f"""
         <div class="dedication-page">
             <h2>❤️</h2>
-            <p style="font-style: italic; font-size: 14pt;">{dedication.replace(chr(10), '<br/>')}</p>
+            <p style="font-style: italic; font-size: 14pt; text-indent: 0;">{dedication.replace(chr(10), '<br/>')}</p>
         </div>
         """
 
-    for ch in story.chapters:
-        html_content += f"<div><h1>{ch.title}</h1>"
+    for idx, ch in enumerate(story.chapters):
+        is_last_chapter = (idx == len(story.chapters) - 1) and not story.psychology_questions
+        break_class = "" if is_last_chapter else ' class="page-break"'
+        html_content += f"<div{break_class}><h1>{ch.title}</h1>"
         if ch.image_url:
             html_content += f'<div class="img-container"><img src="{ch.image_url}" alt="{ch.title}" /></div>'
         for p in ch.paragraphs:
             html_content += f"<p>{p}</p>"
-        html_content += '</div><div class="page-break"></div>'
+        html_content += "</div>"
 
     if story.psychology_questions:
         questions_li = "".join([f"<li>{q}</li>" for q in story.psychology_questions])
         html_content += f"""
-        <div class="psychology-page">
+        <div class="psychology-page" style="page-break-after: avoid;">
             <h2>💡 Questions & Discussion</h2>
             <ul style="text-align: left; display: inline-block;">{questions_li}</ul>
         </div>
         """
 
     html_content += "</body></html>"
+    return HTML(string=html_content).write_pdf()
+
+
+def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
+    """Генерирует обложку под 6x9 дюймов (разворот 12.25in x 9.25in)"""
+    cover_img = ""
+    if story.chapters and story.chapters[0].image_url:
+        cover_img = f'<img src="{story.chapters[0].image_url}" style="width: 4.2in; height: 4.2in; object-fit: cover; border-radius: 12px; margin-top: 0.4in;" />'
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            @page {{
+                size: 12.25in 9.25in;
+                margin: 0;
+            }}
+            body {{
+                margin: 0;
+                padding: 0;
+                font-family: Georgia, serif;
+                background: #1e1533;
+                color: #ffffff;
+                width: 12.25in;
+                height: 9.25in;
+            }}
+            .back-cover {{
+                width: 6.125in;
+                height: 9.25in;
+                padding: 1in;
+                box-sizing: border-box;
+                text-align: center;
+                float: left;
+            }}
+            .front-cover {{
+                width: 6.125in;
+                height: 9.25in;
+                padding: 1in;
+                box-sizing: border-box;
+                text-align: center;
+                float: left;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="back-cover">
+            <h3 style="margin-top: 2.5in; color: #fecfef;">StoryMagic Hub</h3>
+            <p style="font-size: 12pt; color: #cbd5e1; line-height: 1.6;">
+                A personalized therapeutic story crafted especially to inspire courage, kindness, and confidence.
+            </p>
+        </div>
+        <div class="front-cover">
+            <h1 style="font-size: 22pt; color: #ff9a9e; margin-top: 0.5in;">{story.title}</h1>
+            {cover_img}
+            <p style="margin-top: 0.5in; font-size: 12pt; color: #f1e4ff;">{story.author}</p>
+        </div>
+    </body>
+    </html>
+    """
     return HTML(string=html_content).write_pdf()
 
 
@@ -700,7 +775,7 @@ async def export_print_pdf(story: StoryBookData):
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": 'attachment; filename="StoryMagic_Print_Ready_5.5x8.5.pdf"'
+            "Content-Disposition": 'attachment; filename="StoryMagic_Print_Ready_6x9.pdf"'
         },
     )
 
@@ -725,15 +800,26 @@ async def lulu_create_order(req: LuluOrderRequest):
         "Lulu-Source": "StoryMagicHub"
     }
 
-    # Генерируем печатный PDF
-    pdf_bytes = generate_print_pdf_bytes(req.story)
+    # 1. Генерируем PDF блока и обложки (без лишних страниц) и сохраняем в память
+    interior_id = f"interior_{uuid.uuid4().hex}"
+    cover_id = f"cover_{uuid.uuid4().hex}"
+    
+    LULU_PDF_STORAGE[interior_id] = generate_print_pdf_bytes(req.story)
+    LULU_PDF_STORAGE[cover_id] = generate_cover_pdf_bytes(req.story)
 
-    # Страхуем длину street1 и street2 до 30 символов по требованиям Lulu API
+    # 2. Публичные ссылки на ваш сервер Railway для скачивания сервером Lulu
+    base_url = os.environ.get("PUBLIC_BASE_URL", "https://storymagic-hub-production.up.railway.app").rstrip("/")
+    interior_url = f"{base_url}/api/lulu-files/{interior_id}.pdf"
+    cover_url = f"{base_url}/api/lulu-files/{cover_id}.pdf"
+
     addr = dict(req.shipping_address)
     if "street1" in addr and addr["street1"]:
         addr["street1"] = str(addr["street1"])[:30]
     if "street2" in addr and addr["street2"]:
         addr["street2"] = str(addr["street2"])[:30]
+
+    # Используем Saddle Stitch (SS) или Coil (CO), которые поддерживают от 4-8 страниц
+    pod_package_id = os.environ.get("LULU_POD_PACKAGE_ID", "0600X0900FCSTDSS080CW444GXX")
 
     payload = {
         "contact_email": req.contact_email,
@@ -743,9 +829,9 @@ async def lulu_create_order(req: LuluOrderRequest):
             {
                 "title": req.story.title,
                 "quantity": 1,
-                "pod_package_id": "0600X0900FCSTDPB080CW444GXX",
-                "cover": "https://your-public-storage.com/cover.pdf", 
-                "interior": "https://your-public-storage.com/interior.pdf"
+                "pod_package_id": pod_package_id,
+                "cover": cover_url, 
+                "interior": interior_url
             }
         ]
     }
