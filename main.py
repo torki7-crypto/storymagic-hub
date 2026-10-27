@@ -61,7 +61,12 @@ class TTSRequest(BaseModel):
 class LuluOrderRequest(BaseModel):
     story: StoryBookData
     contact_email: str
-    shipping_address: dict  # name, street1, city, postcode, country_code, etc.
+    phone_number: str
+    street1: str
+    city: str
+    postcode: str
+    country_code: str = "GB"  # По умолчанию Великобритания, либо из формы
+    shipping_name: str = "Customer"
 
 
 # ==========================================
@@ -727,17 +732,25 @@ async def lulu_create_order(req: LuluOrderRequest):
 
     # Генерируем печатный PDF для проверки
     pdf_bytes = generate_print_pdf_bytes(req.story)
-    # В реальной интеграции PDF загружается в хранилище (например, S3 или Railway Storage), 
-    # и Lulu передается прямая публичная ссылка на скачивание файла.
+
+    # Обрезаем street1 до 30 символов, как требует Lulu API
+    safe_street1 = req.street1[:30]
 
     payload = {
         "contact_email": req.contact_email,
-        "shipping_address": req.shipping_address,
+        "shipping_address": {
+            "name": req.shipping_name,
+            "street1": safe_street1,
+            "city": req.city,
+            "postcode": req.postcode,
+            "country_code": req.country_code,
+            "phone_number": req.phone_number
+        },
         "line_items": [
             {
-                "title": req.story.title,  # <--- Добавлено обязательное поле title
+                "title": req.story.title,
                 "quantity": 1,
-                "pod_package_id": "0550X0850BWSCW060UWH440Mxx", # Пример ID пакета печати Lulu для 5.5x8.5
+                "pod_package_id": "0550X0850BWSCW060UWH440Mxx",
                 "cover_file": "https://your-public-storage.com/cover.pdf", 
                 "interior_file": "https://your-public-storage.com/interior.pdf"
             }
