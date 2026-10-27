@@ -819,7 +819,7 @@ async def lulu_create_order(req: LuluOrderRequest):
         addr["street2"] = str(addr["street2"])[:30]
 
     # Используем Saddle Stitch (SS) или Coil (CO), которые поддерживают от 4-8 страниц
-    pod_package_id = os.environ.get("LULU_POD_PACKAGE_ID", "0600X0900.FC.STD.PB.080CW444.GXX")
+    pod_package_id = os.environ.get("LULU_POD_PACKAGE_ID", "0600X0900.FC.PRE.SS.080CW444.GXX")
 
     payload = {
         "contact_email": req.contact_email,
