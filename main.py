@@ -340,7 +340,7 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
 async def get_lulu_access_token() -> str:
     is_sandbox = os.environ.get("LULU_ENV", "sandbox") == "sandbox"
     token_url = (
-        "https://api.sandbox.lulu.com/auth/realms/producer/protocol/openid-connect/token"
+        "https://api.sandbox.lulu.com/auth/realms/glasstree/protocol/openid-connect/token"
         if is_sandbox
         else "https://api.lulu.com/auth/realms/producer/protocol/openid-connect/token"
     )
