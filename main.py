@@ -1,859 +1,875 @@
-import asyncio
-import base64
-import io
-import os
-from typing import Dict, List, Optional
-import urllib.parse
-import uuid
-from ebooklib import epub
-import edge_tts
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
-from google import genai
-from google.genai import types
-import httpx
-from pydantic import BaseModel, Field
-from weasyprint import HTML
+var currentPages = [];
+    var currentIndex = 0;
+    var currentLang = 'en';
+    var isSpeaking = false;
+    var selectedPhotoFile = null;
+    var currentBookTitle = "Magical Story";
+    var isPaidUser = false;
+    var currentDedicationText = "";
+    var currentPsychologyQuestions = [];
+    var pendingFormatAction = null;
+    var authMode = 'login';
+    var currentUser = null;
 
-app = FastAPI(title="StoryMagic Hub Backend")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
-
-
-# ==========================================
-# 1. Модели данных
-# ==========================================
-
-
-class ChapterData(BaseModel):
-    chapter_number: int
-    title: str
-    paragraphs: List[str]
-    image_prompt: Optional[str] = ""
-    image_url: Optional[str] = ""
-
-
-class StoryBookData(BaseModel):
-    title: str
-    language_code: str = "en"
-    author: str = "StoryMagic Hub"
-    description: Optional[str] = Field(default="")
-    dedication_text: Optional[str] = Field(default="")
-    psychology_questions: List[str] = Field(default_factory=list)
-    chapters: List[ChapterData]
-    is_paid: Optional[bool] = False
-
-
-class TTSRequest(BaseModel):
-    text: str
-    lang: str = "en"
-
-
-class LuluOrderRequest(BaseModel):
-    story: StoryBookData
-    contact_email: str
-    shipping_address: dict
-
-
-# ==========================================
-# 2. Модуль сборки ePub3
-# ==========================================
-
-
-class EpubBuilder:
-    CSS_STYLES = """
-    body { font-family: Georgia, serif; line-height: 1.6; margin: 5%; color: #2D3748; }
-    h1 { color: #4A5568; font-size: 1.3em; text-align: left; margin-bottom: 0.6em; margin-top: 0.2em; border-bottom: 1px solid #E2E8F0; padding-bottom: 0.3em; }
-    h2 { color: #4A5568; text-align: center; margin-top: 1.5em; }
-    .img-container { text-align: center; margin: 1.2em 0; }
-    img { max-width: 100%; height: auto; border-radius: 12px; }
-    p { text-indent: 1.2em; margin-bottom: 0.8em; font-size: 1.05em; }
-    .dedication-page { text-align: center; font-style: italic; margin-top: 4em; padding: 2em; background: #FAF5FF; border-radius: 12px; }
-    .psychology-page { background: #F0FFF4; padding: 1.5em; border-radius: 12px; margin-top: 2em; }
-    """
-
-    @classmethod
-    async def create_epub(cls, story: StoryBookData) -> bytes:
-        book = epub.EpubBook()
-        lang = (story.language_code or "en").lower()
-        book.set_identifier(str(uuid.uuid4()))
-        book.set_title(story.title or "StoryMagic Book")
-        book.set_language(lang)
-        book.add_author(story.author)
-
-        css_item = epub.EpubItem(
-            uid="style_main",
-            file_name="style/main.css",
-            media_type="text/css",
-            content=cls.CSS_STYLES.encode("utf-8"),
-        )
-        book.add_item(css_item)
-
-        spine = ["nav"]
-        toc = []
-
-        async with httpx.AsyncClient(
-            timeout=30.0, follow_redirects=True
-        ) as http_client:
-            
-            dedication = (story.dedication_text or "").strip()
-            if dedication:
-                safe_dedication = dedication.replace("\n", "<br/>")
-                dedication_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head><title>Dedication</title><link rel="stylesheet" href="style/main.css" type="text/css"/></head>
-<body>
-    <div class="dedication-page">
-        <h2>❤️</h2>
-        <p>{safe_dedication}</p>
-    </div>
-</body>
-</html>"""
-                dedication_item = epub.EpubHtml(
-                    title="Dedication",
-                    file_name="dedication.xhtml",
-                    lang=lang,
-                    uid="dedication",
-                )
-                dedication_item.content = dedication_xhtml.encode("utf-8")
-                dedication_item.add_item(css_item)
-                book.add_item(dedication_item)
-                spine.append(dedication_item)
-                toc.append(dedication_item)
-
-            for idx, ch in enumerate(story.chapters):
-                ch_num = ch.chapter_number or (idx + 1)
-                img_html = ""
-                img_bytes = None
-
-                if ch.image_url and ch.image_url.startswith("data:image"):
-                    try:
-                        header, b64_data = ch.image_url.split(",", 1)
-                        img_bytes = base64.b64decode(b64_data)
-                    except Exception as e:
-                        print(f"Failed to decode base64 image for chapter {ch_num}: {e}")
-
-                elif ch.image_url and ch.image_url.startswith("http"):
-                    try:
-                        img_res = await http_client.get(ch.image_url)
-                        if img_res.status_code == 200:
-                            img_bytes = img_res.content
-                    except Exception as e:
-                        print(f"Failed to download image for ePub chapter {ch_num}: {e}")
-
-                if img_bytes:
-                    img_filename = f"images/chapter_{ch_num}.jpg"
-                    img_item = epub.EpubItem(
-                        uid=f"img_{ch_num}",
-                        file_name=img_filename,
-                        media_type="image/jpeg",
-                        content=img_bytes,
-                    )
-                    book.add_item(img_item)
-                    img_html = f'<div class="img-container"><img src="{img_filename}" alt="{ch.title}"/></div>'
-
-                    if idx == 0 and not dedication:
-                        book.set_cover("cover.jpg", img_bytes)
-
-                paragraphs_html = "".join(
-                    [f"<p>{p.strip()}</p>" for p in ch.paragraphs if p.strip()]
-                )
-                
-                chapter_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head><title>{ch.title}</title><link rel="stylesheet" href="style/main.css" type="text/css"/></head>
-<body>
-    <h1>{ch.title}</h1>
-    {img_html}
-    {paragraphs_html}
-</body>
-</html>"""
-                chapter_item = epub.EpubHtml(
-                    title=ch.title,
-                    file_name=f"chapter_{ch_num}.xhtml",
-                    lang=lang,
-                    uid=f"chapter_{ch_num}",
-                )
-                chapter_item.content = chapter_xhtml.encode("utf-8")
-                chapter_item.add_item(css_item)
-                book.add_item(chapter_item)
-                spine.append(chapter_item)
-                toc.append(chapter_item)
-
-            if story.psychology_questions:
-                psych_headers = {
-                    "ru": ("💡 Вопросы для душевного разговора", "Эти вопросы помогут обсудить сказку с ребенком и закрепить ее терапевтический эффект:"),
-                    "pl": ("💡 Pytania do szczerej rozmowy", "Te pytania pomogą omówić bajkę z dzieckiem i utrwalić jej efekt terapeutyczny:"),
-                    "ro": ("💡 Întrebări pentru o discuție sinceră", "Aceste întrebări vă vor ajuta să discutați povestea cu copilul și să-i consolidați efectul terapeutic:"),
-                    "it": ("💡 Domande per una conversazione intima", "Queste domande aiuteranno a discutere la fiaba con il bambino e a consolidare il suo effetto terapeutico:"),
-                    "tr": ("💡 İçten Bir Sohbet İçin Sorular", "Bu sorular, masalı çocuğunuzla tartışmanıza ve terapötik etkisini pekiştirmenize yardımcı olacaktır:")
-                }
-                default_header = ("💡 Questions for a Heart-to-Heart Talk", "These questions will help discuss the story with your child and reinforce its therapeutic effect:")
-                
-                h_title, h_desc = psych_headers.get(lang, default_header)
-
-                questions_html = "".join([f"<li>{q}</li>" for q in story.psychology_questions])
-                psych_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head><title>Talk with Child</title><link rel="stylesheet" href="style/main.css" type="text/css"/></head>
-<body>
-    <div class="psychology-page">
-        <h2>{h_title}</h2>
-        <p>{h_desc}</p>
-        <ul>{questions_html}</ul>
-    </div>
-</body>
-</html>"""
-                psych_item = epub.EpubHtml(
-                    title="Questions for Discussion",
-                    file_name="psychology_questions.xhtml",
-                    lang=lang,
-                    uid="psychology",
-                )
-                psych_item.content = psych_xhtml.encode("utf-8")
-                psych_item.add_item(css_item)
-                book.add_item(psych_item)
-                spine.append(psych_item)
-                toc.append(psych_item)
-
-        book.toc = tuple(toc)
-        book.add_item(epub.EpubNcx())
-        book.add_item(epub.EpubNav())
-        book.spine = spine
-
-        buffer = io.BytesIO()
-        epub.write_epub(buffer, book, {})
-        return buffer.getvalue()
-
-
-# ==========================================
-# 2.3. Генератор Print-Ready PDF и раздача файлов для Lulu
-# ==========================================
-
-LULU_PDF_STORAGE: Dict[str, bytes] = {}
-
-
-@app.get("/api/lulu-files/{file_id}.pdf")
-async def serve_lulu_pdf(file_id: str):
-    """Публичный эндпоинт, по которому Lulu скачивает interior.pdf и cover.pdf"""
-    pdf_data = LULU_PDF_STORAGE.get(file_id)
-    if not pdf_data:
-        raise HTTPException(status_code=404, detail="PDF file not found")
-    return Response(content=pdf_data, media_type="application/pdf")
-
-
-def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
-    """Генерирует внутренний блок книги 6x9 дюймов (с вылетами 6.25x9.25in) ровно по главам"""
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            @page {{
-                size: 6.25in 9.25in;
-                margin-top: 0.75in;
-                margin-bottom: 0.75in;
-                margin-left: 0.75in;
-                margin-right: 0.75in;
-                @bottom-center {{
-                    content: counter(page);
-                    font-family: Georgia, serif;
-                    font-size: 10pt;
-                    color: #4A5568;
-                }}
-            }}
-            body {{
-                font-family: Georgia, serif;
-                font-size: 12pt;
-                line-height: 1.6;
-                color: #2D3748;
-            }}
-            .page-break {{
-                page-break-after: always;
-            }}
-            h1 {{
-                font-size: 16pt;
-                color: #2D3748;
-                margin-bottom: 0.8em;
-                border-bottom: 1px solid #CBD5E1;
-                padding-bottom: 0.3em;
-            }}
-            .img-container {{
-                text-align: center;
-                margin: 1.0em 0;
-            }}
-            img {{
-                max-width: 100%;
-                max-height: 3.8in;
-                object-fit: cover;
-                border-radius: 8px;
-            }}
-            p {{
-                text-indent: 1.5em;
-                margin-bottom: 0.8em;
-            }}
-            .dedication-page, .psychology-page {{
-                page-break-after: always;
-                text-align: center;
-                padding-top: 2in;
-            }}
-        </style>
-    </head>
-    <body>
-    """
-    
-    dedication = (story.dedication_text or "").strip()
-    if dedication:
-        html_content += f"""
-        <div class="dedication-page">
-            <h2>❤️</h2>
-            <p style="font-style: italic; font-size: 14pt; text-indent: 0;">{dedication.replace(chr(10), '<br/>')}</p>
-        </div>
-        """
-
-    for idx, ch in enumerate(story.chapters):
-        is_last_chapter = (idx == len(story.chapters) - 1) and not story.psychology_questions
-        break_class = "" if is_last_chapter else ' class="page-break"'
-        html_content += f"<div{break_class}><h1>{ch.title}</h1>"
-        if ch.image_url:
-            html_content += f'<div class="img-container"><img src="{ch.image_url}" alt="{ch.title}" /></div>'
-        for p in ch.paragraphs:
-            html_content += f"<p>{p}</p>"
-        html_content += "</div>"
-
-    if story.psychology_questions:
-        questions_li = "".join([f"<li>{q}</li>" for q in story.psychology_questions])
-        html_content += f"""
-        <div class="psychology-page" style="page-break-after: avoid;">
-            <h2>💡 Questions & Discussion</h2>
-            <ul style="text-align: left; display: inline-block;">{questions_li}</ul>
-        </div>
-        """
-
-    html_content += "</body></html>"
-    return HTML(string=html_content).write_pdf()
-
-
-def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
-    """Генерирует обложку под 6x9 дюймов (разворот 12.25in x 9.25in)"""
-    cover_img = ""
-    if story.chapters and story.chapters[0].image_url:
-        cover_img = f'<img src="{story.chapters[0].image_url}" style="width: 4.2in; height: 4.2in; object-fit: cover; border-radius: 12px; margin-top: 0.4in;" />'
-
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            @page {{
-                size: 12.25in 9.25in;
-                margin: 0;
-            }}
-            body {{
-                margin: 0;
-                padding: 0;
-                font-family: Georgia, serif;
-                background: #1e1533;
-                color: #ffffff;
-                width: 12.25in;
-                height: 9.25in;
-            }}
-            .back-cover {{
-                width: 6.125in;
-                height: 9.25in;
-                padding: 1in;
-                box-sizing: border-box;
-                text-align: center;
-                float: left;
-            }}
-            .front-cover {{
-                width: 6.125in;
-                height: 9.25in;
-                padding: 1in;
-                box-sizing: border-box;
-                text-align: center;
-                float: left;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="back-cover">
-            <h3 style="margin-top: 2.5in; color: #fecfef;">StoryMagic Hub</h3>
-            <p style="font-size: 12pt; color: #cbd5e1; line-height: 1.6;">
-                A personalized therapeutic story crafted especially to inspire courage, kindness, and confidence.
-            </p>
-        </div>
-        <div class="front-cover">
-            <h1 style="font-size: 22pt; color: #ff9a9e; margin-top: 0.5in;">{story.title}</h1>
-            {cover_img}
-            <p style="margin-top: 0.5in; font-size: 12pt; color: #f1e4ff;">{story.author}</p>
-        </div>
-    </body>
-    </html>
-    """
-    return HTML(string=html_content).write_pdf()
-
-
-# ==========================================
-# 2.4. Интеграция с Lulu Print API
-# ==========================================
-
-async def get_lulu_access_token() -> str:
-    is_sandbox = os.environ.get("LULU_ENV", "sandbox") == "sandbox"
-    token_url = (
-        "https://api.sandbox.lulu.com/auth/realms/glasstree/protocol/openid-connect/token"
-        if is_sandbox
-        else "https://api.lulu.com/auth/realms/producer/protocol/openid-connect/token"
-    )
-    
-    client_key = os.environ.get("LULU_CLIENT_KEY", "")
-    client_secret = os.environ.get("LULU_CLIENT_SECRET", "")
-    
-    credentials = f"{client_key}:{client_secret}"
-    encoded_creds = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
-
-    headers = {
-        "Authorization": f"Basic {encoded_creds}",
-        "Content-Type": "application/x-www-form-urlencoded"
+    function setText(id, val) {
+        var el = document.getElementById(id);
+        if (el && val !== undefined) el.innerText = val;
     }
-    data = {"grant_type": "client_credentials"}
+    function setHtml(id, val) {
+        var el = document.getElementById(id);
+        if (el && val !== undefined) el.innerHTML = val;
+    }
 
-    async with httpx.AsyncClient() as client_http:
-        res = await client_http.post(token_url, headers=headers, data=data)
-        if res.status_code == 200:
-            return res.json().get("access_token")
-        else:
-            print(f"Lulu Token Error: {res.text}")
-            raise HTTPException(status_code=500, detail="Failed to connect to Lulu API")
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+        document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+        
+        var targetTab = document.getElementById('tab-' + tabName);
+        if (targetTab) targetTab.classList.add('active');
+        
+        var navBtn = document.getElementById('nav-' + tabName);
+        if (navBtn) navBtn.classList.add('active');
 
+        if (tabName === 'library') loadLibrary();
+    }
 
-# ==========================================
-# 2.5. Умное определение моделей картинок + Fallback
-# ==========================================
-
-image_semaphore = asyncio.Semaphore(3)
-CACHED_IMAGE_MODELS: Optional[List[str]] = None
-
-
-def get_available_image_models() -> List[str]:
-    global CACHED_IMAGE_MODELS
-    if CACHED_IMAGE_MODELS is not None:
-        return CACHED_IMAGE_MODELS
-
-    found = []
-    try:
-        for m in client.models.list():
-            name = getattr(m, "name", "")
-            clean_name = name.replace("models/", "")
-            if "image" in clean_name.lower() or "imagen" in clean_name.lower():
-                found.append(clean_name)
-    except Exception as e:
-        print(f"Error listing Google models: {e}")
-
-    if not found:
-        found = ["gemini-2.5-flash-image", "imagen-3.0-generate-002"]
-
-    CACHED_IMAGE_MODELS = found
-    return found
-
-
-async def generate_book_illustration(
-    prompt: str,
-    style: str,
-    index: int,
-    hero_name: str,
-    age: int,
-    photo_bytes: Optional[bytes] = None,
-    photo_mime: str = "image/jpeg",
-) -> str:
-    safe_prompt = prompt.replace('"', "").replace("'", "")
-    full_prompt = (
-        f"Create a high-quality square children's book illustration in {style} style. "
-        f"Main character: cute {age}-year-old child named {hero_name}. "
-        f"Scene: {safe_prompt}. "
-        f"Anatomically correct proportions, natural human and animal anatomy, "
-        f"strictly two arms and two legs for the child, four legs for animals, "
-        f"clean composition, vibrant warm colors, masterpiece storybook art, no text or watermarks."
-    )
-
-    async with image_semaphore:
-        await asyncio.sleep(index * 0.4)
-
-        contents = []
-        if photo_bytes:
-            contents.append(
-                types.Part.from_bytes(data=photo_bytes, mime_type=photo_mime)
-            )
-            full_prompt += (
-                " CRITICAL: Preserve the child's exact facial features, hair color, hairstyle, "
-                "and eye color from the attached reference photo while rendering them in the requested illustration style!"
-            )
-        contents.append(full_prompt)
-
-        google_models = await asyncio.to_thread(get_available_image_models)
-
-        for model_name in google_models:
-            for modalities in [["TEXT", "IMAGE"], ["IMAGE"]]:
-                try:
-                    response = await asyncio.to_thread(
-                        client.models.generate_content,
-                        model=model_name,
-                        contents=(
-                            contents if "gemini" in model_name else [full_prompt]
-                        ),
-                        config=types.GenerateContentConfig(
-                            response_modalities=modalities,
-                            temperature=0.7,
-                        ),
-                    )
-
-                    if (
-                        response.candidates
-                        and response.candidates[0].content
-                        and response.candidates[0].content.parts
-                    ):
-                        for part in response.candidates[0].content.parts:
-                            if part.inline_data and part.inline_data.data:
-                                b64_img = base64.b64encode(
-                                    part.inline_data.data
-                                ).decode("utf-8")
-                                mime = part.inline_data.mime_type or "image/jpeg"
-                                return f"data:{mime};base64,{b64_img}"
-                except Exception as e:
-                    err_str = str(e)
-                    if "404" in err_str or "NOT_FOUND" in err_str:
-                        break
-
-        rep_token = os.environ.get("REPLICATE_API_TOKEN")
-        if rep_token:
-            try:
-                headers = {
-                    "Authorization": f"Bearer {rep_token}",
-                    "Content-Type": "application/json",
-                }
-                payload = {
-                    "input": {
-                        "prompt": full_prompt,
-                        "aspect_ratio": "1:1",
-                        "output_format": "jpg",
-                        "output_quality": 90,
-                    }
-                }
-                async with httpx.AsyncClient(timeout=45.0) as client_http:
-                    res = await client_http.post(
-                        "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
-                        headers=headers,
-                        json=payload,
-                    )
-                    if res.status_code in [200, 201, 202]:
-                        data = res.json()
-                        out = data.get("output")
-                        if out:
-                            return out[0] if isinstance(out, list) else out
-                        poll_url = data.get("urls", {}).get("get")
-                        if poll_url:
-                            for _ in range(25):
-                                await asyncio.sleep(1.5)
-                                p_res = await client_http.get(poll_url, headers=headers)
-                                if p_res.status_code == 200:
-                                    p_data = p_res.json()
-                                    if p_data.get("status") == "succeeded":
-                                        out = p_data.get("output")
-                                        return out[0] if isinstance(out, list) else out
-                                    elif p_data.get("status") in ["failed", "canceled"]:
-                                        break
-            except Exception as e:
-                print(f"[Replicate fallback] error: {e}")
-
-        try:
-            encoded = urllib.parse.quote(full_prompt[:400])
-            flux_url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&seed={index+101}&nologo=true&model=flux"
-            async with httpx.AsyncClient(timeout=35.0, follow_redirects=True) as client_http:
-                f_res = await client_http.get(flux_url)
-                if f_res.status_code == 200 and f_res.content:
-                    b64_img = base64.b64encode(f_res.content).decode("utf-8")
-                    return f"data:image/jpeg;base64,{b64_img}"
-        except Exception as e:
-            print(f"[Flux fallback] error: {e}")
-
-    return "https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg"
-
-
-# ==========================================
-# 3. Маршруты API
-# ==========================================
-
-
-@app.post("/api/generate")
-async def generate_book_form(
-    hero_name: str = Form("Alice"),
-    age: int = Form(7),
-    theme: str = Form("Magical journey"),
-    style: str = Form("Watercolor children book illustration"),
-    lang: str = Form("en"),
-    custom_dedication: Optional[str] = Form(None),
-    photo: Optional[UploadFile] = File(None),
-):
-    try:
-        lang_names = {
-            "en": "English",
-            "ru": "Russian",
-            "pl": "Polish",
-            "ro": "Romanian",
-            "it": "Italian",
-            "tr": "Turkish",
+    /* --- УПРАВЛЕНИЕ МОДАЛКОЙ ВЫБОРА ФОРМАТА --- */
+    function openFormatModal() {
+        var consent = document.getElementById('legalConsent');
+        var d = dictionary[currentLang] || dictionary['en'];
+        if (consent && !consent.checked) {
+            alert(d.consentAlert);
+            return;
         }
-        target_lang = lang_names.get(lang, "English")
+        var modal = document.getElementById('formatModal');
+        if (modal) modal.style.display = 'flex';
+    }
 
-        contents_for_gemini = []
-        photo_instruction = ""
-        photo_bytes = None
-        photo_mime = "image/jpeg"
+    function closeFormatModal() {
+        var modal = document.getElementById('formatModal');
+        if (modal) modal.style.display = 'none';
+    }
 
-        if photo and photo.filename:
-            raw_bytes = await photo.read()
-            if raw_bytes:
-                photo_bytes = raw_bytes
-                photo_mime = photo.content_type or "image/jpeg"
-                contents_for_gemini.append(
-                    types.Part.from_bytes(data=photo_bytes, mime_type=photo_mime)
-                )
-                photo_instruction = """
-4. PHOTO LIKENESS (CRITICAL): Look closely at the attached photo of the child. Identify their exact physical appearance: gender, hair color, hairstyle/length, eye color, skin tone, and any cute distinctive features. You MUST include this exact physical description at the beginning of EVERY SINGLE chapter's 'image_prompt'!
-"""
+    async function handleFormatSelection(formatType) {
+        closeFormatModal();
 
-        dedication_prompt_rule = (
-            f"Dedication text provided by parents: '{custom_dedication}'."
-            if custom_dedication
-            else "Create a short, touching, warm parent dedication text for field 'dedication_text'."
-        )
-
-        prompt = f"""
-You are an award-winning children's book author and illustrator. Write a single, cohesive, heartwarming story featuring a {age}-year-old main character named {hero_name}.
-Story Theme: {theme}.
-Visual Style: {style}.
-Language: Write the ENTIRE book strictly in {target_lang}.
-
-ADDITIONAL SECTIONS TO GENERATE:
-1. {dedication_prompt_rule}
-2. 'psychology_questions': Generate exactly 3 gentle, open-ended psychological questions for parents to discuss with a {age}-year-old child at the end of the story based on the theme (written in {target_lang}).
-
-CRITICAL VISUAL & ANATOMY RULES FOR IMAGE PROMPTS:
-1. The book must consist of EXACTLY 8 chapters forming ONE continuous plot.
-2. Every chapter MUST include a short, vivid, descriptive English 'image_prompt'.
-3. The image_prompts must ensure strict visual continuity and adhere to the chosen {style}.
-{photo_instruction}
-5. ANATOMY & POSE CLARITY: In every 'image_prompt', describe simple, clear, natural poses.
-
-Requirements for each chapter:
-- A captivating chapter title.
-- 2-3 rich paragraphs of storytelling text.
-- A short, vivid English 'image_prompt'.
-"""
-        contents_for_gemini.append(prompt)
-
-        gemini_response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=contents_for_gemini,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=StoryBookData,
-                temperature=0.7,
-            ),
-        )
-
-        story_data = StoryBookData.model_validate_json(gemini_response.text)
-
-        if custom_dedication and custom_dedication.strip():
-            story_data.dedication_text = custom_dedication.strip()
-
-        tasks = []
-        for idx, ch in enumerate(story_data.chapters):
-            scene_desc = ch.image_prompt or f"{style} scene {idx+1} for {hero_name}"
-            tasks.append(
-                generate_book_illustration(
-                    scene_desc,
-                    style,
-                    idx,
-                    hero_name,
-                    age,
-                    photo_bytes,
-                    photo_mime,
-                )
-            )
-
-        image_urls = await asyncio.gather(*tasks)
-
-        pages = []
-        for idx, ch in enumerate(story_data.chapters):
-            full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
-            pages.append(
-                {
-                    "page_number": idx + 1,
-                    "title": ch.title,
-                    "text": full_text,
-                    "paragraphs": ch.paragraphs,
-                    "image_url": image_urls[idx],
-                }
-            )
-
-        return {
-            "success": True, 
-            "title": story_data.title, 
-            "dedication_text": story_data.dedication_text,
-            "psychology_questions": story_data.psychology_questions,
-            "pages": pages
+        if (formatType === 'digital' && !isPaidUser) {
+            pendingFormatAction = 'digital';
+            openPaymentModal();
+            return;
         }
 
-    except Exception as e:
-        print(f"Generation Error: {str(e)}")
-        return {"success": False, "error": str(e)}
+        var success = await generateStory();
+        if (!success) return;
 
-
-@app.post("/api/tts")
-async def generate_tts(req: TTSRequest):
-    voices = {
-        "en": "en-US-AnaNeural",
-        "ru": "ru-RU-SvetlanaNeural",
-        "pl": "pl-PL-ZofiaNeural",
-        "ro": "ro-RO-AlinaNeural",
-        "it": "it-IT-ElsaNeural",
-        "tr": "tr-TR-EmelNeural",
-    }
-    voice = voices.get(req.lang.lower(), "en-US-AnaNeural")
-    clean_text = req.text.replace("«", "").replace("»", ". ")
-    communicate = edge_tts.Communicate(clean_text, voice, rate="-10%")
-    audio_stream = io.BytesIO()
-
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_stream.write(chunk["data"])
-
-    return Response(content=audio_stream.getvalue(), media_type="audio/mpeg")
-
-
-@app.post("/api/export-epub")
-async def export_epub(story: StoryBookData):
-    if not story.is_paid:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Payment Required",
-        )
-    epub_bytes = await EpubBuilder.create_epub(story)
-    return Response(
-        content=epub_bytes,
-        media_type="application/epub+zip",
-        headers={
-            "Content-Disposition": 'attachment; filename="StoryMagic_Book.epub"'
-        },
-    )
-
-
-@app.post("/api/export-print-pdf")
-async def export_print_pdf(story: StoryBookData):
-    if not story.is_paid:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Payment Required",
-        )
-    pdf_bytes = generate_print_pdf_bytes(story)
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": 'attachment; filename="StoryMagic_Print_Ready_6x9.pdf"'
-        },
-    )
-
-
-@app.post("/api/lulu-create-order")
-async def lulu_create_order(req: LuluOrderRequest):
-    """Эндпоинт для отправки печатного заказа в Sandbox/Production Lulu API"""
-    if not req.story.is_paid:
-        raise HTTPException(status_code=402, detail="Payment Required")
-    
-    token = await get_lulu_access_token()
-    is_sandbox = os.environ.get("LULU_ENV", "sandbox") == "sandbox"
-    orders_url = (
-        "https://api.sandbox.lulu.com/print-jobs/"
-        if is_sandbox
-        else "https://api.lulu.com/print-jobs/"
-    )
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Lulu-Source": "StoryMagicHub"
+        if (formatType === 'read') {
+            showSlide(0);
+        } else if (formatType === 'digital') {
+            exportEpub();
+        } else if (formatType === 'hardcover') {
+            switchTab('order');
+        }
     }
 
-    # 1. Генерируем PDF блока и обложки (без лишних страниц) и сохраняем в память
-    interior_id = f"interior_{uuid.uuid4().hex}"
-    cover_id = f"cover_{uuid.uuid4().hex}"
-    
-    LULU_PDF_STORAGE[interior_id] = generate_print_pdf_bytes(req.story)
-    LULU_PDF_STORAGE[cover_id] = generate_cover_pdf_bytes(req.story)
-
-    # 2. Публичные ссылки на ваш сервер Railway для скачивания сервером Lulu
-    base_url = os.environ.get("PUBLIC_BASE_URL", "https://storymagic-hub-production.up.railway.app").rstrip("/")
-    interior_url = f"{base_url}/api/lulu-files/{interior_id}.pdf"
-    cover_url = f"{base_url}/api/lulu-files/{cover_id}.pdf"
-
-    addr = dict(req.shipping_address)
-    if "street1" in addr and addr["street1"]:
-        addr["street1"] = str(addr["street1"])[:30]
-    if "street2" in addr and addr["street2"]:
-        addr["street2"] = str(addr["street2"])[:30]
-
-    # Используем Saddle Stitch (SS) или Coil (CO), которые поддерживают от 4-8 страниц
-    pod_package_id = os.environ.get("LULU_POD_PACKAGE_ID", "0600X0900.FC.PRE.SS.080CW444.GXX")
-
-    payload = {
-        "contact_email": req.contact_email,
-        "shipping_level": "MAIL",
-        "shipping_address": addr,
-        "line_items": [
-            {
-                "title": req.story.title,
-                "quantity": 1,
-                "pod_package_id": pod_package_id,
-                "cover": cover_url, 
-                "interior": interior_url
+    /* --- УПРАВЛЕНИЕ МОДАЛКОЙ АВТОРИЗАЦИИ / РЕГИСТРАЦИИ --- */
+    function openAuthModal() {
+        if (currentUser) {
+            var confirmLogout = confirm(currentLang === 'ru' 
+                ? ('Вы вошли как ' + currentUser.email + '. Хотите выйти?') 
+                : ('Signed in as ' + currentUser.email + '. Would you like to sign out?'));
+            if (confirmLogout) {
+                currentUser = null;
+                localStorage.removeItem('storymagic_user');
+                updateAuthButtonUI();
             }
-        ]
+            return;
+        }
+        var modal = document.getElementById('authModal');
+        if (modal) modal.style.display = 'flex';
     }
 
-    async with httpx.AsyncClient() as client_http:
-        res = await client_http.post(orders_url, headers=headers, json=payload)
-        if res.status_code in [200, 201]:
-            return {"success": True, "lulu_response": res.json()}
-        else:
-            print(f"Lulu Order Error: {res.text}")
-            raise HTTPException(status_code=400, detail=f"Lulu API Error: {res.text}")
+    function closeAuthModal() {
+        var modal = document.getElementById('authModal');
+        if (modal) modal.style.display = 'none';
+    }
 
+    function switchAuthMode(mode) {
+        authMode = mode;
+        var d = dictionary[currentLang] || dictionary['en'];
+        var btnLogin = document.getElementById('tab-btn-login');
+        var btnReg = document.getElementById('tab-btn-register');
+        var nameGroup = document.getElementById('auth-name-group');
+        var submitBtn = document.getElementById('btn-auth-submit');
 
-@app.get("/", response_class=HTMLResponse)
-async def serve_index():
-    if os.path.exists("templates/index.html"):
-        return FileResponse("templates/index.html")
-    return HTMLResponse("<h1>index.html not found</h1>", status_code=404)
+        if (mode === 'login') {
+            if (btnLogin) btnLogin.classList.add('active');
+            if (btnReg) btnReg.classList.remove('active');
+            if (nameGroup) nameGroup.style.display = 'none';
+            if (submitBtn) submitBtn.innerText = d.authSignIn || 'Sign In';
+        } else {
+            if (btnLogin) btnLogin.classList.remove('active');
+            if (btnReg) btnReg.classList.add('active');
+            if (nameGroup) nameGroup.style.display = 'block';
+            if (submitBtn) submitBtn.innerText = d.authRegister || 'Create Account';
+        }
+    }
 
+    async function submitAuthForm(e) {
+        e.preventDefault();
+        var nameVal = (document.getElementById('auth-name-input').value || '').trim();
+        var emailVal = (document.getElementById('auth-email-input').value || '').trim();
+        var passVal = (document.getElementById('auth-pass-input').value || '').trim();
 
-@app.get("/privacy", response_class=HTMLResponse)
-async def privacy_policy():
-    if os.path.exists("templates/privacy.html"):
-        return FileResponse("templates/privacy.html")
-    return HTMLResponse("<h1>privacy.html not found</h1>", status_code=404)
+        if (!emailVal || !passVal) return;
+
+        currentUser = { name: nameVal || emailVal.split('@')[0], email: emailVal };
+        localStorage.setItem('storymagic_user', JSON.stringify(currentUser));
+        
+        var orderEmail = document.getElementById('order-email-input');
+        if (orderEmail) orderEmail.value = currentUser.email;
+        var orderName = document.getElementById('order-name-input');
+        if (orderName && nameVal) orderName.value = nameVal;
+
+        updateAuthButtonUI();
+        closeAuthModal();
+    }
+
+    function updateAuthButtonUI() {
+        var d = dictionary[currentLang] || dictionary['en'];
+        var btn = document.getElementById('btn-auth');
+        if (!btn) return;
+        if (currentUser && currentUser.name) {
+            btn.innerText = '👤 ' + currentUser.name;
+        } else {
+            btn.innerText = d.btnAuth || '👤 Sign In / Register';
+        }
+    }
+
+    /* --- МОДАЛКА ОПЛАТЫ --- */
+    function openPaymentModal() { 
+        var modal = document.getElementById('paymentModal');
+        if (modal) modal.style.display = 'flex'; 
+    }
+
+    function closePaymentModal() { 
+        var modal = document.getElementById('paymentModal');
+        if (modal) modal.style.display = 'none'; 
+    }
+
+    function closeModalOnBackdrop(e) {
+        if (!e.target) return;
+        if (e.target.id === 'paymentModal') closePaymentModal();
+        if (e.target.id === 'formatModal') closeFormatModal();
+        if (e.target.id === 'authModal') closeAuthModal();
+    }
+
+    async function activatePaidAccess(planName) {
+        isPaidUser = true;
+        closePaymentModal();
+        updateSlideUI();
+        alert(currentLang === 'ru' 
+            ? ('Тариф ' + planName + ' активирован! Финальная глава и скачивание ePub разблокированы.') 
+            : (planName + ' plan activated! Final chapter and ePub export are now unlocked.'));
+
+        if (pendingFormatAction === 'digital') {
+            pendingFormatAction = null;
+            var ok = await generateStory();
+            if (ok) exportEpub();
+        }
+    }
+
+    function handlePhotoSelect(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        selectedPhotoFile = file;
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            var thumb = document.getElementById('photoThumb');
+            if (thumb) {
+                thumb.src = evt.target.result;
+                thumb.style.display = 'block';
+            }
+            setText('photoStatusText', file.name);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function checkCustomTheme() {
+        var sel = document.getElementById('themeSelect');
+        var box = document.getElementById('customThemeBox');
+        if (sel && box) box.style.display = (sel.value === 'custom') ? 'block' : 'none';
+    }
+
+    function updateSlideUI() {
+        if (!currentPages || currentPages.length === 0) return;
+        var p = currentPages[currentIndex];
+        var d = dictionary[currentLang] || dictionary['en'];
+
+        var isLastPage = (currentPages.length > 1) && (currentIndex === currentPages.length - 1);
+        var isLocked = isLastPage && !isPaidUser;
+
+        var img = document.getElementById('currentImage');
+        if (img) {
+            img.style.opacity = '0.3';
+            var temp = new Image();
+            temp.onload = function() {
+                img.src = temp.src;
+                img.style.opacity = '1';
+            };
+            temp.src = p.image_url;
+
+            if (isLocked) img.classList.add('locked-blur');
+            else img.classList.remove('locked-blur');
+        }
+
+        var overlay = document.getElementById('paywallLockOverlay');
+        if (overlay) overlay.style.display = isLocked ? 'flex' : 'none';
+
+        var pageNum = p.page_number || (currentIndex + 1);
+        setText('pageBadge', (currentIndex === 0) ? d.badgeCover : (d.badgePage + ' ' + pageNum));
+        setText('pageCounter', pageNum + ' / ' + currentPages.length);
+        
+        var textContainer = document.getElementById('currentText');
+        if (textContainer) {
+            textContainer.innerText = p.text;
+            textContainer.scrollTop = 0;
+        }
+    }
+
+    function showSlide(idx) {
+        if (!currentPages || currentPages.length === 0) return;
+        currentIndex = idx;
+        updateSlideUI();
+    }
+
+    function nextSlide() {
+        if (!currentPages.length) return;
+        showSlide(currentIndex < currentPages.length - 1 ? currentIndex + 1 : 0);
+    }
+
+    function prevSlide() {
+        if (!currentPages.length) return;
+        showSlide(currentIndex > 0 ? currentIndex - 1 : currentPages.length - 1);
+    }
+
+    async function generateStory() {
+        var consent = document.getElementById('legalConsent');
+        var d = dictionary[currentLang] || dictionary['en'];
+        if (consent && !consent.checked) {
+            alert(d.consentAlert);
+            return false;
+        }
+
+        setText('statusMsg', d.statusGen);
+
+        var themeEl = document.getElementById('themeSelect');
+        var selectedTheme = themeEl ? themeEl.options[themeEl.selectedIndex].text : 'Magical tale';
+        if (themeEl && themeEl.value === 'custom') {
+            var customInput = document.getElementById('customThemeInput');
+            selectedTheme = (customInput && customInput.value.trim()) ? customInput.value.trim() : 'Custom gentle fairy tale';
+        }
+
+        var heroInput = document.getElementById('heroName');
+        var heroNameVal = (heroInput && heroInput.value.trim()) ? heroInput.value.trim() : 'Hero';
+        currentBookTitle = heroNameVal + ' - ' + selectedTheme;
+
+        var dedicationInput = document.getElementById('customDedication');
+        var dedicationVal = dedicationInput ? dedicationInput.value.trim() : '';
+
+        var formData = new FormData();
+        formData.append('hero_name', heroNameVal);
+        formData.append('age', document.getElementById('childAge').value || 7);
+        formData.append('theme', selectedTheme);
+        formData.append('style', document.getElementById('artStyle').value);
+        formData.append('lang', currentLang);
+        if (dedicationVal) {
+            formData.append('custom_dedication', dedicationVal);
+        }
+
+        if (selectedPhotoFile) {
+            formData.append('photo', selectedPhotoFile);
+        }
+
+        try {
+            var response = await fetch('/api/generate', { method: 'POST', body: formData });
+            var result = await response.json();
+            if (result.success && result.pages) {
+                currentPages = result.pages;
+                if (result.title) currentBookTitle = result.title;
+                currentDedicationText = result.dedication_text || dedicationVal;
+                currentPsychologyQuestions = result.psychology_questions || [];
+                setText('statusMsg', d.statusDone);
+                showSlide(0);
+                saveBookToLibrary(heroNameVal, selectedTheme, currentPages, currentDedicationText, currentPsychologyQuestions);
+                return true;
+            } else {
+                setText('statusMsg', '❌ ' + (result.error || 'Error'));
+                return false;
+            }
+        } catch (e) {
+            setText('statusMsg', '❌ ' + e.message);
+            return false;
+        }
+    }
+
+    function saveBookToLibrary(hero, theme, pages, dedication, questions) {
+        try {
+            var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
+            lib.unshift({
+                id: Date.now(),
+                hero: hero,
+                theme: theme,
+                cover: pages[0].image_url,
+                pages: pages,
+                dedication_text: dedication,
+                psychology_questions: questions,
+                date: new Date().toLocaleDateString()
+            });
+            localStorage.setItem('storymagic_lib', JSON.stringify(lib.slice(0, 10)));
+        } catch (e) {}
+    }
+
+    function loadLibrary() {
+        var box = document.getElementById('libraryContainer');
+        if (!box) return;
+        var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
+        var d = dictionary[currentLang] || dictionary['en'];
+        box.innerHTML = '';
+        if (lib.length === 0) {
+            box.innerHTML = '<p style="color:#aaa;">' + d.libEmpty + '</p>';
+            return;
+        }
+        lib.forEach(function(book) {
+            var el = document.createElement('div');
+            el.className = 'book-item-card';
+            el.innerHTML = '<img class="book-item-thumb" src="' + book.cover + '" alt="' + book.hero + '">' +
+                           '<div class="book-item-info">' +
+                           '<div class="book-item-title">' + book.hero + ': ' + book.theme + '</div>' +
+                           '<div class="book-item-meta">' + book.date + ' • ' + book.pages.length + ' p.</div>' +
+                           '</div>';
+            el.onclick = function() {
+                currentPages = book.pages;
+                currentBookTitle = book.hero + ' - ' + book.theme;
+                currentDedicationText = book.dedication_text || '';
+                currentPsychologyQuestions = book.psychology_questions || [];
+                switchTab('create');
+                showSlide(0);
+            };
+            box.appendChild(el);
+        });
+    }
+
+    var currentAudio = null;
+
+    async function toggleAudioStory() {
+        if (!currentPages || currentPages.length === 0) return;
+        if (currentPages.length > 1 && currentIndex === currentPages.length - 1 && !isPaidUser) {
+            openPaymentModal();
+            return;
+        }
+
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+            isSpeaking = false;
+            return;
+        }
+
+        var text = currentPages[currentIndex].text;
+        var btnAudio = document.getElementById('btn-audio-lbl');
+        var originalLabel = btnAudio ? btnAudio.innerText : 'Audio Story';
+        if (btnAudio) btnAudio.innerText = '⏳ Loading Voice...';
+
+        try {
+            var response = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, lang: currentLang })
+            });
+
+            if (!response.ok) throw new Error('TTS generation failed');
+
+            var blob = await response.blob();
+            var audioUrl = window.URL.createObjectURL(blob);
+            currentAudio = new Audio(audioUrl);
+            
+            isSpeaking = true;
+            if (btnAudio) btnAudio.innerText = '⏹ Stop Audio';
+
+            currentAudio.play();
+            
+            currentAudio.onended = function() {
+                isSpeaking = false;
+                currentAudio = null;
+                if (btnAudio) btnAudio.innerText = originalLabel;
+            };
+        } catch (err) {
+            alert('Audio Error: ' + err.message);
+            if (btnAudio) btnAudio.innerText = originalLabel;
+            isSpeaking = false;
+        }
+    }   
+
+    async function exportEpub() {
+        if (!currentPages || currentPages.length === 0) {
+            alert(currentLang === 'ru' ? 'Сначала создайте книгу!' : 'Please generate a book first!');
+            return;
+        }
+        if (!isPaidUser) {
+            openPaymentModal();
+            return;
+        }
+
+        var btn = document.getElementById('btn-epub-lbl');
+        var originalText = btn ? btn.innerText : 'Export ePub';
+        if (btn) btn.innerText = '⏳ ...';
+
+        var d = dictionary[currentLang] || dictionary['en'];
+        var chapters = currentPages.map(function(page, index) {
+            var paragraphs = page.text.split('\n\n').filter(Boolean);
+            return {
+                chapter_number: index + 1,
+                title: page.title || ((d.badgePage || 'Chapter') + ' ' + (index + 1)),
+                paragraphs: paragraphs.length ? paragraphs : [page.text],
+                image_url: page.image_url
+            };
+        });
+
+        var payload = {
+            title: currentBookTitle || 'StoryMagic Book',
+            language_code: currentLang,
+            author: 'StoryMagic Hub',
+            description: 'Personalized therapeutic children book',
+            dedication_text: currentDedicationText || '',
+            psychology_questions: currentPsychologyQuestions || [],
+            chapters: chapters,
+            is_paid: isPaidUser
+        };
+
+        try {
+            var response = await fetch('/api/export-epub', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.status === 402) {
+                openPaymentModal();
+                return;
+            }
+            if (!response.ok) throw new Error('ePub export failed');
+
+            var blob = await response.blob();
+            var downloadUrl = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = downloadUrl;
+            var safeName = (currentBookTitle || 'Story').replace(/[^a-zA-Z0-9а-яА-ЯёЁ]/g, '_');
+            a.download = safeName + '.epub';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (err) {
+            alert('Export Error: ' + err.message);
+        } finally {
+            if (btn) btn.innerText = originalText;
+        }
+    }
+
+    async function submitLuluOrder() {
+        if (!currentPages || currentPages.length === 0) {
+            alert(currentLang === 'ru' ? 'Сначала сгенерируйте книгу!' : 'Please generate a book first!');
+            return;
+        }
+
+        var nameVal = (document.getElementById('order-name-input').value || '').trim() || 'Customer';
+        var emailVal = (document.getElementById('order-email-input').value || '').trim();
+        var phoneVal = (document.getElementById('order-phone-input').value || '').trim();
+        var street1Val = (document.getElementById('order-addr-input').value || '').trim();
+        var street2Val = (document.getElementById('order-addr2-input').value || '').trim();
+        var cityVal = (document.getElementById('order-city-input').value || '').trim();
+        var postcodeVal = (document.getElementById('order-postcode-input').value || '').trim();
+        var countryVal = (document.getElementById('order-country-input').value || 'GB').trim();
+
+        if (!emailVal || !phoneVal || !street1Val || !cityVal || !postcodeVal) {
+            alert(currentLang === 'ru' 
+                ? 'Пожалуйста, заполните все обязательные поля: Email, телефон, улицу, город и индекс.' 
+                : 'Please fill in all required fields: Email, Phone, Street, City, and Postcode.');
+            return;
+        }
+
+        var safeStreet1 = street1Val.substring(0, 30);
+        var safeStreet2 = street2Val.substring(0, 30);
+
+        var chapters = currentPages.map(function(page, index) {
+            var paragraphs = page.text.split('\n\n').filter(Boolean);
+            return {
+                chapter_number: index + 1,
+                title: page.title || ('Chapter ' + (index + 1)),
+                paragraphs: paragraphs.length ? paragraphs : [page.text],
+                image_url: page.image_url
+            };
+        });
+
+        var storyBookData = {
+            title: currentBookTitle || 'StoryMagic Book',
+            language_code: currentLang,
+            author: 'StoryMagic Hub',
+            description: 'Personalized therapeutic children book',
+            dedication_text: currentDedicationText || '',
+            psychology_questions: currentPsychologyQuestions || [],
+            chapters: chapters,
+            is_paid: true
+        };
+
+        var shippingAddress = {
+            name: nameVal,
+            street1: safeStreet1,
+            city: cityVal,
+            postcode: postcodeVal,
+            country_code: countryVal,
+            phone_number: phoneVal
+        };
+        if (safeStreet2) {
+            shippingAddress.street2 = safeStreet2;
+        }
+
+        var payload = {
+            story: storyBookData,
+            contact_email: emailVal,
+            shipping_address: shippingAddress
+        };
+
+        var btnOrder = document.getElementById('btn-order-pay');
+        var origBtnText = btnOrder ? btnOrder.innerText : 'Proceed to Payment';
+        if (btnOrder) btnOrder.innerText = '⏳ Sending to Lulu...';
+
+        try {
+            var response = await fetch('/api/lulu-create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            var result = await response.json();
+            if (response.ok && result.success) {
+                alert('🎉 Заказ успешно отправлен в Sandbox Lulu! ID заказа: ' + (result.lulu_response.id || 'создан'));
+                console.log('Lulu response:', result.lulu_response);
+            } else {
+                alert('Ошибка при оформлении заказа: ' + (result.detail || 'Неизвестная ошибка'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Произошла ошибка соединения с сервером.');
+        } finally {
+            if (btnOrder) btnOrder.innerText = origBtnText;
+        }
+    }
+
+    var dictionary = {
+        en: {
+            navAbout: 'Home / About', navCreate: 'Create Story', navLibrary: 'My Books', navOrder: 'Order Hardcover', btnAuth: '👤 Sign In / Register',
+            heroTitle: 'Personalized Therapeutic Books for Children',
+            heroDesc: 'Upload your child\'s photo, and we will craft a gentle, inspiring story where a hero resembling your child conquers fears and discovers superpowers.',
+            heroCta: '🚀 Start Creating',
+            step1Title: '1. Photo & Hero', step1Desc: 'Upload a picture and enter child\'s name for tailored character resemblance.',
+            step2Title: '2. Gentle Narrative', step2Desc: 'Choose therapeutic themes: dark fears, first day of school, anger, sharing.',
+            step3Title: '3. Read or Order', step3Desc: 'Read online, download as an ePub file, or order a hardcover print book.',
+            aboutTitle: 'About StoryMagic', aboutTagline: 'Personalized therapeutic tales helping children grow confident, resilient, and happy.',
+            aboutCol1Title: 'Why Story Therapy?', aboutCol1Desc: 'Each story is uniquely crafted for your child. Story therapy gently resolves childhood fears, builds emotional intelligence, and encourages kindness.',
+            aboutCol2Title: 'Safety & Privacy', aboutCol2Desc: 'Fully compliant with UK GDPR & the ICO Children\'s Code. Photos are strictly used to create illustrations, never train public models, and are immediately deleted.',
+            aboutCol3Title: 'Formats & Print', aboutCol3Desc: 'Read on screen, export as an ePub file for tablet reading (iPad/Android), or order a beautifully bound physical hardcover delivered to your door.',
+            aboutStepsTitle: '3 Simple Steps:',
+            aboutStep1: '<strong>Step 1:</strong> Enter child details and choose an inspiring story theme.',
+            aboutStep2: '<strong>Step 2:</strong> Upload an optional photo & confirm parental consent.',
+            aboutStep3: '<strong>Step 3:</strong> Enjoy a unique, beautifully illustrated storybook in minutes!',
+            lblFormTitle: 'Book Settings', lblPhoto: '📷 Child Photo (for likeness)', photoChoose: 'Click to select photo',
+            lblDedication: '❤️ Parental Dedication (Optional)',
+            lblHeroName: 'Hero Name', valHeroName: 'Alice', lblHeroAge: 'Age', lblStoryTheme: 'Story Theme',
+            grpTherapy: '🌱 Therapeutic Stories', themeDark: 'Fear of the dark & night shadows', themeSchool: 'First day at nursery / school',
+            themeAnger: 'Anger, tantrums & big feelings', themeToys: 'Tidying up toys & order', themeShare: 'Kindness, sharing & making friends',
+            grpAdv: '🚀 Magical Adventures', themeForest: 'Enchanted forest & wise talking cat', themeSpace: 'Space voyage to the Star Island',
+            themeDino: 'Expedition to the gentle dinosaurs', optCustom: '✍️ Custom Story Idea...',
+            lblArtStyle: 'Art Style', optStyle1: 'Watercolor / Fairy Tale', optStyle2: '3D Animation', optStyle3: 'Classic Gouache',
+            lblConsentText: 'I confirm that I am the parent or legal guardian and consent to photo processing for book illustration. Photos are deleted immediately and never shared publicly.',
+            consentAlert: 'Please confirm parental/guardian consent to proceed.', btnCreateStory: '🪄 Generate Book',
+            badgeCover: 'Chapter 1', badgePage: 'Chapter',
+            defaultWelcome: 'Fill in the parameters on the left and click "Generate Book". The storybook will unfold here in a full two-page spread with large, child-friendly typography.',
+            btnPrev: '❮ Back', btnNext: 'Next ❯', btnAudioLbl: 'Audio Story', btnEpubLbl: 'Export ePub', btnOrderLbl: 'Order Hardcover',
+            lockTitle: 'Final Chapter Locked', lockDesc: 'Unlock the magical finale of this story, full audio narration, and ePub download!', lockBtn: '✨ Unlock Full Book',
+            libTitle: '📚 Your Created Books', libDesc: 'History of all stories created on this device.', libEmpty: 'No stories saved yet. Create your first book!',
+            orderTitle: '🚚 Order a Printed Hardcover Book', orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.',
+            lblOrderName: 'Recipient Full Name', lblOrderEmail: 'Contact Email', lblOrderPhone: 'Phone Number (Required)',
+            lblOrderCountry: 'Country', lblOrderAddr: 'Street Address Line 1 (Max 30 chars)', lblOrderAddr2: 'Apt / Suite / Line 2 (Optional)',
+            lblOrderCity: 'City / Town', lblOrderPostcode: 'Postcode / ZIP', lblOrderType: 'Cover Type',
+            optOrderHard: 'Matte Hardcover — £14.99', optOrderPrem: 'Premium Gloss with Foil — £19.99', btnOrderPay: 'Proceed to Payment / Sandbox Order',
+            payTitle: 'Choose Your Plan', paySubtitle: 'Unlock the final chapter, ePub downloads, and voice narration',
+            plan1Title: 'Starter', plan1Desc: '5 personalized stories + ePub', plan1Btn: 'Buy Now',
+            plan2Title: 'Unlimited', plan2Desc: 'Unlimited stories + ePub exports', plan2Btn: 'Select Plan',
+            fmtModalTitle: '✨ Choose Your Book Edition', fmtModalSubtitle: 'How would you like to experience your child\'s personalized story?',
+            fmtCard1Title: 'Read Online', fmtCard1Desc: 'Interactive two-page book spread right in your browser with free preview.', fmtCard1Price: 'Free Preview', fmtCard1Btn: 'Read Now',
+            fmtCard2Title: 'Digital eBook', fmtCard2Desc: 'Full story unlocked, Apple Books / Kindle ePub download & voice narration.', fmtCard2Price: 'From £4.99', fmtCard2Btn: 'Get eBook',
+            fmtBadgeHit: 'Most Popular', fmtCard3Title: 'Printed Book', fmtCard3Desc: 'High-quality physical book printed & delivered directly to your door via Lulu.', fmtCard3Price: '£14.99 + Shipping', fmtCard3Btn: 'Order Print',
+            authModalTitle: 'Account Access', authModalSubtitle: 'Save your generated books and track print orders across all devices.',
+            authSignIn: 'Sign In', authRegister: 'Create Account', lblAuthName: 'Your Name', lblAuthEmail: 'Email Address', lblAuthPass: 'Password',
+            statusGen: '✨ Creating your personal story and illustrations...', statusDone: '🎉 Book is ready!'
+        },
+        ru: {
+            navAbout: 'Главная', navCreate: 'Создать сказку', navLibrary: 'Мои книжки', navOrder: 'Заказать печать', btnAuth: '👤 Войти / Регистрация',
+            heroTitle: 'Персональные терапевтические книги для детей',
+            heroDesc: 'Загрузите фото ребёнка, и мы создадим добрую поучительную сказку, в которой главный герой с его внешностью победит страхи и найдёт друзей.',
+            heroCta: '🚀 Начать создание',
+            step1Title: '1. Фотография и герой', step1Desc: 'Укажите имя и прикрепите фото — герой книги будет похож на вашего ребёнка.',
+            step2Title: '2. Терапевтический сюжет', step2Desc: 'Выберите тему: страх темноты, первый день в садике, капризы или дружба.',
+            step3Title: '3. Читайте или закажите', step3Desc: 'Читайте в книжном развороте, скачивайте в ePub или оформите в печатном переплете.',
+            aboutTitle: 'О проекте StoryMagic', aboutTagline: 'Персонализированные сказки, помогающие детям расти уверенными и спокойными.',
+            aboutCol1Title: 'В чем суть?', aboutCol1Desc: 'Каждая история создается индивидуально под вашего ребенка. Сказкотерапия помогает мягко преодолевать страхи, учит дружбе и вере в себя.',
+            aboutCol2Title: 'Конфиденциальность', aboutCol2Desc: 'Мы строго соблюдаем UK GDPR и стандарты ICO Children\'s Code. Фотографии используются исключительно для генерации книги и сразу удаляются.',
+            aboutCol3Title: 'Как получить книгу?', aboutCol3Desc: 'Читайте онлайн, сохраняйте в ePub для планшетов (iPad/Android) или заказывайте подарочное печатное издание в твердом переплете.',
+            aboutStepsTitle: '3 простых шага:',
+            aboutStep1: '<strong>Шаг 1:</strong> Укажите имя, возраст ребенка и выберите развивающую тему.',
+            aboutStep2: '<strong>Шаг 2:</strong> Загрузите фото (по желанию) и подтвердите согласие родителя.',
+            aboutStep3: '<strong>Шаг 3:</strong> Получите готовую иллюстрированную книгу за пару минут!',
+            lblFormTitle: 'Параметры книги', lblPhoto: '📷 Фото ребёнка (для сходства)', photoChoose: 'Нажмите, чтобы выбрать фото',
+            lblDedication: '❤️ Посвящение от родителей (необязательно)',
+            lblHeroName: 'Имя героя', valHeroName: 'Алиса', lblHeroAge: 'Возраст', lblStoryTheme: 'Тема сказки',
+            grpTherapy: '🌱 Терапевтические сказки', themeDark: 'Страх темноты и ночных теней', themeSchool: 'Первый день в садике / школе',
+            themeAnger: 'Злость, капризы и эмоции', themeToys: 'Уборка игрушек и аккуратность', themeShare: 'Умение делиться и дружба',
+            grpAdv: '🚀 Волшебные приключения', themeForest: 'Зачарованный лес и мудрый кот', themeSpace: 'Космическая экспедиция к звёздам',
+            themeDino: 'Экспедиция в мир динозавров', optCustom: '✍️ Написать свою тему...',
+            lblArtStyle: 'Стиль графики', optStyle1: 'Акварель / Сказка', optStyle2: '3D Мультфильм', optStyle3: 'Классическая гуашь',
+            lblConsentText: 'Я являюсь родителем или опекуном ребёнка и даю согласие на обработку фото для создания книги. Фото удаляется сразу после обработки.',
+            consentAlert: 'Пожалуйста, подтвердите согласие родителя/опекуна.', btnCreateStory: '🪄 Создать сказку',
+            badgeCover: 'Глава 1', badgePage: 'Глава',
+            defaultWelcome: 'Заполните параметры слева и нажмите «Создать сказку». Книга развернётся здесь в формате настоящего книжного разворота с удобным шрифтом.',
+            btnPrev: '❮ Назад', btnNext: 'Вперед ❯', btnAudioLbl: 'Аудиосказка', btnEpubLbl: 'Скачать ePub', btnOrderLbl: 'Заказать книжку',
+            lockTitle: 'Финальная глава закрыта', lockDesc: 'Разблокируйте волшебный финал сказки, озвучку и скачивание книги в формате ePub!', lockBtn: '✨ Разблокировать финал',
+            libTitle: '📚 Ваши созданные книги', libDesc: 'История всех книг, сгенерированных на этом устройстве.', libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
+            orderTitle: '🚚 Заказ книги в твердом переплете', orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим до двери.',
+            lblOrderName: 'ФИО получателя', lblOrderEmail: 'Email для заказа', lblOrderPhone: 'Телефон (обязательно для курьера)',
+            lblOrderCountry: 'Страна', lblOrderAddr: 'Улица и дом (до 30 символов)', lblOrderAddr2: 'Квартира / корпус (необязательно)',
+            lblOrderCity: 'Город', lblOrderPostcode: 'Почтовый индекс (Postcode)', lblOrderType: 'Тип переплета',
+            optOrderHard: 'Твердый матовый переплет — £14.99', optOrderPrem: 'Премиум глянец с тиснением — £19.99', btnOrderPay: 'Отправить заказ в Sandbox Lulu',
+            payTitle: 'Выберите тариф', paySubtitle: 'Разблокируйте финал истории, скачивание ePub и озвучку',
+            plan1Title: 'Starter', plan1Desc: '5 персональных сказок + ePub', plan1Btn: 'Купить',
+            plan2Title: 'Unlimited', plan2Desc: 'Безлимит сказок + экспорт ePub', plan2Btn: 'Выбрать',
+            fmtModalTitle: '✨ Выберите формат вашей книги', fmtModalSubtitle: 'В каком виде вы хотите получить персональную сказку?',
+            fmtCard1Title: 'Читать на месте', fmtCard1Desc: 'Интерактивный книжный разворот прямо в браузере с бесплатным превью.', fmtCard1Price: 'Бесплатное превью', fmtCard1Btn: 'Открыть книгу',
+            fmtCard2Title: 'Электронная книга', fmtCard2Desc: 'Полная версия сказки, файл ePub для планшетов и аудио-озвучка.', fmtCard2Price: 'От £4.99', fmtCard2Btn: 'Скачать ePub',
+            fmtBadgeHit: 'Хит продаж', fmtCard3Title: 'Печатная книга', fmtCard3Desc: 'Настоящая книга в переплете с доставкой на дом через типографию Lulu.', fmtCard3Price: '£14.99 + доставка', fmtCard3Btn: 'Заказать печать',
+            authModalTitle: 'Личный кабинет', authModalSubtitle: 'Сохраняйте созданные книги и историю заказов в базе данных.',
+            authSignIn: 'Войти', authRegister: 'Регистрация', lblAuthName: 'Ваше имя', lblAuthEmail: 'Ваш Email', lblAuthPass: 'Пароль',
+            statusGen: '✨ Создаем персональную сказку и волшебные иллюстрации...', statusDone: '🎉 Сказка готова!'
+        },
+        pl: {
+            navAbout: 'Start / O nas', navCreate: 'Stwórz bajkę', navLibrary: 'Moje książki', navOrder: 'Zamów druk', btnAuth: '👤 Zaloguj się',
+            heroTitle: 'Spersonalizowane bajki terapeutyczne dla dzieci', heroDesc: 'Prześlij zdjęcie dziecka, a stworzymy ciepłą opowieść, w której bohater pokonuje lęki.', heroCta: '🚀 Rozpocznij tworzenie',
+            step1Title: '1. Zdjęcie i bohater', step1Desc: 'Podaj imię i dodaj zdjęcie dziecka.', step2Title: '2. Wątek terapeutyczny', step2Desc: 'Wybierz temat bajki terapeutycznej.', step3Title: '3. Czytaj lub zamów', step3Desc: 'Czytaj online, pobierz ePub lub zamów druk.',
+            lblFormTitle: 'Ustawienia książki', lblPhoto: '📷 Zdjęcie dziecka', photoChoose: 'Kliknij, aby wybrać zdjęcie', lblDedication: '❤️ Dedykacja od rodziców', lblHeroName: 'Imię bohatera', valHeroName: 'Zosia', lblHeroAge: 'Wiek', lblStoryTheme: 'Temat bajki',
+            btnCreateStory: '🪄 Wygeneruj bajkę', badgeCover: 'Rozdział 1', badgePage: 'Rozdział', defaultWelcome: 'Wypełnij formularz po lewej stronie i kliknij «Wygeneruj bajkę».',
+            btnPrev: '❮ Wstecz', btnNext: 'Dalej ❯', btnAudioLbl: 'Audiobook', btnEpubLbl: 'Pobierz ePub', btnOrderLbl: 'Zamów książkę',
+            lockTitle: 'Ostatni rozdział zablokowany', lockDesc: 'Odblokuj finał bajki, audiobook oraz pobieranie pliku ePub!', lockBtn: '✨ Odblokuj pełną bajkę',
+            fmtModalTitle: '✨ Wybierz format książki', fmtModalSubtitle: 'W jakiej formie chcesz otrzymać bajkę?',
+            fmtCard1Title: 'Czytaj online', fmtCard1Btn: 'Czytaj teraz', fmtCard2Title: 'E-book (ePub)', fmtCard2Btn: 'Pobierz ePub', fmtCard3Title: 'Książka drukowana', fmtCard3Btn: 'Zamów druk',
+            statusGen: '✨ Tworzymy unikalną opowieść...', statusDone: '🎉 Książka jest gotowa!'
+        },
+        ro: {
+            navAbout: 'Acasă', navCreate: 'Creează poveste', navLibrary: 'Cărțile mele', navOrder: 'Comandă tipar', btnAuth: '👤 Autentificare',
+            heroTitle: 'Cărți terapeutice personalizate pentru copii', heroDesc: 'Încarcă poza copilului și vom crea o poveste plină de căldură.', heroCta: '🚀 Începe crearea',
+            lblFormTitle: 'Setări carte', lblPhoto: '📷 Poză copil', photoChoose: 'Apasă pentru a alege poza', lblDedication: '❤️ Dedicație de la părinți', lblHeroName: 'Nume erou', valHeroName: 'Ana', lblHeroAge: 'Vârstă', lblStoryTheme: 'Tema poveștii',
+            btnCreateStory: '🪄 Generează cartea', badgeCover: 'Capitolul 1', badgePage: 'Capitolul', defaultWelcome: 'Completează formularul din stânga și apasă «Generează cartea».',
+            btnPrev: '❮ Înapoi', btnNext: 'Înainte ❯', btnAudioLbl: 'Audiobook', btnEpubLbl: 'Descarcă ePub', btnOrderLbl: 'Comandă cartea',
+            lockTitle: 'Ultimul capitol este blocat', lockDesc: 'Deblochează finalul magic al poveștii și descărcarea ePub!', lockBtn: '✨ Deblochează cartea',
+            fmtModalTitle: '✨ Alege formatul cărții', fmtModalSubtitle: 'Cum dorești să primești povestea?',
+            fmtCard1Title: 'Citește online', fmtCard1Btn: 'Citește acum', fmtCard2Title: 'Carte digitală (ePub)', fmtCard2Btn: 'Descarcă ePub', fmtCard3Title: 'Carte tipărită', fmtCard3Btn: 'Comandă tipar',
+            statusGen: '✨ Scriem povestea...', statusDone: '🎉 Cartea este gata!'
+        },
+        it: {
+            navAbout: 'Home', navCreate: 'Crea favola', navLibrary: 'I miei libri', navOrder: 'Ordina stampa', btnAuth: '👤 Accedi',
+            heroTitle: 'Libri terapeutici personalizzati per bambini', heroDesc: 'Carica la foto del tuo bimbo e creeremo una dolce storia illustrata.', heroCta: '🚀 Inizia a creare',
+            lblFormTitle: 'Dettagli libro', lblPhoto: '📷 Foto del bimbo', photoChoose: 'Clicca per scegliere la foto', lblDedication: '❤️ Dedica dei genitori', lblHeroName: 'Nome dell\'eroe', valHeroName: 'Sofia', lblHeroAge: 'Età', lblStoryTheme: 'Tema della favola',
+            btnCreateStory: '🪄 Genera il libro', badgeCover: 'Capitolo 1', badgePage: 'Capitolo', defaultWelcome: 'Compila i parametri a sinistra e clicca su «Genera il libro».',
+            btnPrev: '❮ Indietro', btnNext: 'Avanti ❯', btnAudioLbl: 'Audiofavola', btnEpubLbl: 'Scarica ePub', btnOrderLbl: 'Ordina libro',
+            lockTitle: 'Capitolo finale bloccato', lockDesc: 'Sblocca il magico finale della favola e il download ePub!', lockBtn: '✨ Sblocca il libro intero',
+            fmtModalTitle: '✨ Scegli il formato del libro', fmtModalSubtitle: 'Come preferisci ricevere la tua favola?',
+            fmtCard1Title: 'Leggi online', fmtCard1Btn: 'Leggi ora', fmtCard2Title: 'E-book digitale', fmtCard2Btn: 'Scarica ePub', fmtCard3Title: 'Libro stampato', fmtCard3Btn: 'Ordina stampa',
+            statusGen: '✨ Scrittura della favola...', statusDone: '🎉 Il libro è pronto!'
+        },
+        tr: {
+            navAbout: 'Ana Sayfa', navCreate: 'Masal Oluştur', navLibrary: 'Kitaplarım', navOrder: 'Baskı Siparişi', btnAuth: '👤 Giriş Yap / Kaydol',
+            heroTitle: 'Çocuklar İçin Kişiselleştirilmiş Terapötik Kitaplar', heroDesc: 'Çocuğunuzun fotoğrafını yükleyin, eğitici ve sıcak bir masal hazırlayalım.', heroCta: '🚀 Oluşturmaya Başla',
+            lblFormTitle: 'Kitap Seçenekleri', lblPhoto: '📷 Çocuk Fotoğrafı', photoChoose: 'Fotoğraf seçmek için tıklayın', lblDedication: '❤️ Aile İthafı', lblHeroName: 'Kahramanın Adı', valHeroName: 'Elif', lblHeroAge: 'Yaş', lblStoryTheme: 'Masal Teması',
+            btnCreateStory: '🪄 Kitabı Oluştur', badgeCover: '1. Bölüm', badgePage: 'Bölüm', defaultWelcome: 'Soldaki alanları doldurun ve «Kitabı Oluştur» butonuna tıklayın.',
+            btnPrev: '❮ Geri', btnNext: 'İleri ❯', btnAudioLbl: 'Sesli Masal', btnEpubLbl: 'ePub İndir', btnOrderLbl: 'Kitap Siparişi',
+            lockTitle: 'Son Bölüm Kilitli', lockDesc: 'Masalın büyülü finalini ve ePub indirme özelliğini açın!', lockBtn: '✨ Tüm Kitabı Aç',
+            fmtModalTitle: '✨ Kitap Formatını Seçin', fmtModalSubtitle: 'Masalınızı nasıl almak istersiniz?',
+            fmtCard1Title: 'Çevrimiçi Oku', fmtCard1Btn: 'Şimdi Oku', fmtCard2Title: 'Dijital Kitap (ePub)', fmtCard2Btn: 'ePub İndir', fmtCard3Title: 'Basılı Kitap', fmtCard3Btn: 'Baskı Siparişi',
+            statusGen: '✨ Masal yazılıyor...', statusDone: '🎉 Kitap hazır!'
+        }
+    };
+
+    function changeLanguage(lang) {
+        currentLang = lang;
+        document.documentElement.lang = lang;
+        var base = dictionary['en'];
+        var d = Object.assign({}, base, dictionary[lang] || {});
+
+        setText('nav-about', d.navAbout);
+        setText('nav-create', d.navCreate);
+        setText('nav-library', d.navLibrary);
+        setText('nav-order', d.navOrder);
+        updateAuthButtonUI();
+
+        setText('hero-title', d.heroTitle);
+        setText('hero-desc', d.heroDesc);
+        setText('hero-cta', d.heroCta);
+
+        setText('step1-title', d.step1Title);
+        setText('step1-desc', d.step1Desc);
+        setText('step2-title', d.step2Title);
+        setText('step2-desc', d.step2Desc);
+        setText('step3-title', d.step3Title);
+        setText('step3-desc', d.step3Desc);
+
+        setText('about-title', d.aboutTitle);
+        setText('about-tagline', d.aboutTagline);
+        setText('about-col1-title', d.aboutCol1Title);
+        setText('about-col1-desc', d.aboutCol1Desc);
+        setText('about-col2-title', d.aboutCol2Title);
+        setText('about-col2-desc', d.aboutCol2Desc);
+        setText('about-col3-title', d.aboutCol3Title);
+        setText('about-col3-desc', d.aboutCol3Desc);
+        setText('about-steps-title', d.aboutStepsTitle);
+        setHtml('about-step-1', d.aboutStep1);
+        setHtml('about-step-2', d.aboutStep2);
+        setHtml('about-step-3', d.aboutStep3);
+
+        setText('lbl-form-title', d.lblFormTitle);
+        setText('lbl-photo', d.lblPhoto);
+        if (!selectedPhotoFile) setText('photoStatusText', d.photoChoose);
+        setText('lbl-dedication', d.lblDedication);
+
+        setText('lbl-hero-name', d.lblHeroName);
+        var heroInput = document.getElementById('heroName');
+        if (heroInput) heroInput.value = d.valHeroName;
+
+        setText('lbl-hero-age', d.lblHeroAge);
+        setText('lbl-story-theme', d.lblStoryTheme);
+        
+        var grp1 = document.getElementById('grp-therapy');
+        if (grp1) grp1.label = d.grpTherapy;
+        setText('opt-theme-dark', d.themeDark);
+        setText('opt-theme-school', d.themeSchool);
+        setText('opt-theme-anger', d.themeAnger);
+        setText('opt-theme-toys', d.themeToys);
+        setText('opt-theme-share', d.themeShare);
+        
+        var grp2 = document.getElementById('grp-adv');
+        if (grp2) grp2.label = d.grpAdv;
+        setText('opt-theme-forest', d.themeForest);
+        setText('opt-theme-space', d.themeSpace);
+        setText('opt-theme-dino', d.themeDino);
+        setText('opt-custom', d.optCustom);
+
+        setText('lbl-art-style', d.lblArtStyle);
+        setText('opt-style1', d.optStyle1);
+        setText('opt-style2', d.optStyle2);
+        setText('opt-style3', d.optStyle3);
+        setText('lbl-consent-text', d.lblConsentText);
+        setText('btn-create-story', d.btnCreateStory);
+
+        setText('btn-prev', d.btnPrev);
+        setText('btn-next', d.btnNext);
+        setText('btn-audio-lbl', d.btnAudioLbl);
+        setText('btn-epub-lbl', d.btnEpubLbl);
+        setText('btn-order-lbl', d.btnOrderLbl);
+
+        setText('lbl-lock-title', d.lockTitle);
+        setText('lbl-lock-desc', d.lockDesc);
+        setText('btn-unlock-finale', d.lockBtn);
+
+        setText('lib-title', d.libTitle);
+        setText('lib-desc', d.libDesc);
+
+        setText('order-title', d.orderTitle);
+        setText('order-desc', d.orderDesc);
+        setText('lbl-order-name', d.lblOrderName);
+        setText('lbl-order-email', d.lblOrderEmail);
+        setText('lbl-order-phone', d.lblOrderPhone);
+        setText('lbl-order-country', d.lblOrderCountry);
+        setText('lbl-order-addr', d.lblOrderAddr);
+        setText('lbl-order-addr2', d.lblOrderAddr2);
+        setText('lbl-order-city', d.lblOrderCity);
+        setText('lbl-order-postcode', d.lblOrderPostcode);
+        setText('lbl-order-type', d.lblOrderType);
+        setText('opt-order-hard', d.optOrderHard);
+        setText('opt-order-prem', d.optOrderPrem);
+        setText('btn-order-pay', d.btnOrderPay);
+
+        setText('pay-title', d.payTitle);
+        setText('pay-subtitle', d.paySubtitle);
+        setText('plan1-title', d.plan1Title);
+        setText('plan1-desc', d.plan1Desc);
+        setText('plan1-btn', d.plan1Btn);
+        setText('plan2-title', d.plan2Title);
+        setText('plan2-desc', d.plan2Desc);
+        setText('plan2-btn', d.plan2Btn);
+
+        setText('fmt-modal-title', d.fmtModalTitle);
+        setText('fmt-modal-subtitle', d.fmtModalSubtitle);
+        setText('fmt-card1-title', d.fmtCard1Title);
+        setText('fmt-card1-desc', d.fmtCard1Desc);
+        setText('fmt-card1-price', d.fmtCard1Price);
+        setText('fmt-card1-btn', d.fmtCard1Btn);
+        setText('fmt-card2-title', d.fmtCard2Title);
+        setText('fmt-card2-desc', d.fmtCard2Desc);
+        setText('fmt-card2-price', d.fmtCard2Price);
+        setText('fmt-card2-btn', d.fmtCard2Btn);
+        setText('fmt-badge-hit', d.fmtBadgeHit);
+        setText('fmt-card3-title', d.fmtCard3Title);
+        setText('fmt-card3-desc', d.fmtCard3Desc);
+        setText('fmt-card3-price', d.fmtCard3Price);
+        setText('fmt-card3-btn', d.fmtCard3Btn);
+
+        setText('auth-modal-title', d.authModalTitle);
+        setText('auth-modal-subtitle', d.authModalSubtitle);
+        setText('tab-btn-login', d.authSignIn);
+        setText('tab-btn-register', d.authRegister);
+        setText('lbl-auth-name', d.lblAuthName);
+        setText('lbl-auth-email', d.lblAuthEmail);
+        setText('lbl-auth-pass', d.lblAuthPass);
+        switchAuthMode(authMode);
+
+        if (currentPages.length > 0) {
+            updateSlideUI();
+        } else {
+            setText('pageBadge', d.badgeCover);
+            setText('currentText', d.defaultWelcome);
+        }
+    }
+
+    function initFloatingBubbles(count) {
+        var container = document.getElementById('bubblesContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        for (var i = 0; i < (count || 15); i++) {
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            var size = Math.floor(Math.random() * 36) + 18;
+            bubble.style.width = size + 'px';
+            bubble.style.height = size + 'px';
+            bubble.style.left = Math.random() * 100 + '%';
+            bubble.style.animationDuration = (Math.random() * 8 + 8).toFixed(1) + 's';
+            bubble.style.animationDelay = (Math.random() * 8).toFixed(1) + 's';
+            container.appendChild(bubble);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            var savedUser = localStorage.getItem('storymagic_user');
+            if (savedUser) currentUser = JSON.parse(savedUser);
+        } catch (e) {}
+        initFloatingBubbles(15);
+        changeLanguage('en');
+    });
