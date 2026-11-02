@@ -7,16 +7,22 @@ import urllib.parse
 import uuid
 from ebooklib import epub
 import edge_tts
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from google import genai
 from google.genai import types
 import httpx
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from weasyprint import HTML
 
+from database import Base, engine, get_db
+
 app = FastAPI(title="StoryMagic Hub Backend")
+
+# Sozdaet tablitsy v PostgreSQL pri zapuske servisa
+Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,7 +36,7 @@ client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
 
 
 # ==========================================
-# 1. Модели данных
+# 1. Modeli dannyh
 # ==========================================
 
 
@@ -71,7 +77,7 @@ class AuthRequest(BaseModel):
 
 
 # ==========================================
-# 2. Модуль сборки ePub3
+# 2. Modul sborki ePub3
 # ==========================================
 
 
@@ -110,7 +116,7 @@ class EpubBuilder:
         async with httpx.AsyncClient(
             timeout=30.0, follow_redirects=True
         ) as http_client:
-            
+
             dedication = (story.dedication_text or "").strip()
             if dedication:
                 safe_dedication = dedication.replace("\n", "<br/>")
@@ -174,7 +180,7 @@ class EpubBuilder:
                 paragraphs_html = "".join(
                     [f"<p>{p.strip()}</p>" for p in ch.paragraphs if p.strip()]
                 )
-                
+
                 chapter_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -206,7 +212,7 @@ class EpubBuilder:
                     "tr": ("💡 İçten Bir Sohbet İçin Sorular", "Bu sorular, masalı çocuğunuzla tartışmanıza ve terapötik etkisini pekiştirmenize yardımcı olacaktır:")
                 }
                 default_header = ("💡 Questions for a Heart-to-Heart Talk", "These questions will help discuss the story with your child and reinforce its therapeutic effect:")
-                
+
                 h_title, h_desc = psych_headers.get(lang, default_header)
 
                 questions_html = "".join([f"<li>{q}</li>" for q in story.psychology_questions])
@@ -245,7 +251,7 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.3. Генератор Print-Ready PDF и раздача файлов для Lulu
+# 2.3. Generator Print-Ready PDF i razdacha failov dlja Lulu
 # ==========================================
 
 LULU_PDF_STORAGE: Dict[str, bytes] = {}
@@ -253,7 +259,7 @@ LULU_PDF_STORAGE: Dict[str, bytes] = {}
 
 @app.get("/api/lulu-files/{file_id}.pdf")
 async def serve_lulu_pdf(file_id: str):
-    """Публичный эндпоинт, по которому Lulu скачивает interior.pdf и cover.pdf"""
+    """Publichniy endpoint, po kotoromu Lulu skachivaet interior.pdf i cover.pdf"""
     pdf_data = LULU_PDF_STORAGE.get(file_id)
     if not pdf_data:
         raise HTTPException(status_code=404, detail="PDF file not found")
@@ -261,7 +267,7 @@ async def serve_lulu_pdf(file_id: str):
 
 
 def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
-    """Генерирует внутренний блок книги 6x9 дюймов (с вылетами 6.25x9.25in) ровно по главам"""
+    """Generiruet vnutrenniy blok knigi 6x9 duymov (s vyletami 6.25x9.25in) rovno po glavam"""
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -320,7 +326,7 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
     </head>
     <body>
     """
-    
+
     dedication = (story.dedication_text or "").strip()
     if dedication:
         html_content += f"""
@@ -354,7 +360,7 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
 
 
 def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
-    """Генерирует обложку под 6x9 дюймов (разворот 12.25in x 9.25in)"""
+    """Generiruet oblozhku pod 6x9 duymov (razvorot 12.25in x 9.25in)"""
     cover_img = ""
     if story.chapters and story.chapters[0].image_url:
         cover_img = f'<img src="{story.chapters[0].image_url}" style="width: 4.2in; height: 4.2in; object-fit: cover; border-radius: 12px; margin-top: 0.4in;" />'
@@ -415,7 +421,7 @@ def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
 
 
 # ==========================================
-# 2.4. Интеграция с Lulu Print API
+# 2.4. Integratsiya s Lulu Print API
 # ==========================================
 
 async def get_lulu_access_token() -> str:
@@ -425,10 +431,10 @@ async def get_lulu_access_token() -> str:
         if is_sandbox
         else "https://api.lulu.com/auth/realms/producer/protocol/openid-connect/token"
     )
-    
+
     client_key = os.environ.get("LULU_CLIENT_KEY", "")
     client_secret = os.environ.get("LULU_CLIENT_SECRET", "")
-    
+
     credentials = f"{client_key}:{client_secret}"
     encoded_creds = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
 
@@ -448,7 +454,7 @@ async def get_lulu_access_token() -> str:
 
 
 # ==========================================
-# 2.5. Умное определение моделей картинок + Fallback
+# 2.5. Opredelenie modeley kartinok + Fallback
 # ==========================================
 
 image_semaphore = asyncio.Semaphore(3)
@@ -600,7 +606,7 @@ async def generate_book_illustration(
 
 
 # ==========================================
-# 3. Маршруты API
+# 3. Marshruty API
 # ==========================================
 
 
@@ -613,6 +619,7 @@ async def generate_book_form(
     lang: str = Form("en"),
     custom_dedication: Optional[str] = Form(None),
     photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
 ):
     try:
         lang_names = {
@@ -788,10 +795,10 @@ async def export_print_pdf(story: StoryBookData):
 
 @app.post("/api/lulu-create-order")
 async def lulu_create_order(req: LuluOrderRequest):
-    """Эндпоинт для отправки печатного заказа в Sandbox/Production Lulu API"""
+    """Endpoint dlja otpravki pechatnogo zakaza v Sandbox/Production Lulu API"""
     if not req.story.is_paid:
         raise HTTPException(status_code=402, detail="Payment Required")
-    
+
     token = await get_lulu_access_token()
     is_sandbox = os.environ.get("LULU_ENV", "sandbox") == "sandbox"
     orders_url = (
@@ -808,7 +815,7 @@ async def lulu_create_order(req: LuluOrderRequest):
 
     interior_id = f"interior_{uuid.uuid4().hex}"
     cover_id = f"cover_{uuid.uuid4().hex}"
-    
+
     LULU_PDF_STORAGE[interior_id] = generate_print_pdf_bytes(req.story)
     LULU_PDF_STORAGE[cover_id] = generate_cover_pdf_bytes(req.story)
 
@@ -848,14 +855,14 @@ async def lulu_create_order(req: LuluOrderRequest):
             raise HTTPException(status_code=400, detail=f"Lulu API Error: {res.text}")
 
 
-# Эндпоинты авторизации для нового модального окна на фронтенде
+# Endpoints avtorizatsii s peredachey sessii bazy dannyh
 @app.post("/api/auth/login")
-async def auth_login(req: AuthRequest):
+async def auth_login(req: AuthRequest, db: Session = Depends(get_db)):
     return {"success": True, "email": req.email, "name": req.name or req.email.split("@")[0]}
 
 
 @app.post("/api/auth/register")
-async def auth_register(req: AuthRequest):
+async def auth_register(req: AuthRequest, db: Session = Depends(get_db)):
     return {"success": True, "email": req.email, "name": req.name or req.email.split("@")[0]}
 
 
