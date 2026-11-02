@@ -776,6 +776,43 @@ async def get_saved_story(story_id: int, db: Session = Depends(get_db)):
     }
 
 
+# ==========================================
+# ВСТАВЛЯТЬ СЮДА (с самого левого края):
+# ==========================================
+@app.get("/api/my-stories")
+async def get_my_stories(db: Session = Depends(get_db)):
+    """Возвращает список всех сгенерированных историй для витрины 'Мои книги'"""
+    stories = (
+        db.query(models.SavedStory)
+        .order_by(models.SavedStory.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    result = []
+    for s in stories:
+        cover_image = ""
+        if s.story_data and "chapters" in s.story_data and len(s.story_data["chapters"]) > 0:
+            cover_image = s.story_data["chapters"][0].get("image_url", "")
+
+        result.append({
+            "id": s.id,
+            "title": s.title,
+            "hero_name": s.hero_name,
+            "age": s.age,
+            "theme": s.theme,
+            "created_at": s.created_at.strftime("%d.%m.%Y %H:%M") if s.created_at else "",
+            "cover_image": cover_image,
+            "is_paid": s.is_paid,
+        })
+    return {"success": True, "stories": result}
+
+
+# ДАЛЬШЕ ИДЕТ ВАШ МАРШРУТ ОЗВУЧКИ:
+@app.post("/api/tts")
+async def generate_tts(req: TTSRequest):
+...
+
+
 @app.post("/api/tts")
 async def generate_tts(req: TTSRequest):
     voices = {
