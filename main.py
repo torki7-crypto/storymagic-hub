@@ -807,11 +807,6 @@ async def get_my_stories(db: Session = Depends(get_db)):
     return {"success": True, "stories": result}
 
 
-# ДАЛЬШЕ ИДЕТ ВАШ МАРШРУТ ОЗВУЧКИ:
-@app.post("/api/tts")
-async def generate_tts(req: TTSRequest):
-
-
 @app.post("/api/tts")
 async def generate_tts(req: TTSRequest):
     voices = {
