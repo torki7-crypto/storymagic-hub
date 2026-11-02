@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from weasyprint import HTML
 
 from database import Base, engine, get_db
+import models  
 
 app = FastAPI(title="StoryMagic Hub Backend")
 
