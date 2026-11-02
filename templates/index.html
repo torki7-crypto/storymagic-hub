@@ -543,7 +543,7 @@
         .book-item-card:hover { transform: translateY(-4px); }
         .book-item-thumb { width: 100%; height: 180px; object-fit: cover; }
         .book-item-info { padding: 14px; }
-        .book-item-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; }
+        .book-item-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; color: #ff9a9e; }
         .book-item-meta { font-size: 0.85em; color: #b39ddb; }
 
         /* МОДАЛЬНЫЕ ОКНА */
@@ -758,7 +758,6 @@
                     <option value="tr">🇹🇷 TR</option>
                 </select>
             </div>
-            <!-- Заменили бессмысленный Top Up на кнопку Входа / Регистрации под будущую SQL БД -->
             <button type="button" class="pay-btn" id="btn-auth" onclick="openAuthModal()">👤 Sign In / Register</button>
         </div>
     </header>
@@ -894,7 +893,6 @@
                         </label>
                     </div>
 
-                    <!-- ТЕПЕРЬ КНОПКА ОТКРЫВАЕТ МОДАЛЬНОЕ ОКНО ВЫБОРА ФОРМАТА -->
                     <button type="button" class="magic-btn" onclick="openFormatModal()" id="btn-create-story">🪄 Generate Book</button>
                     <div id="statusMsg" class="status-msg"></div>
                 </div>
@@ -940,11 +938,19 @@
             </div>
         </div>
 
-        <!-- Библиотека -->
+        <!-- Библиотека (подключена к базе PostgreSQL) -->
         <div id="tab-library" class="tab-content">
-            <h2 style="font-family:'Comfortaa', cursive;" id="lib-title">📚 Your Created Books</h2>
-            <p style="color:#bcaaa4; font-size:0.95em; margin-bottom:18px;" id="lib-desc">History of all stories created on this device.</p>
-            <div id="libraryContainer" class="library-grid"></div>
+            <div class="panel-card" style="max-width: 1000px; margin: 0 auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px;">
+                    <div>
+                        <h2 style="font-family: 'Comfortaa', cursive; font-size: 1.5em; margin: 0; color: #ff9a9e;" id="lib-title">📚 Your Created Books</h2>
+                        <p style="color: #cbd5e1; font-size: 0.9em; margin-top: 4px;" id="lib-desc">All stories saved in PostgreSQL database</p>
+                    </div>
+                    <button type="button" class="tab-btn" onclick="loadLibrary()" style="background: rgba(255,255,255,0.08); padding: 8px 16px;">🔄 Refresh</button>
+                </div>
+
+                <div id="libraryContainer" class="library-grid"></div>
+            </div>
         </div>
 
         <!-- Заказ печати (с раздельными полями для Lulu API) -->
@@ -1019,7 +1025,7 @@
         </div>
     </main>
 
-    <!-- НОВОЕ МОДАЛЬНОЕ ОКНО: ВЫБОР ФОРМАТА КНИГИ ПЕРЕД ГЕНЕРАЦИЕЙ -->
+    <!-- МОДАЛЬНОЕ ОКНО: ВЫБОР ФОРМАТА КНИГИ ПЕРЕД ГЕНЕРАЦИЕЙ -->
     <div id="formatModal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
         <div class="modal-card modal-wide">
             <div class="modal-close" onclick="closeFormatModal()">✕</div>
@@ -1027,7 +1033,6 @@
             <p style="font-size:0.92em; color:#d1c4e9; text-align:center;" id="fmt-modal-subtitle">How would you like to experience your child's personalized story?</p>
 
             <div class="format-cards-grid">
-                <!-- 1. Читать онлайн на месте -->
                 <div class="format-option-card" onclick="handleFormatSelection('read')">
                     <div>
                         <div class="format-icon">📖</div>
@@ -1040,7 +1045,6 @@
                     </div>
                 </div>
 
-                <!-- 2. Электронная книга (ePub + Audio) -->
                 <div class="format-option-card" onclick="handleFormatSelection('digital')">
                     <div>
                         <div class="format-icon">📱</div>
@@ -1053,7 +1057,6 @@
                     </div>
                 </div>
 
-                <!-- 3. Печатная книга (Hardcover Lulu) -->
                 <div class="format-option-card featured-print" onclick="handleFormatSelection('hardcover')">
                     <span class="format-badge-hit" id="fmt-badge-hit">Most Popular</span>
                     <div>
@@ -1070,7 +1073,7 @@
         </div>
     </div>
 
-    <!-- НОВОЕ МОДАЛЬНОЕ ОКНО: РЕГИСТРАЦИЯ И ВХОД (ДЛЯ SQL БД) -->
+    <!-- МОДАЛЬНОЕ ОКНО: РЕГИСТРАЦИЯ И ВХОД -->
     <div id="authModal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
         <div class="modal-card">
             <div class="modal-close" onclick="closeAuthModal()">✕</div>
@@ -1183,25 +1186,20 @@
     async function handleFormatSelection(formatType) {
         closeFormatModal();
 
-        // Если выбрана электронная книга и еще не оплачено — сначала показываем тарифы
         if (formatType === 'digital' && !isPaidUser) {
             pendingFormatAction = 'digital';
             openPaymentModal();
             return;
         }
 
-        // Генерируем сказку, если она еще не создана (или создаем заново по текущим полям)
         var success = await generateStory();
         if (!success) return;
 
         if (formatType === 'read') {
-            // Остаемся в читалке на первом развороте
             showSlide(0);
         } else if (formatType === 'digital') {
-            // Сразу скачиваем ePub
             exportEpub();
         } else if (formatType === 'hardcover') {
-            // Переходим сразу к оформлению доставки печатной книги Lulu
             switchTab('order');
         }
     }
@@ -1257,7 +1255,6 @@
 
         if (!emailVal || !passVal) return;
 
-        // Готовый хук под будущий SQL эндпоинт (/api/auth/login или /api/auth/register)
         try {
             var endpoint = (authMode === 'register') ? '/api/auth/register' : '/api/auth/login';
             var response = await fetch(endpoint, {
@@ -1270,7 +1267,6 @@
                 var data = await response.json();
                 currentUser = { name: data.name || nameVal || emailVal.split('@')[0], email: emailVal };
             } else {
-                // Фолбэк, пока SQL таблицы на бэкенде еще в процессе подключения
                 currentUser = { name: nameVal || emailVal.split('@')[0], email: emailVal };
             }
         } catch (err) {
@@ -1279,7 +1275,6 @@
 
         localStorage.setItem('storymagic_user', JSON.stringify(currentUser));
         
-        // Подставляем email и имя в форму заказа Lulu для удобства клиента
         var orderEmail = document.getElementById('order-email-input');
         if (orderEmail) orderEmail.value = currentUser.email;
         var orderName = document.getElementById('order-name-input');
@@ -1326,7 +1321,6 @@
             ? ('Тариф ' + planName + ' активирован! Финальная глава и скачивание ePub разблокированы.') 
             : (planName + ' plan activated! Final chapter and ePub export are now unlocked.'));
 
-        // Если пользователь выбирал "Digital eBook" в модалке форматов перед оплатой — продолжаем генерацию и скачивание
         if (pendingFormatAction === 'digital') {
             pendingFormatAction = null;
             var ok = await generateStory();
@@ -1455,7 +1449,6 @@
                 currentPsychologyQuestions = result.psychology_questions || [];
                 setText('statusMsg', d.statusDone);
                 showSlide(0);
-                saveBookToLibrary(heroNameVal, selectedTheme, currentPages, currentDedicationText, currentPsychologyQuestions);
                 return true;
             } else {
                 setText('statusMsg', '❌ ' + (result.error || 'Error'));
@@ -1467,51 +1460,64 @@
         }
     }
 
-    function saveBookToLibrary(hero, theme, pages, dedication, questions) {
-        try {
-            var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
-            lib.unshift({
-                id: Date.now(),
-                hero: hero,
-                theme: theme,
-                cover: pages[0].image_url,
-                pages: pages,
-                dedication_text: dedication,
-                psychology_questions: questions,
-                date: new Date().toLocaleDateString()
-            });
-            localStorage.setItem('storymagic_lib', JSON.stringify(lib.slice(0, 10)));
-        } catch (e) {}
-    }
-
-    function loadLibrary() {
+    /* --- ПОЛУЧЕНИЕ ИСТОРИЙ НАПРЯМУЮ ИЗ БАЗЫ POSTGRESQL --- */
+    async function loadLibrary() {
         var box = document.getElementById('libraryContainer');
         if (!box) return;
-        var lib = JSON.parse(localStorage.getItem('storymagic_lib') || '[]');
         var d = dictionary[currentLang] || dictionary['en'];
-        box.innerHTML = '';
-        if (lib.length === 0) {
-            box.innerHTML = '<p style="color:#aaa;">' + d.libEmpty + '</p>';
-            return;
+        box.innerHTML = '<p style="color:#cbd5e1; grid-column: 1/-1; text-align: center;">Loading books from database... ✨</p>';
+
+        try {
+            var res = await fetch('/api/my-stories');
+            var data = await res.json();
+
+            if (!data.success || !data.stories || data.stories.length === 0) {
+                box.innerHTML = '<p style="color:#aaa; grid-column: 1/-1; text-align: center;">' + (d.libEmpty || 'No stories saved yet.') + '</p>';
+                return;
+            }
+
+            box.innerHTML = '';
+            data.stories.forEach(function(story) {
+                var el = document.createElement('div');
+                el.className = 'book-item-card';
+                var coverUrl = story.cover_image || 'https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg';
+
+                el.innerHTML = '<img class="book-item-thumb" src="' + coverUrl + '" alt="' + story.hero_name + '">' +
+                               '<div class="book-item-info">' +
+                               '<div class="book-item-title">' + story.title + '</div>' +
+                               '<div class="book-item-meta">' + (story.created_at || '') + ' • ' + story.hero_name + ' (' + story.age + ' y/o)</div>' +
+                               '</div>';
+
+                el.onclick = async function() {
+                    try {
+                        var storyRes = await fetch('/api/stories/' + story.id);
+                        var storyData = await storyRes.json();
+                        if (storyData.success && storyData.story_data) {
+                            var s = storyData.story_data;
+                            currentPages = s.chapters.map(function(ch, idx) {
+                                return {
+                                    page_number: idx + 1,
+                                    title: ch.title,
+                                    text: '«' + ch.title + '»\n\n' + ch.paragraphs.join('\n\n'),
+                                    image_url: ch.image_url
+                                };
+                            });
+                            currentBookTitle = s.title || story.title;
+                            currentDedicationText = s.dedication_text || '';
+                            currentPsychologyQuestions = s.psychology_questions || [];
+                            isPaidUser = storyData.is_paid || false;
+                            switchTab('create');
+                            showSlide(0);
+                        }
+                    } catch (err) {
+                        alert('Error loading story: ' + err.message);
+                    }
+                };
+                box.appendChild(el);
+            });
+        } catch (e) {
+            box.innerHTML = '<p style="color:#ff6b6b; grid-column: 1/-1; text-align: center;">Error loading stories from database: ' + e.message + '</p>';
         }
-        lib.forEach(function(book) {
-            var el = document.createElement('div');
-            el.className = 'book-item-card';
-            el.innerHTML = '<img class="book-item-thumb" src="' + book.cover + '" alt="' + book.hero + '">' +
-                           '<div class="book-item-info">' +
-                           '<div class="book-item-title">' + book.hero + ': ' + book.theme + '</div>' +
-                           '<div class="book-item-meta">' + book.date + ' • ' + book.pages.length + ' p.</div>' +
-                           '</div>';
-            el.onclick = function() {
-                currentPages = book.pages;
-                currentBookTitle = book.hero + ' - ' + book.theme;
-                currentDedicationText = book.dedication_text || '';
-                currentPsychologyQuestions = book.psychology_questions || [];
-                switchTab('create');
-                showSlide(0);
-            };
-            box.appendChild(el);
-        });
     }
 
     var currentAudio = null;
@@ -1631,7 +1637,6 @@
         }
     }
 
-    // Интеграция заказа в Sandbox Lulu со всеми обязательными полями адреса и телефона
     async function submitLuluOrder() {
         if (!currentPages || currentPages.length === 0) {
             alert(currentLang === 'ru' ? 'Сначала сгенерируйте книгу!' : 'Please generate a book first!');
@@ -1654,7 +1659,6 @@
             return;
         }
 
-        // Жестко ограничиваем длину street1 и street2 до 30 символов по требованиям Lulu API
         var safeStreet1 = street1Val.substring(0, 30);
         var safeStreet2 = street2Val.substring(0, 30);
 
@@ -1711,12 +1715,10 @@
             var result = await response.json();
             if (response.ok && result.success) {
                 alert('🎉 Заказ успешно отправлен в Sandbox Lulu! ID заказа: ' + (result.lulu_response.id || 'создан'));
-                console.log('Lulu response:', result.lulu_response);
             } else {
                 alert('Ошибка при оформлении заказа: ' + (result.detail || 'Неизвестная ошибка'));
             }
         } catch (err) {
-            console.error(err);
             alert('Произошла ошибка соединения с сервером.');
         } finally {
             if (btnOrder) btnOrder.innerText = origBtnText;
@@ -1754,7 +1756,7 @@
             defaultWelcome: 'Fill in the parameters on the left and click "Generate Book". The storybook will unfold here in a full two-page spread with large, child-friendly typography.',
             btnPrev: '❮ Back', btnNext: 'Next ❯', btnAudioLbl: 'Audio Story', btnEpubLbl: 'Export ePub', btnOrderLbl: 'Order Hardcover',
             lockTitle: 'Final Chapter Locked', lockDesc: 'Unlock the magical finale of this story, full audio narration, and ePub download!', lockBtn: '✨ Unlock Full Book',
-            libTitle: '📚 Your Created Books', libDesc: 'History of all stories created on this device.', libEmpty: 'No stories saved yet. Create your first book!',
+            libTitle: '📚 Your Created Books', libDesc: 'All stories saved in PostgreSQL database', libEmpty: 'No stories saved yet. Create your first book!',
             orderTitle: '🚚 Order a Printed Hardcover Book', orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.',
             lblOrderName: 'Recipient Full Name', lblOrderEmail: 'Contact Email', lblOrderPhone: 'Phone Number (Required)',
             lblOrderCountry: 'Country', lblOrderAddr: 'Street Address Line 1 (Max 30 chars)', lblOrderAddr2: 'Apt / Suite / Line 2 (Optional)',
@@ -1801,7 +1803,7 @@
             defaultWelcome: 'Заполните параметры слева и нажмите «Создать сказку». Книга развернётся здесь в формате настоящего книжного разворота с удобным шрифтом.',
             btnPrev: '❮ Назад', btnNext: 'Вперед ❯', btnAudioLbl: 'Аудиосказка', btnEpubLbl: 'Скачать ePub', btnOrderLbl: 'Заказать книжку',
             lockTitle: 'Финальная глава закрыта', lockDesc: 'Разблокируйте волшебный финал сказки, озвучку и скачивание книги в формате ePub!', lockBtn: '✨ Разблокировать финал',
-            libTitle: '📚 Ваши созданные книги', libDesc: 'История всех книг, сгенерированных на этом устройстве.', libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
+            libTitle: '📚 Ваши созданные книги', libDesc: 'Все истории, сохранённые в базе данных PostgreSQL', libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
             orderTitle: '🚚 Заказ книги в твердом переплете', orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим до двери.',
             lblOrderName: 'ФИО получателя', lblOrderEmail: 'Email для заказа', lblOrderPhone: 'Телефон (обязательно для курьера)',
             lblOrderCountry: 'Страна', lblOrderAddr: 'Улица и дом (до 30 символов)', lblOrderAddr2: 'Квартира / корпус (необязательно)',
@@ -1972,7 +1974,6 @@
         setText('plan2-desc', d.plan2Desc);
         setText('plan2-btn', d.plan2Btn);
 
-        // Тексты модалки выбора формата
         setText('fmt-modal-title', d.fmtModalTitle);
         setText('fmt-modal-subtitle', d.fmtModalSubtitle);
         setText('fmt-card1-title', d.fmtCard1Title);
@@ -1989,7 +1990,6 @@
         setText('fmt-card3-price', d.fmtCard3Price);
         setText('fmt-card3-btn', d.fmtCard3Btn);
 
-        // Тексты модалки регистрации/входа
         setText('auth-modal-title', d.authModalTitle);
         setText('auth-modal-subtitle', d.authModalSubtitle);
         setText('tab-btn-login', d.authSignIn);
@@ -2034,4 +2034,9 @@
     });
 </script>
 
-<footer style="text-align: center; padding: 20px; color: #94a3b8; font-size: 0.85em; border-top: 1px solid rgba(
+<footer style="text-align: center; padding: 20px; color: #94a3b8; font-size: 0.85em; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 40px;">
+    <p>© 2026 StoryMagic Hub. All rights reserved. <a href="/privacy" style="color: #a1c4fd; text-decoration: none; margin-left: 10px;">Privacy Policy</a></p>
+</footer>
+
+</body>
+</html>
