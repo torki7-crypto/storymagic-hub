@@ -1,1 +1,33 @@
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from database import Base
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, default="")
+    hashed_password = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    stories = relationship("SavedStory", back_populates="owner")
+
+
+class SavedStory(Base):
+    __tablename__ = "saved_stories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    title = Column(String, nullable=False)
+    hero_name = Column(String, default="")
+    age = Column(Integer, default=7)
+    theme = Column(String, default="")
+    style = Column(String, default="")
+    language_code = Column(String, default="en")
+    is_paid = Column(Boolean, default=False)
+    story_data = Column(JSON, nullable=False)  # хранит полный json с главами, картинками и текстом
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    owner = relationship("User", back_populates="stories")
