@@ -8,3 +8,5 @@ python-multipart
 httpx
 edge-tts
 weasyprint
+sqlalchemy
+psycopg2-binary
