@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from weasyprint import HTML
 
 from database import Base, engine, get_db
-import models  
+import models
 
 app = FastAPI(title="StoryMagic Hub Backend")
 
@@ -208,7 +208,7 @@ class EpubBuilder:
                 psych_headers = {
                     "ru": ("💡 Вопросы для душевного разговора", "Эти вопросы помогут обсудить сказку с ребенком и закрепить ее терапевтический эффект:"),
                     "pl": ("💡 Pytania do szczerej rozmowy", "Te pytania pomogą omówić bajkę z dzieckiem i utrwalić jej efekt terapeutyczny:"),
-                    "ro": ("💡 Întrebări pentru o discuție sinceră", "Aceste întrebări vă vor ajuta să discutați povestea cu copilul și să-i consolidați efectul terapeutic:"),
+                    "ro": ("💡 Întrebări для о discuție sinceră", "Aceste întrebări vă vor ajuta să discutați povestea cu copilul și să-i consolidați efectul terapeutic:"),
                     "it": ("💡 Domande per una conversazione intima", "Queste domande aiuteranno a discutere la fiaba con il bambino e a consolidare il suo effetto terapeutico:"),
                     "tr": ("💡 İçten Bir Sohbet İçin Sorular", "Bu sorular, masalı çocuğunuzla tartışmanıza ve terapötik etkisini pekiştirmenize yardımcı olacaktır:")
                 }
@@ -712,6 +712,10 @@ Requirements for each chapter:
 
         image_urls = await asyncio.gather(*tasks)
 
+        # Синхронизируем ссылки на сгенерированные изображения в объекте книги
+        for idx, ch in enumerate(story_data.chapters):
+            ch.image_url = image_urls[idx]
+
         pages = []
         for idx, ch in enumerate(story_data.chapters):
             full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
@@ -725,17 +729,51 @@ Requirements for each chapter:
                 }
             )
 
+        # Сохранение сгенерированной истории в PostgreSQL
+        new_db_story = models.SavedStory(
+            title=story_data.title or f"Story for {hero_name}",
+            hero_name=hero_name,
+            age=age,
+            theme=theme,
+            style=style,
+            language_code=lang,
+            is_paid=False,
+            story_data=story_data.model_dump(),
+        )
+        db.add(new_db_story)
+        db.commit()
+        db.refresh(new_db_story)
+
         return {
-            "success": True, 
-            "title": story_data.title, 
+            "success": True,
+            "story_id": new_db_story.id,
+            "title": story_data.title,
             "dedication_text": story_data.dedication_text,
             "psychology_questions": story_data.psychology_questions,
-            "pages": pages
+            "pages": pages,
         }
 
     except Exception as e:
         print(f"Generation Error: {str(e)}")
         return {"success": False, "error": str(e)}
+
+
+@app.get("/api/stories/{story_id}")
+async def get_saved_story(story_id: int, db: Session = Depends(get_db)):
+    """Получение сохраненной книги из базы данных по её id"""
+    story = db.query(models.SavedStory).filter(models.SavedStory.id == story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+    return {
+        "success": True,
+        "id": story.id,
+        "title": story.title,
+        "hero_name": story.hero_name,
+        "age": story.age,
+        "is_paid": story.is_paid,
+        "created_at": story.created_at.isoformat(),
+        "story_data": story.story_data,
+    }
 
 
 @app.post("/api/tts")
@@ -841,7 +879,7 @@ async def lulu_create_order(req: LuluOrderRequest):
                 "title": req.story.title,
                 "quantity": 1,
                 "pod_package_id": pod_package_id,
-                "cover": cover_url, 
+                "cover": cover_url,
                 "interior": interior_url
             }
         ]
