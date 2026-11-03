@@ -613,15 +613,16 @@ async def generate_book_illustration(
 
 
 @app.post("/api/generate")
-async def generate_book_form(
-    hero_name: str = Form("Alice"),
-    age: int = Form(7),
-    theme: str = Form("Magical journey"),
-    style: str = Form("Watercolor children book illustration"),
+async def generate_story(
+    hero_name: str = Form(...),
+    user_id: Optional[int] = Form(None),
+    age: int = Form(...),
+    theme: str = Form(...),
+    style: str = Form(...),
     lang: str = Form("en"),
     custom_dedication: Optional[str] = Form(None),
     photo: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db)
 ):
     try:
         lang_names = {
@@ -736,6 +737,7 @@ Requirements for each chapter:
             hero_name=hero_name,
             age=age,
             theme=theme,
+            user_id=user_id,
             style=style,
             language_code=lang,
             is_paid=False,
@@ -770,6 +772,7 @@ async def get_saved_story(story_id: int, db: Session = Depends(get_db)):
         "id": story.id,
         "title": story.title,
         "hero_name": story.hero_name,
+        "user_id": story.user_id,
         "age": story.age,
         "is_paid": story.is_paid,
         "created_at": story.created_at.isoformat(),
@@ -781,14 +784,13 @@ async def get_saved_story(story_id: int, db: Session = Depends(get_db)):
 # ВСТАВЛЯТЬ СЮДА (с самого левого края):
 # ==========================================
 @app.get("/api/my-stories")
-async def get_my_stories(db: Session = Depends(get_db)):
-    """Возвращает список всех сгенерированных историй для витрины 'Мои книги'"""
-    stories = (
-        db.query(models.SavedStory)
-        .order_by(models.SavedStory.created_at.desc())
-        .limit(20)
-        .all()
-    )
+async def get_my_stories(user_id: Optional[int] = None, db: Session = Depends(get_db)):
+    """Возвращает истории конкретного пользователя (или последние общие, если не авторизован)"""
+    query = db.query(models.SavedStory)
+    if user_id:
+        query = query.filter(models.SavedStory.user_id == user_id)
+
+    stories = query.order_by(models.SavedStory.created_at.desc()).limit(20).all()
     result = []
     for s in stories:
         cover_image = ""
