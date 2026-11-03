@@ -1263,17 +1263,26 @@
                 body: JSON.stringify({ name: nameVal, email: emailVal, password: passVal })
             });
 
-            if (response.ok) {
-                var data = await response.json();
-                currentUser = { name: data.name || nameVal || emailVal.split('@')[0], email: emailVal };
+            var data = await response.json();
+
+            if (response.ok && data.success) {
+                currentUser = { 
+                    id: data.user_id,
+                    user_id: data.user_id,
+                    name: data.name || nameVal || emailVal.split('@')[0], 
+                    email: emailVal 
+                };
+                localStorage.setItem('storymagic_user', JSON.stringify(currentUser));
             } else {
-                currentUser = { name: nameVal || emailVal.split('@')[0], email: emailVal };
+                alert(data.detail || 'Authentication error. Please check your details.');
+                return;
             }
         } catch (err) {
-            currentUser = { name: nameVal || emailVal.split('@')[0], email: emailVal };
+            console.error('Auth error:', err);
+            alert('Server connection error. Please try again.');
+            return;
         }
-
-        localStorage.setItem('storymagic_user', JSON.stringify(currentUser));
+            
         
         var orderEmail = document.getElementById('order-email-input');
         if (orderEmail) orderEmail.value = currentUser.email;
@@ -1435,8 +1444,12 @@
             formData.append('custom_dedication', dedicationVal);
         }
 
-        if (selectedPhotoFile) {
+if (selectedPhotoFile) {
             formData.append('photo', selectedPhotoFile);
+        }
+
+        if (currentUser && (currentUser.user_id || currentUser.id)) {
+            formData.append('user_id', currentUser.user_id || currentUser.id);
         }
 
         try {
@@ -1460,27 +1473,28 @@
         }
     }
 
-    /* --- ПОЛУЧЕНИЕ ИСТОРИЙ НАПРЯМУЮ ИЗ БАЗЫ POSTGRESQL --- */
-    async function loadLibrary() {
-        var box = document.getElementById('libraryContainer');
-        if (!box) return;
-        var d = dictionary[currentLang] || dictionary['en'];
-        box.innerHTML = '<p style="color:#cbd5e1; grid-column: 1/-1; text-align: center;">Loading books from database... ✨</p>';
+/* --- ПОЛУЧЕНИЕ ИСТОРИЙ НАПРЯМУЮ ИЗ БАЗЫ POSTGRESQL --- */
+async function loadLibrary() {
+    var box = document.getElementById('myBooksGrid');
+    if (!box) return;
+    try {
+        var url = (currentUser && (currentUser.user_id || currentUser.id)) 
+            ? ('/api/my-stories?user_id=' + (currentUser.user_id || currentUser.id)) 
+            : '/api/my-stories';
+        var res = await fetch(url);
+        var data = await res.json();
 
-        try {
-            var res = await fetch('/api/my-stories');
-            var data = await res.json();
+        if (!data.success || !data.stories || data.stories.length === 0) {
+            box.innerHTML = '<p style="color:#aaa; grid-column: 1/-1; text-align: center;">' + (d.libEmpty || 'No stories saved yet.') + '</p>';
+            return;
+        }
 
-            if (!data.success || !data.stories || data.stories.length === 0) {
-                box.innerHTML = '<p style="color:#aaa; grid-column: 1/-1; text-align: center;">' + (d.libEmpty || 'No stories saved yet.') + '</p>';
-                return;
-            }
+        box.innerHTML = '';
+        data.stories.forEach(function(story) {
+            var el = document.createElement('div');
+            el.className = 'book-item-card';
+            var coverUrl = story.cover_image || 'https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg';
 
-            box.innerHTML = '';
-            data.stories.forEach(function(story) {
-                var el = document.createElement('div');
-                el.className = 'book-item-card';
-                var coverUrl = story.cover_image || 'https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg';
 
                 el.innerHTML = '<img class="book-item-thumb" src="' + coverUrl + '" alt="' + story.hero_name + '">' +
                                '<div class="book-item-info">' +
