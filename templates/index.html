@@ -1405,7 +1405,7 @@
         showSlide(currentIndex < currentPages.length - 1 ? currentIndex + 1 : 0);
     }
 
-    function prevSlide() {
+function prevSlide() {
         if (!currentPages.length) return;
         showSlide(currentIndex > 0 ? currentIndex - 1 : currentPages.length - 1);
     }
@@ -1415,6 +1415,15 @@
         var d = dictionary[currentLang] || dictionary['en'];
         if (consent && !consent.checked) {
             alert(d.consentAlert);
+            return false;
+        }
+
+        // Проверка авторизации: если пользователь не вошел, открываем модальное окно
+        if (!currentUser || (!currentUser.user_id && !currentUser.id)) {
+            alert('Пожалуйста, войдите в аккаунт или зарегистрируйтесь, чтобы создать сказку!');
+            if (typeof openAuthModal === 'function') {
+                openAuthModal('register');
+            }
             return false;
         }
 
