@@ -728,6 +728,100 @@
             .input-row-2 { grid-template-columns: 1fr; }
             .format-cards-grid { grid-template-columns: 1fr; }
         }
+        /* ==========================================
+   Адаптивность для мобильных устройств
+========================================== */
+@media (max-width: 768px) {
+    /* 1. Шапка сайта и меню */
+    header {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 12px 14px !important;
+    }
+
+    .brand {
+        justify-content: center !important;
+        margin-bottom: 4px !important;
+    }
+
+    .brand-title {
+        font-size: 1.3em !important;
+    }
+
+    .nav-tabs, .tabs, nav {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        width: 100% !important;
+    }
+
+    .tab-btn {
+        padding: 6px 12px !important;
+        font-size: 0.85em !important;
+        flex: 1 1 auto !important;
+        text-align: center !important;
+        max-width: 140px !important;
+    }
+
+    /* 2. Главная страница (Hero и карточки преимуществ) */
+    .hero-title, h1 {
+        font-size: 1.6em !important;
+        line-height: 1.25 !important;
+        padding: 0 10px !important;
+    }
+
+    .hero-subtitle, .subtitle {
+        font-size: 0.95em !important;
+        padding: 0 12px !important;
+    }
+
+    .btn-create, .btn-primary {
+        width: 100% !important;
+        max-width: 300px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Все сетки карточек перестраиваем в одну колонку */
+    .steps-grid, .features-grid, .about-grid {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+        padding: 0 10px !important;
+    }
+
+    /* 3. Библиотека созданных книг */
+    .library-grid, #myBooksGrid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    .panel-card {
+        padding: 16px 12px !important;
+        margin: 0 6px !important;
+        border-radius: 14px !important;
+    }
+
+    /* 4. Окно чтения книги (слайдер / разворот) */
+    .book-reader, .book-reader-container {
+        flex-direction: column !important;
+        padding: 10px !important;
+    }
+
+    .book-page-image, .book-illustration {
+        width: 100% !important;
+        max-height: 280px !important;
+        object-fit: cover !important;
+        border-radius: 12px !important;
+    }
+
+    .book-page-text {
+        font-size: 0.95em !important;
+        line-height: 1.5 !important;
+        padding: 12px 6px !important;
+    }
+}
+        }
     </style>
 </head>
 <body>
