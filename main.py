@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import bcrypt
 import io
 import os
 from typing import Dict, List, Optional
@@ -925,16 +926,56 @@ async def lulu_create_order(req: LuluOrderRequest):
             raise HTTPException(status_code=400, detail=f"Lulu API Error: {res.text}")
 
 
-# Endpoints avtorizatsii s peredachey sessii bazy dannyh
-@app.post("/api/auth/login")
-async def auth_login(req: AuthRequest, db: Session = Depends(get_db)):
-    return {"success": True, "email": req.email, "name": req.name or req.email.split("@")[0]}
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+    )
 
 
 @app.post("/api/auth/register")
 async def auth_register(req: AuthRequest, db: Session = Depends(get_db)):
-    return {"success": True, "email": req.email, "name": req.name or req.email.split("@")[0]}
+    existing_user = (
+        db.query(models.User).filter(models.User.email == req.email.lower()).first()
+    )
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User already exists")
 
+    new_user = models.User(
+        email=req.email.lower(),
+        name=req.name or req.email.split("@")[0],
+        hashed_password=hash_password(req.password),
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return {
+        "success": True,
+        "user_id": new_user.id,
+        "email": new_user.email,
+        "name": new_user.name,
+    }
+
+
+@app.post("/api/auth/login")
+async def auth_login(req: AuthRequest, db: Session = Depends(get_db)):
+    user = (
+        db.query(models.User).filter(models.User.email == req.email.lower()).first()
+    )
+    if not user or not verify_password(req.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    return {
+        "success": True,
+        "user_id": user.id,
+        "email": user.email,
+        "name": user.name,
+    }
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
