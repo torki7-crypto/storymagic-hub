@@ -10,3 +10,4 @@ edge-tts
 weasyprint
 sqlalchemy
 psycopg[binary]
+bcrypt
