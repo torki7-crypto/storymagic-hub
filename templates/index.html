@@ -1652,7 +1652,8 @@ async function loadLibrary() {
             return;
         }
 
-        var text = currentPages[currentIndex].text;
+       var allStoryTexts = currentPages.map(function(p) { return p.text; }).filter(Boolean);
+var text = allStoryTexts.join(' ... \n\n ');
         var btnAudio = document.getElementById('btn-audio-lbl');
         var originalLabel = btnAudio ? btnAudio.innerText : 'Audio Story';
         if (btnAudio) btnAudio.innerText = '⏳ Loading Voice...';
