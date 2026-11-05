@@ -1638,24 +1638,38 @@ async function loadLibrary() {
 
     var currentAudio = null;
 
-    async function toggleAudioStory() {
+async function toggleAudioStory() {
         if (!currentPages || currentPages.length === 0) return;
         if (currentPages.length > 1 && currentIndex === currentPages.length - 1 && !isPaidUser) {
             openPaymentModal();
             return;
         }
 
+        // Если аудио уже играет — ставим на паузу при повторном клике
         if (currentAudio) {
             currentAudio.pause();
             currentAudio = null;
             isSpeaking = false;
+            var btnAudio = document.getElementById('btn-audio-lbl');
+            if (btnAudio) btnAudio.innerText = '▶ Audio Story';
             return;
         }
 
-       var allStoryTexts = currentPages.map(function(p) { return p.text; }).filter(Boolean);
-var text = allStoryTexts.join(' ... \n\n ');
+        playCurrentPageAudio();
+    }
+
+    async function playCurrentPageAudio() {
+        if (!currentPages || !currentPages[currentIndex]) return;
+
+        var text = currentPages[currentIndex].text;
+        if (!text || !text.trim()) {
+            // Если на текущей странице нет текста (например, титульный лист), переходим дальше
+            goToNextPageAndPlay();
+            return;
+        }
+
         var btnAudio = document.getElementById('btn-audio-lbl');
-        var originalLabel = btnAudio ? btnAudio.innerText : 'Audio Story';
+        var originalLabel = 'Audio Story';
         if (btnAudio) btnAudio.innerText = '⏳ Loading Voice...';
 
         try {
@@ -1670,23 +1684,58 @@ var text = allStoryTexts.join(' ... \n\n ');
             var blob = await response.blob();
             var audioUrl = window.URL.createObjectURL(blob);
             currentAudio = new Audio(audioUrl);
-            
+
             isSpeaking = true;
             if (btnAudio) btnAudio.innerText = '⏹ Stop Audio';
 
             currentAudio.play();
-            
+
+            // Когда страница дочитана до конца — перелистываем и читаем следующую
             currentAudio.onended = function() {
-                isSpeaking = false;
-                currentAudio = null;
-                if (btnAudio) btnAudio.innerText = originalLabel;
+                goToNextPageAndPlay();
             };
         } catch (err) {
             alert('Audio Error: ' + err.message);
             if (btnAudio) btnAudio.innerText = originalLabel;
             isSpeaking = false;
+            currentAudio = null;
         }
-    }   
+    }
+
+    function goToNextPageAndPlay() {
+        if (currentIndex < currentPages.length - 1) {
+            // Проверяем пейволл перед переходом к последней странице
+            if (currentIndex + 1 === currentPages.length - 1 && !isPaidUser) {
+                var btnAudio = document.getElementById('btn-audio-lbl');
+                if (btnAudio) btnAudio.innerText = '▶ Audio Story';
+                isSpeaking = false;
+                currentAudio = null;
+                openPaymentModal();
+                return;
+            }
+
+            // Перелистываем страницу вперед (функция перелистывания книги)
+            if (typeof nextPage === 'function') {
+                nextPage();
+            } else if (typeof renderPage === 'function') {
+                currentIndex++;
+                renderPage();
+            }
+
+            // Запускаем озвучку новой открытой страницы с комфортной паузой 0.5 сек
+            setTimeout(function() {
+                if (isSpeaking) {
+                    playCurrentPageAudio();
+                }
+            }, 500);
+        } else {
+            // Книга подошла к концу
+            isSpeaking = false;
+            currentAudio = null;
+            var btnAudio = document.getElementById('btn-audio-lbl');
+            if (btnAudio) btnAudio.innerText = '▶ Audio Story';
+        }
+    }  
 
     async function exportEpub() {
         if (!currentPages || currentPages.length === 0) {
