@@ -1714,12 +1714,12 @@ async function toggleAudioStory() {
                 return;
             }
 
-            // Перелистываем страницу вперед (функция перелистывания книги)
-            if (typeof nextPage === 'function') {
-                nextPage();
-            } else if (typeof renderPage === 'function') {
-                currentIndex++;
-                renderPage();
+            // Перелистываем страницу вызовом родной функции nextSlide
+            if (typeof nextSlide === 'function') {
+                nextSlide();
+            } else {
+                var nextBtn = document.getElementById('btn-next');
+                if (nextBtn) nextBtn.click();
             }
 
             // Запускаем озвучку новой открытой страницы с комфортной паузой 0.5 сек
