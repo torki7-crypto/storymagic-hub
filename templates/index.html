@@ -279,6 +279,17 @@
             display: none;
         }
 
+        .photo-disclaimer {
+            font-size: 0.75em;
+            color: #c4b5fd;
+            line-height: 1.35;
+            margin-top: 5px;
+            padding: 4px 6px;
+            background: rgba(161, 140, 209, 0.1);
+            border-radius: 8px;
+            border-left: 2px solid #a18cd1;
+        }
+
         .legal-box {
             margin: 10px 0;
             padding: 10px;
@@ -497,7 +508,7 @@
 
         .action-bar {
             display: grid;
-            grid-template-columns: 1fr 1fr 1.3fr;
+            grid-template-columns: 1fr 1.2fr 1.3fr;
             gap: 12px;
             width: 100%;
             flex-shrink: 0;
@@ -522,8 +533,22 @@
             background: rgba(161, 140, 209, 0.2);
             border-color: #a18cd1;
             color: #f1e4ff;
+            position: relative;
         }
         .action-btn.btn-epub:hover { background: #a18cd1; color: #240e48; }
+
+        .epub-badge-pill {
+            background: #38ef7d;
+            color: #052e16;
+            font-size: 0.7em;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-left: 4px;
+        }
+
         .btn-order { background: linear-gradient(135deg, #11998e, #38ef7d); color: #082918; border: none; }
 
         .library-grid {
@@ -718,6 +743,35 @@
         .pricing-tier.featured { border-color: #ff6b8b; background: rgba(255, 107, 139, 0.1); }
         .price-val { font-size: 1.6em; font-weight: 800; margin: 8px 0; color: #fecfef; }
 
+        .site-footer {
+            background: rgba(14, 9, 26, 0.85);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px 20px 24px;
+            margin-top: 50px;
+            text-align: center;
+            font-size: 0.88em;
+            color: #94a3b8;
+            line-height: 1.7;
+            position: relative;
+            z-index: 25;
+        }
+        .site-footer a {
+            color: #a1c4fd;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .site-footer a:hover {
+            color: #fecfef;
+            text-decoration: underline;
+        }
+        .footer-nav {
+            margin: 8px 0;
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
         @media (max-width: 900px) {
             .app-grid { grid-template-columns: 1fr; }
             .book-spread { grid-template-columns: 1fr; height: auto; max-height: none; }
@@ -728,99 +782,56 @@
             .input-row-2 { grid-template-columns: 1fr; }
             .format-cards-grid { grid-template-columns: 1fr; }
         }
-        /* ==========================================
-   Адаптивность для мобильных устройств
-========================================== */
-@media (max-width: 768px) {
-    /* 1. Шапка сайта и меню */
-    header {
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 12px !important;
-        padding: 12px 14px !important;
-    }
 
-    .brand {
-        justify-content: center !important;
-        margin-bottom: 4px !important;
-    }
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column !important;
+                align-items: center !important;
+                gap: 12px !important;
+                padding: 12px 14px !important;
+            }
 
-    .brand-title {
-        font-size: 1.3em !important;
-    }
+            .brand {
+                justify-content: center !important;
+                margin-bottom: 4px !important;
+            }
 
-    .nav-tabs, .tabs, nav {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        justify-content: center !important;
-        gap: 6px !important;
-        width: 100% !important;
-    }
+            .brand-title {
+                font-size: 1.3em !important;
+            }
 
-    .tab-btn {
-        padding: 6px 12px !important;
-        font-size: 0.85em !important;
-        flex: 1 1 auto !important;
-        text-align: center !important;
-        max-width: 140px !important;
-    }
+            .nav-tabs {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                justify-content: center !important;
+                gap: 6px !important;
+                width: 100% !important;
+            }
 
-    /* 2. Главная страница (Hero и карточки преимуществ) */
-    .hero-title, h1 {
-        font-size: 1.6em !important;
-        line-height: 1.25 !important;
-        padding: 0 10px !important;
-    }
+            .tab-btn {
+                padding: 6px 12px !important;
+                font-size: 0.85em !important;
+                flex: 1 1 auto !important;
+                text-align: center !important;
+                max-width: 140px !important;
+            }
 
-    .hero-subtitle, .subtitle {
-        font-size: 0.95em !important;
-        padding: 0 12px !important;
-    }
+            .steps-grid, .about-grid {
+                grid-template-columns: 1fr !important;
+                gap: 14px !important;
+                padding: 0 10px !important;
+            }
 
-    .btn-create, .btn-primary {
-        width: 100% !important;
-        max-width: 300px !important;
-        box-sizing: border-box !important;
-    }
+            .library-grid {
+                grid-template-columns: 1fr !important;
+                gap: 16px !important;
+            }
 
-    /* Все сетки карточек перестраиваем в одну колонку */
-    .steps-grid, .features-grid, .about-grid {
-        grid-template-columns: 1fr !important;
-        gap: 14px !important;
-        padding: 0 10px !important;
-    }
-
-    /* 3. Библиотека созданных книг */
-    .library-grid, #myBooksGrid {
-        grid-template-columns: 1fr !important;
-        gap: 16px !important;
-    }
-
-    .panel-card {
-        padding: 16px 12px !important;
-        margin: 0 6px !important;
-        border-radius: 14px !important;
-    }
-
-    /* 4. Окно чтения книги (слайдер / разворот) */
-    .book-reader, .book-reader-container {
-        flex-direction: column !important;
-        padding: 10px !important;
-    }
-
-    .book-page-image, .book-illustration {
-        width: 100% !important;
-        max-height: 280px !important;
-        object-fit: cover !important;
-        border-radius: 12px !important;
-    }
-
-    .book-page-text {
-        font-size: 0.95em !important;
-        line-height: 1.5 !important;
-        padding: 12px 6px !important;
-    }
-}
+            .panel-card {
+                padding: 16px 12px !important;
+                margin: 0 6px !important;
+                border-radius: 14px !important;
+            }
         }
     </style>
 </head>
@@ -879,7 +890,7 @@
                 <div class="step-card">
                     <div class="step-icon">📖</div>
                     <h3 id="step3-title">3. Read or Order</h3>
-                    <p id="step3-desc">Read online, download as an ePub file, or order a hardcover print book.</p>
+                    <p id="step3-desc">Read online, download as a free ePub file, or order a hardcover print book.</p>
                 </div>
             </div>
 
@@ -903,7 +914,7 @@
                     <div class="about-item">
                         <div style="font-size: 2em; margin-bottom: 8px;">📚</div>
                         <h3 id="about-col3-title">Formats & Print</h3>
-                        <p id="about-col3-desc">Read on screen, export as an ePub file for tablet reading (iPad/Android), or order a beautifully bound physical hardcover delivered to your door.</p>
+                        <p id="about-col3-desc">Read on screen, export as a free ePub file for tablet reading (iPad/Android), or order a beautifully bound physical hardcover delivered to your door.</p>
                     </div>
                 </div>
 
@@ -931,6 +942,9 @@
                             <span id="photoStatusText" style="font-size:0.85em; color:#ddd;">Click to select photo</span>
                         </div>
                         <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhotoSelect(event)">
+                        <div class="photo-disclaimer" id="photo-disclaimer-lbl">
+                            🎨 <em>Artistic styling:</em> Illustrations are generated in fairy-tale art style inspired by the photo, not a 100% photographic replica.
+                        </div>
                     </div>
 
                     <!-- Посвящение от родителей -->
@@ -1002,7 +1016,7 @@
                         <div class="book-right-page">
                             <div class="book-header-line">
                                 <span class="book-badge" id="pageBadge">Cover</span>
-                                <span style="font-size:0.85em; color:#8d7b68;" id="book-brand-lbl">StoryMagic Kids</span>
+                                <span style="font-size:0.85em; color:#8d7b68;" id="book-brand-lbl">SuperMeStory Kids</span>
                             </div>
 
                             <div class="book-body-text" id="currentText">Fill in the parameters on the left and click "Generate Book". The storybook will unfold here in a full two-page spread with large, child-friendly typography.</div>
@@ -1011,7 +1025,7 @@
                             <div class="paywall-lock-overlay" id="paywallLockOverlay">
                                 <div class="paywall-lock-icon">🔒</div>
                                 <div class="paywall-lock-title" id="lbl-lock-title">Final Chapter Locked</div>
-                                <div class="paywall-lock-desc" id="lbl-lock-desc">Unlock the magical finale of this story, full audio narration, and ePub download!</div>
+                                <div class="paywall-lock-desc" id="lbl-lock-desc">Unlock the magical finale of this story, full audio narration, and free ePub tablet download!</div>
                                 <button type="button" class="paywall-unlock-btn" onclick="openPaymentModal()" id="btn-unlock-finale">✨ Unlock Full Book</button>
                             </div>
 
@@ -1025,14 +1039,14 @@
 
                     <div class="action-bar">
                         <button type="button" class="action-btn" onclick="toggleAudioStory()">🎧 <span id="btn-audio-lbl">Audio Story</span></button>
-                        <button type="button" class="action-btn btn-epub" onclick="exportEpub()">📥 <span id="btn-epub-lbl">Export ePub</span></button>
+                        <button type="button" class="action-btn btn-epub" onclick="exportEpub()">📥 <span id="btn-epub-lbl">Download ePub</span> <span class="epub-badge-pill" id="badge-epub-free">FREE</span></button>
                         <button type="button" class="action-btn btn-order" onclick="switchTab('order')">🚚 <span id="btn-order-lbl">Order Hardcover</span></button>
                     </div>
                 </div>
             </div>
         </div>
 
-  <!-- Библиотека (подключена к базе PostgreSQL) -->
+        <!-- Библиотека (подключена к базе PostgreSQL) -->
         <div id="tab-library" class="tab-content">
             <div class="panel-card" style="max-width: 1000px; margin: 0 auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px;">
@@ -1046,6 +1060,7 @@
                 <div id="myBooksGrid" class="library-grid"></div>
             </div>
         </div>
+
         <!-- Заказ печати (с раздельными полями для Lulu API) -->
         <div id="tab-order" class="tab-content">
             <div class="hero-box" style="text-align:left; max-width:620px;">
@@ -1130,10 +1145,10 @@
                     <div>
                         <div class="format-icon">📖</div>
                         <div class="format-title" id="fmt-card1-title">Read Online</div>
-                        <div class="format-desc" id="fmt-card1-desc">Interactive two-page book spread right in your browser with free preview.</div>
+                        <div class="format-desc" id="fmt-card1-desc">Interactive two-page book spread in browser with a Free ePub file download included.</div>
                     </div>
                     <div>
-                        <div class="format-price-tag" id="fmt-card1-price">Free Preview</div>
+                        <div class="format-price-tag" id="fmt-card1-price">Free Preview + ePub</div>
                         <button type="button" class="format-select-btn" id="fmt-card1-btn">Read Now</button>
                     </div>
                 </div>
@@ -1210,18 +1225,29 @@
                 <div class="pricing-tier">
                     <h3 id="plan1-title">Starter</h3>
                     <div class="price-val">£4.99</div>
-                    <p style="font-size:0.8em; color:#ccc;" id="plan1-desc">5 personalized stories + ePub</p>
+                    <p style="font-size:0.8em; color:#ccc;" id="plan1-desc">5 personalized stories + FREE ePub</p>
                     <button type="button" class="magic-btn" style="margin-top:12px; padding:8px;" onclick="activatePaidAccess('Starter')" id="plan1-btn">Buy Now</button>
                 </div>
                 <div class="pricing-tier featured">
                     <h3 id="plan2-title">Unlimited</h3>
                     <div class="price-val">£12.99</div>
-                    <p style="font-size:0.8em; color:#ccc;" id="plan2-desc">Unlimited stories + ePub exports</p>
+                    <p style="font-size:0.8em; color:#ccc;" id="plan2-desc">Unlimited stories + FREE ePub exports</p>
                     <button type="button" class="magic-btn" style="margin-top:12px; padding:8px;" onclick="activatePaidAccess('Unlimited')" id="plan2-btn">Select Plan</button>
                 </div>
             </div>
         </div>
     </div>
+
+    <footer class="site-footer">
+        <p><strong>SuperMeStory</strong> — Personalized Therapeutic Fairy Tales for Children</p>
+        <p>Support: <a href="mailto:hello@supermestory.com">hello@supermestory.com</a></p>
+        <div class="footer-nav">
+            <a href="/terms">Terms & Conditions</a> • 
+            <a href="/privacy">Privacy Policy</a> • 
+            <a href="mailto:hello@supermestory.com">Contact Support</a>
+        </div>
+        <p style="font-size: 0.8em; color: #64748b; margin-top: 6px;">© 2026 SuperMeStory. All rights reserved.</p>
+    </footer>
 
 <script>
     var currentPages = [];
@@ -1229,7 +1255,7 @@
     var currentLang = 'en';
     var isSpeaking = false;
     var selectedPhotoFile = null;
-    var currentBookTitle = "Magical Story";
+    var currentBookTitle = "SuperMeStory Book";
     var isPaidUser = false;
     var currentDedicationText = "";
     var currentPsychologyQuestions = [];
@@ -1305,7 +1331,7 @@
                 : ('Signed in as ' + currentUser.email + '. Would you like to sign out?'));
             if (confirmLogout) {
                 currentUser = null;
-                localStorage.removeItem('storymagic_user');
+                localStorage.removeItem('supermestory_user');
                 updateAuthButtonUI();
             }
             return;
@@ -1365,7 +1391,7 @@
                     name: data.name || nameVal || emailVal.split('@')[0], 
                     email: emailVal 
                 };
-                localStorage.setItem('storymagic_user', JSON.stringify(currentUser));
+                localStorage.setItem('supermestory_user', JSON.stringify(currentUser));
             } else {
                 alert(data.detail || 'Authentication error. Please check your details.');
                 return;
@@ -1375,7 +1401,6 @@
             alert('Server connection error. Please try again.');
             return;
         }
-            
         
         var orderEmail = document.getElementById('order-email-input');
         if (orderEmail) orderEmail.value = currentUser.email;
@@ -1498,7 +1523,7 @@
         showSlide(currentIndex < currentPages.length - 1 ? currentIndex + 1 : 0);
     }
 
-function prevSlide() {
+    function prevSlide() {
         if (!currentPages.length) return;
         showSlide(currentIndex > 0 ? currentIndex - 1 : currentPages.length - 1);
     }
@@ -1511,7 +1536,6 @@ function prevSlide() {
             return false;
         }
 
-        // Проверка авторизации: если пользователь не вошел, открываем модальное окно
         if (!currentUser || (!currentUser.user_id && !currentUser.id)) {
             alert('Пожалуйста, войдите в аккаунт или зарегистрируйтесь, чтобы создать сказку!');
             if (typeof openAuthModal === 'function') {
@@ -1546,7 +1570,7 @@ function prevSlide() {
             formData.append('custom_dedication', dedicationVal);
         }
 
-if (selectedPhotoFile) {
+        if (selectedPhotoFile) {
             formData.append('photo', selectedPhotoFile);
         }
 
@@ -1575,28 +1599,28 @@ if (selectedPhotoFile) {
         }
     }
 
-/* --- ПОЛУЧЕНИЕ ИСТОРИЙ НАПРЯМУЮ ИЗ БАЗЫ POSTGRESQL --- */
-async function loadLibrary() {
-    var box = document.getElementById('myBooksGrid');
-    if (!box) return;
-    try {
-        var url = (currentUser && (currentUser.user_id || currentUser.id)) 
-            ? ('/api/my-stories?user_id=' + (currentUser.user_id || currentUser.id)) 
-            : '/api/my-stories';
-        var res = await fetch(url);
-        var data = await res.json();
+    /* --- ПОЛУЧЕНИЕ ИСТОРИЙ НАПРЯМУЮ ИЗ БАЗЫ POSTGRESQL --- */
+    async function loadLibrary() {
+        var box = document.getElementById('myBooksGrid');
+        if (!box) return;
+        var d = dictionary[currentLang] || dictionary['en'];
+        try {
+            var url = (currentUser && (currentUser.user_id || currentUser.id)) 
+                ? ('/api/my-stories?user_id=' + (currentUser.user_id || currentUser.id)) 
+                : '/api/my-stories';
+            var res = await fetch(url);
+            var data = await res.json();
 
-        if (!data.success || !data.stories || data.stories.length === 0) {
-            box.innerHTML = '<p style="color:#aaa; grid-column: 1/-1; text-align: center;">' + (d.libEmpty || 'No stories saved yet.') + '</p>';
-            return;
-        }
+            if (!data.success || !data.stories || data.stories.length === 0) {
+                box.innerHTML = '<p style="color:#aaa; grid-column: 1/-1; text-align: center;">' + (d.libEmpty || 'No stories saved yet.') + '</p>';
+                return;
+            }
 
-        box.innerHTML = '';
-        data.stories.forEach(function(story) {
-            var el = document.createElement('div');
-            el.className = 'book-item-card';
-            var coverUrl = story.cover_image || 'https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg';
-
+            box.innerHTML = '';
+            data.stories.forEach(function(story) {
+                var el = document.createElement('div');
+                el.className = 'book-item-card';
+                var coverUrl = story.cover_image || 'https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg';
 
                 el.innerHTML = '<img class="book-item-thumb" src="' + coverUrl + '" alt="' + story.hero_name + '">' +
                                '<div class="book-item-info">' +
@@ -1636,7 +1660,7 @@ async function loadLibrary() {
         }
     }
 
-   var currentAudio = null;
+    var currentAudio = null;
     var audioCache = {};
 
     async function toggleAudioStory() {
@@ -1674,9 +1698,7 @@ async function loadLibrary() {
                 var blob = await response.blob();
                 audioCache[pageIndex] = window.URL.createObjectURL(blob);
             }
-        } catch (e) {
-            // Ошибку предзагрузки игнорируем
-        }
+        } catch (e) {}
     }
 
     async function playCurrentPageAudio() {
@@ -1758,6 +1780,7 @@ async function loadLibrary() {
             if (btnAudio) btnAudio.innerText = '▶ Audio Story';
         }
     }
+
     async function exportEpub() {
         if (!currentPages || currentPages.length === 0) {
             alert(currentLang === 'ru' ? 'Сначала создайте книгу!' : 'Please generate a book first!');
@@ -1769,7 +1792,7 @@ async function loadLibrary() {
         }
 
         var btn = document.getElementById('btn-epub-lbl');
-        var originalText = btn ? btn.innerText : 'Export ePub';
+        var originalText = btn ? btn.innerText : 'Download ePub';
         if (btn) btn.innerText = '⏳ ...';
 
         var d = dictionary[currentLang] || dictionary['en'];
@@ -1784,9 +1807,9 @@ async function loadLibrary() {
         });
 
         var payload = {
-            title: currentBookTitle || 'StoryMagic Book',
+            title: currentBookTitle || 'SuperMeStory Book',
             language_code: currentLang,
-            author: 'StoryMagic Hub',
+            author: 'SuperMeStory',
             description: 'Personalized therapeutic children book',
             dedication_text: currentDedicationText || '',
             psychology_questions: currentPsychologyQuestions || [],
@@ -1811,7 +1834,7 @@ async function loadLibrary() {
             var downloadUrl = window.URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = downloadUrl;
-            var safeName = (currentBookTitle || 'Story').replace(/[^a-zA-Z0-9а-яА-ЯёЁ]/g, '_');
+            var safeName = (currentBookTitle || 'SuperMeStory').replace(/[^a-zA-Z0-9а-яА-ЯёЁ]/g, '_');
             a.download = safeName + '.epub';
             document.body.appendChild(a);
             a.click();
@@ -1860,9 +1883,9 @@ async function loadLibrary() {
         });
 
         var storyBookData = {
-            title: currentBookTitle || 'StoryMagic Book',
+            title: currentBookTitle || 'SuperMeStory Book',
             language_code: currentLang,
-            author: 'StoryMagic Hub',
+            author: 'SuperMeStory',
             description: 'Personalized therapeutic children book',
             dedication_text: currentDedicationText || '',
             psychology_questions: currentPsychologyQuestions || [],
@@ -1920,16 +1943,17 @@ async function loadLibrary() {
             heroCta: '🚀 Start Creating',
             step1Title: '1. Photo & Hero', step1Desc: 'Upload a picture and enter child\'s name for tailored character resemblance.',
             step2Title: '2. Gentle Narrative', step2Desc: 'Choose therapeutic themes: dark fears, first day of school, anger, sharing.',
-            step3Title: '3. Read or Order', step3Desc: 'Read online, download as an ePub file, or order a hardcover print book.',
-            aboutTitle: 'About StoryMagic', aboutTagline: 'Personalized therapeutic tales helping children grow confident, resilient, and happy.',
+            step3Title: '3. Read or Order', step3Desc: 'Read online, download as a free ePub file, or order a hardcover print book.',
+            aboutTitle: 'About SuperMeStory', aboutTagline: 'Personalized therapeutic tales helping children grow confident, resilient, and happy.',
             aboutCol1Title: 'Why Story Therapy?', aboutCol1Desc: 'Each story is uniquely crafted for your child. Story therapy gently resolves childhood fears, builds emotional intelligence, and encourages kindness.',
             aboutCol2Title: 'Safety & Privacy', aboutCol2Desc: 'Fully compliant with UK GDPR & the ICO Children\'s Code. Photos are strictly used to create illustrations, never train public models, and are immediately deleted.',
-            aboutCol3Title: 'Formats & Print', aboutCol3Desc: 'Read on screen, export as an ePub file for tablet reading (iPad/Android), or order a beautifully bound physical hardcover delivered to your door.',
+            aboutCol3Title: 'Formats & Print', aboutCol3Desc: 'Read on screen, export as a free ePub file for tablet reading (iPad/Android), or order a beautifully bound physical hardcover delivered to your door.',
             aboutStepsTitle: '3 Simple Steps:',
             aboutStep1: '<strong>Step 1:</strong> Enter child details and choose an inspiring story theme.',
             aboutStep2: '<strong>Step 2:</strong> Upload an optional photo & confirm parental consent.',
             aboutStep3: '<strong>Step 3:</strong> Enjoy a unique, beautifully illustrated storybook in minutes!',
             lblFormTitle: 'Book Settings', lblPhoto: '📷 Child Photo (for likeness)', photoChoose: 'Click to select photo',
+            photoDisclaimer: '🎨 Artistic styling: Illustrations are generated in fairy-tale art style inspired by the photo, not a 100% photographic replica.',
             lblDedication: '❤️ Parental Dedication (Optional)',
             lblHeroName: 'Hero Name', valHeroName: 'Alice', lblHeroAge: 'Age', lblStoryTheme: 'Story Theme',
             grpTherapy: '🌱 Therapeutic Stories', themeDark: 'Fear of the dark & night shadows', themeSchool: 'First day at nursery / school',
@@ -1941,19 +1965,19 @@ async function loadLibrary() {
             consentAlert: 'Please confirm parental/guardian consent to proceed.', btnCreateStory: '🪄 Generate Book',
             badgeCover: 'Chapter 1', badgePage: 'Chapter',
             defaultWelcome: 'Fill in the parameters on the left and click "Generate Book". The storybook will unfold here in a full two-page spread with large, child-friendly typography.',
-            btnPrev: '❮ Back', btnNext: 'Next ❯', btnAudioLbl: 'Audio Story', btnEpubLbl: 'Export ePub', btnOrderLbl: 'Order Hardcover',
-            lockTitle: 'Final Chapter Locked', lockDesc: 'Unlock the magical finale of this story, full audio narration, and ePub download!', lockBtn: '✨ Unlock Full Book',
+            btnPrev: '❮ Back', btnNext: 'Next ❯', btnAudioLbl: 'Audio Story', btnEpubLbl: 'Download ePub', btnOrderLbl: 'Order Hardcover',
+            lockTitle: 'Final Chapter Locked', lockDesc: 'Unlock the magical finale of this story, full audio narration, and free ePub tablet download!', lockBtn: '✨ Unlock Full Book',
             libTitle: '📚 Your Created Books', libDesc: 'All stories saved in PostgreSQL database', libEmpty: 'No stories saved yet. Create your first book!',
             orderTitle: '🚚 Order a Printed Hardcover Book', orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.',
             lblOrderName: 'Recipient Full Name', lblOrderEmail: 'Contact Email', lblOrderPhone: 'Phone Number (Required)',
             lblOrderCountry: 'Country', lblOrderAddr: 'Street Address Line 1 (Max 30 chars)', lblOrderAddr2: 'Apt / Suite / Line 2 (Optional)',
             lblOrderCity: 'City / Town', lblOrderPostcode: 'Postcode / ZIP', lblOrderType: 'Cover Type',
             optOrderHard: 'Matte Hardcover — £14.99', optOrderPrem: 'Premium Gloss with Foil — £19.99', btnOrderPay: 'Proceed to Payment / Sandbox Order',
-            payTitle: 'Choose Your Plan', paySubtitle: 'Unlock the final chapter, ePub downloads, and voice narration',
-            plan1Title: 'Starter', plan1Desc: '5 personalized stories + ePub', plan1Btn: 'Buy Now',
-            plan2Title: 'Unlimited', plan2Desc: 'Unlimited stories + ePub exports', plan2Btn: 'Select Plan',
+            payTitle: 'Choose Your Plan', paySubtitle: 'Unlock the final chapter, voice narration, and free ePub downloads',
+            plan1Title: 'Starter', plan1Desc: '5 personalized stories + FREE ePub', plan1Btn: 'Buy Now',
+            plan2Title: 'Unlimited', plan2Desc: 'Unlimited stories + FREE ePub exports', plan2Btn: 'Select Plan',
             fmtModalTitle: '✨ Choose Your Book Edition', fmtModalSubtitle: 'How would you like to experience your child\'s personalized story?',
-            fmtCard1Title: 'Read Online', fmtCard1Desc: 'Interactive two-page book spread right in your browser with free preview.', fmtCard1Price: 'Free Preview', fmtCard1Btn: 'Read Now',
+            fmtCard1Title: 'Read Online', fmtCard1Desc: 'Interactive two-page book spread in browser with a Free ePub file download included.', fmtCard1Price: 'Free Preview + ePub', fmtCard1Btn: 'Read Now',
             fmtCard2Title: 'Digital eBook', fmtCard2Desc: 'Full story unlocked, Apple Books / Kindle ePub download & voice narration.', fmtCard2Price: 'From £4.99', fmtCard2Btn: 'Get eBook',
             fmtBadgeHit: 'Most Popular', fmtCard3Title: 'Printed Book', fmtCard3Desc: 'High-quality physical book printed & delivered directly to your door via Lulu.', fmtCard3Price: '£14.99 + Shipping', fmtCard3Btn: 'Order Print',
             authModalTitle: 'Account Access', authModalSubtitle: 'Save your generated books and track print orders across all devices.',
@@ -1967,16 +1991,17 @@ async function loadLibrary() {
             heroCta: '🚀 Начать создание',
             step1Title: '1. Фотография и герой', step1Desc: 'Укажите имя и прикрепите фото — герой книги будет похож на вашего ребёнка.',
             step2Title: '2. Терапевтический сюжет', step2Desc: 'Выберите тему: страх темноты, первый день в садике, капризы или дружба.',
-            step3Title: '3. Читайте или закажите', step3Desc: 'Читайте в книжном развороте, скачивайте в ePub или оформите в печатном переплете.',
-            aboutTitle: 'О проекте StoryMagic', aboutTagline: 'Персонализированные сказки, помогающие детям расти уверенными и спокойными.',
+            step3Title: '3. Читайте или закажите', step3Desc: 'Читайте в книжном развороте, скачивайте бесплатно в ePub или оформите печатную книгу.',
+            aboutTitle: 'О проекте SuperMeStory', aboutTagline: 'Персонализированные сказки, помогающие детям расти уверенными и спокойными.',
             aboutCol1Title: 'В чем суть?', aboutCol1Desc: 'Каждая история создается индивидуально под вашего ребенка. Сказкотерапия помогает мягко преодолевать страхи, учит дружбе и вере в себя.',
             aboutCol2Title: 'Конфиденциальность', aboutCol2Desc: 'Мы строго соблюдаем UK GDPR и стандарты ICO Children\'s Code. Фотографии используются исключительно для генерации книги и сразу удаляются.',
-            aboutCol3Title: 'Как получить книгу?', aboutCol3Desc: 'Читайте онлайн, сохраняйте в ePub для планшетов (iPad/Android) или заказывайте подарочное печатное издание в твердом переплете.',
+            aboutCol3Title: 'Как получить книгу?', aboutCol3Desc: 'Читайте онлайн, сохраняйте бесплатно в ePub для планшетов (iPad/Android) или заказывайте подарочное печатное издание.',
             aboutStepsTitle: '3 простых шага:',
             aboutStep1: '<strong>Шаг 1:</strong> Укажите имя, возраст ребенка и выберите развивающую тему.',
             aboutStep2: '<strong>Шаг 2:</strong> Загрузите фото (по желанию) и подтвердите согласие родителя.',
             aboutStep3: '<strong>Шаг 3:</strong> Получите готовую иллюстрированную книгу за пару минут!',
             lblFormTitle: 'Параметры книги', lblPhoto: '📷 Фото ребёнка (для сходства)', photoChoose: 'Нажмите, чтобы выбрать фото',
+            photoDisclaimer: '🎨 Художественная стилизация: иллюстрации создаются нейросетью в сказочном стиле по мотивам фото, не 100% фотокопия.',
             lblDedication: '❤️ Посвящение от родителей (необязательно)',
             lblHeroName: 'Имя героя', valHeroName: 'Алиса', lblHeroAge: 'Возраст', lblStoryTheme: 'Тема сказки',
             grpTherapy: '🌱 Терапевтические сказки', themeDark: 'Страх темноты и ночных теней', themeSchool: 'Первый день в садике / школе',
@@ -1989,18 +2014,18 @@ async function loadLibrary() {
             badgeCover: 'Глава 1', badgePage: 'Глава',
             defaultWelcome: 'Заполните параметры слева и нажмите «Создать сказку». Книга развернётся здесь в формате настоящего книжного разворота с удобным шрифтом.',
             btnPrev: '❮ Назад', btnNext: 'Вперед ❯', btnAudioLbl: 'Аудиосказка', btnEpubLbl: 'Скачать ePub', btnOrderLbl: 'Заказать книжку',
-            lockTitle: 'Финальная глава закрыта', lockDesc: 'Разблокируйте волшебный финал сказки, озвучку и скачивание книги в формате ePub!', lockBtn: '✨ Разблокировать финал',
+            lockTitle: 'Финальная глава закрыта', lockDesc: 'Разблокируйте волшебный финал сказки, озвучку и бесплатное скачивание ePub!', lockBtn: '✨ Разблокировать финал',
             libTitle: '📚 Ваши созданные книги', libDesc: 'Все истории, сохранённые в базе данных PostgreSQL', libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
             orderTitle: '🚚 Заказ книги в твердом переплете', orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим до двери.',
             lblOrderName: 'ФИО получателя', lblOrderEmail: 'Email для заказа', lblOrderPhone: 'Телефон (обязательно для курьера)',
             lblOrderCountry: 'Страна', lblOrderAddr: 'Улица и дом (до 30 символов)', lblOrderAddr2: 'Квартира / корпус (необязательно)',
             lblOrderCity: 'Город', lblOrderPostcode: 'Почтовый индекс (Postcode)', lblOrderType: 'Тип переплета',
             optOrderHard: 'Твердый матовый переплет — £14.99', optOrderPrem: 'Премиум глянец с тиснением — £19.99', btnOrderPay: 'Отправить заказ в Sandbox Lulu',
-            payTitle: 'Выберите тариф', paySubtitle: 'Разблокируйте финал истории, скачивание ePub и озвучку',
-            plan1Title: 'Starter', plan1Desc: '5 персональных сказок + ePub', plan1Btn: 'Купить',
-            plan2Title: 'Unlimited', plan2Desc: 'Безлимит сказок + экспорт ePub', plan2Btn: 'Выбрать',
+            payTitle: 'Выберите тариф', paySubtitle: 'Разблокируйте финал истории, озвучку и бесплатный экспорт в ePub',
+            plan1Title: 'Starter', plan1Desc: '5 персональных сказок + бесплатный ePub', plan1Btn: 'Купить',
+            plan2Title: 'Unlimited', plan2Desc: 'Безлимит сказок + бесплатный экспорт ePub', plan2Btn: 'Выбрать',
             fmtModalTitle: '✨ Выберите формат вашей книги', fmtModalSubtitle: 'В каком виде вы хотите получить персональную сказку?',
-            fmtCard1Title: 'Читать на месте', fmtCard1Desc: 'Интерактивный книжный разворот прямо в браузере с бесплатным превью.', fmtCard1Price: 'Бесплатное превью', fmtCard1Btn: 'Открыть книгу',
+            fmtCard1Title: 'Читать на месте', fmtCard1Desc: 'Интерактивный книжный разворот прямо в браузере со скачиванием бесплатного ePub.', fmtCard1Price: 'Бесплатное превью + ePub', fmtCard1Btn: 'Открыть книгу',
             fmtCard2Title: 'Электронная книга', fmtCard2Desc: 'Полная версия сказки, файл ePub для планшетов и аудио-озвучка.', fmtCard2Price: 'От £4.99', fmtCard2Btn: 'Скачать ePub',
             fmtBadgeHit: 'Хит продаж', fmtCard3Title: 'Печатная книга', fmtCard3Desc: 'Настоящая книга в переплете с доставкой на дом через типографию Lulu.', fmtCard3Price: '£14.99 + доставка', fmtCard3Btn: 'Заказать печать',
             authModalTitle: 'Личный кабинет', authModalSubtitle: 'Сохраняйте созданные книги и историю заказов в базе данных.',
@@ -2010,46 +2035,65 @@ async function loadLibrary() {
         pl: {
             navAbout: 'Start / O nas', navCreate: 'Stwórz bajkę', navLibrary: 'Moje książki', navOrder: 'Zamów druk', btnAuth: '👤 Zaloguj się',
             heroTitle: 'Spersonalizowane bajki terapeutyczne dla dzieci', heroDesc: 'Prześlij zdjęcie dziecka, a stworzymy ciepłą opowieść, w której bohater pokonuje lęki.', heroCta: '🚀 Rozpocznij tworzenie',
-            step1Title: '1. Zdjęcie i bohater', step1Desc: 'Podaj imię i dodaj zdjęcie dziecka.', step2Title: '2. Wątek terapeutyczny', step2Desc: 'Wybierz temat bajki terapeutycznej.', step3Title: '3. Czytaj lub zamów', step3Desc: 'Czytaj online, pobierz ePub lub zamów druk.',
-            lblFormTitle: 'Ustawienia książki', lblPhoto: '📷 Zdjęcie dziecka', photoChoose: 'Kliknij, aby wybrać zdjęcie', lblDedication: '❤️ Dedykacja od rodziców', lblHeroName: 'Imię bohatera', valHeroName: 'Zosia', lblHeroAge: 'Wiek', lblStoryTheme: 'Temat bajki',
+            step1Title: '1. Zdjęcie i bohater', step1Desc: 'Podaj imię i dodaj zdjęcie dziecka.', step2Title: '2. Wątek terapeutyczny', step2Desc: 'Wybierz temat bajki terapeutycznej.', step3Title: '3. Czytaj lub zamów', step3Desc: 'Czytaj online, pobierz darmowy ePub lub zamów druk.',
+            lblFormTitle: 'Ustawienia książki', lblPhoto: '📷 Zdjęcie dziecka', photoChoose: 'Kliknij, aby wybrać zdjęcie',
+            photoDisclaimer: '🎨 Stylizacja artystyczna: Ilustracje są tworzone przez AI w stylu bajkowym na podstawie zdjęcia, a nie jako 100% kopia fotograficzna.',
+            lblDedication: '❤️ Dedykacja od rodziców', lblHeroName: 'Imię bohatera', valHeroName: 'Zosia', lblHeroAge: 'Wiek', lblStoryTheme: 'Temat bajki',
             btnCreateStory: '🪄 Wygeneruj bajkę', badgeCover: 'Rozdział 1', badgePage: 'Rozdział', defaultWelcome: 'Wypełnij formularz po lewej stronie i kliknij «Wygeneruj bajkę».',
             btnPrev: '❮ Wstecz', btnNext: 'Dalej ❯', btnAudioLbl: 'Audiobook', btnEpubLbl: 'Pobierz ePub', btnOrderLbl: 'Zamów książkę',
-            lockTitle: 'Ostatni rozdział zablokowany', lockDesc: 'Odblokuj finał bajki, audiobook oraz pobieranie pliku ePub!', lockBtn: '✨ Odblokuj pełną bajkę',
+            lockTitle: 'Ostatni rozdział zablokowany', lockDesc: 'Odblokuj finał bajki, audiobook oraz darmowe pobieranie pliku ePub!', lockBtn: '✨ Odblokuj pełną bajkę',
             fmtModalTitle: '✨ Wybierz format książki', fmtModalSubtitle: 'W jakiej formie chcesz otrzymać bajkę?',
-            fmtCard1Title: 'Czytaj online', fmtCard1Btn: 'Czytaj teraz', fmtCard2Title: 'E-book (ePub)', fmtCard2Btn: 'Pobierz ePub', fmtCard3Title: 'Książka drukowana', fmtCard3Btn: 'Zamów druk',
+            fmtCard1Title: 'Czytaj online', fmtCard1Desc: 'Interaktywny widok książki w przeglądarce wraz z darmowym plikiem ePub.', fmtCard1Price: 'Darmowy podgląd + ePub', fmtCard1Btn: 'Czytaj teraz',
+            fmtCard2Title: 'E-book (ePub)', fmtCard2Desc: 'Pełna bajka, plik ePub na tablety oraz lektor audio.', fmtCard2Price: 'Od £4.99', fmtCard2Btn: 'Pobierz ePub',
+            fmtBadgeHit: 'Bestseller', fmtCard3Title: 'Książka drukowana', fmtCard3Desc: 'Prawdziwa książka w twardej oprawie z dostawą do domu.', fmtCard3Price: '£14.99 + dostawa', fmtCard3Btn: 'Zamów druk',
             statusGen: '✨ Tworzymy unikalną opowieść...', statusDone: '🎉 Książka jest gotowa!'
         },
         ro: {
             navAbout: 'Acasă', navCreate: 'Creează poveste', navLibrary: 'Cărțile mele', navOrder: 'Comandă tipar', btnAuth: '👤 Autentificare',
             heroTitle: 'Cărți terapeutice personalizate pentru copii', heroDesc: 'Încarcă poza copilului și vom crea o poveste plină de căldură.', heroCta: '🚀 Începe crearea',
-            lblFormTitle: 'Setări carte', lblPhoto: '📷 Poză copil', photoChoose: 'Apasă pentru a alege poza', lblDedication: '❤️ Dedicație de la părinți', lblHeroName: 'Nume erou', valHeroName: 'Ana', lblHeroAge: 'Vârstă', lblStoryTheme: 'Tema poveștii',
+            step1Title: '1. Poză și erou', step1Desc: 'Introdu numele și adaugă poza copilului.', step2Title: '2. Temă terapeutică', step2Desc: 'Alege tema poveștii terapeutice.', step3Title: '3. Citește sau comandă', step3Desc: 'Citește online, descarcă ePub gratuit sau comandă tipar.',
+            lblFormTitle: 'Setări carte', lblPhoto: '📷 Poză copil', photoChoose: 'Apasă pentru a alege poza',
+            photoDisclaimer: '🎨 Stil artistic: Ilustrațiile sunt create de AI în stil de poveste, nu o copie fidelă 100%.',
+            lblDedication: '❤️ Dedicație de la părinți', lblHeroName: 'Nume erou', valHeroName: 'Ana', lblHeroAge: 'Vârstă', lblStoryTheme: 'Tema poveștii',
             btnCreateStory: '🪄 Generează cartea', badgeCover: 'Capitolul 1', badgePage: 'Capitolul', defaultWelcome: 'Completează formularul din stânga și apasă «Generează cartea».',
             btnPrev: '❮ Înapoi', btnNext: 'Înainte ❯', btnAudioLbl: 'Audiobook', btnEpubLbl: 'Descarcă ePub', btnOrderLbl: 'Comandă cartea',
-            lockTitle: 'Ultimul capitol este blocat', lockDesc: 'Deblochează finalul magic al poveștii și descărcarea ePub!', lockBtn: '✨ Deblochează cartea',
+            lockTitle: 'Ultimul capitol este blocat', lockDesc: 'Deblochează finalul magic al poveștii și descărcarea gratuită ePub!', lockBtn: '✨ Deblochează cartea',
             fmtModalTitle: '✨ Alege formatul cărții', fmtModalSubtitle: 'Cum dorești să primești povestea?',
-            fmtCard1Title: 'Citește online', fmtCard1Btn: 'Citește acum', fmtCard2Title: 'Carte digitală (ePub)', fmtCard2Btn: 'Descarcă ePub', fmtCard3Title: 'Carte tipărită', fmtCard3Btn: 'Comandă tipar',
+            fmtCard1Title: 'Citește online', fmtCard1Desc: 'Previzualizare carte în browser cu fișier ePub gratuit inclus.', fmtCard1Price: 'Previzualizare gratuită + ePub', fmtCard1Btn: 'Citește acum',
+            fmtCard2Title: 'Carte digitală (ePub)', fmtCard2Desc: 'Poveste completă, fișier ePub pentru tablete și narațiune audio.', fmtCard2Price: 'De la £4.99', fmtCard2Btn: 'Descarcă ePub',
+            fmtBadgeHit: 'Cel mai popular', fmtCard3Title: 'Carte tipărită', fmtCard3Desc: 'Carte fizică de calitate livrată la ușă prin Lulu.', fmtCard3Price: '£14.99 + livrare', fmtCard3Btn: 'Comandă tipar',
             statusGen: '✨ Scriem povestea...', statusDone: '🎉 Cartea este gata!'
         },
         it: {
             navAbout: 'Home', navCreate: 'Crea favola', navLibrary: 'I miei libri', navOrder: 'Ordina stampa', btnAuth: '👤 Accedi',
             heroTitle: 'Libri terapeutici personalizzati per bambini', heroDesc: 'Carica la foto del tuo bimbo e creeremo una dolce storia illustrata.', heroCta: '🚀 Inizia a creare',
-            lblFormTitle: 'Dettagli libro', lblPhoto: '📷 Foto del bimbo', photoChoose: 'Clicca per scegliere la foto', lblDedication: '❤️ Dedica dei genitori', lblHeroName: 'Nome dell\'eroe', valHeroName: 'Sofia', lblHeroAge: 'Età', lblStoryTheme: 'Tema della favola',
+            step1Title: '1. Foto ed eroe', step1Desc: 'Inserisci il nome e carica la foto del bambino.', step2Title: '2. Percorso narrativo', step2Desc: 'Scegli il tema terapeutico per la storia.', step3Title: '3. Leggi o ordina', step3Desc: 'Leggi online, scarica l\'ePub gratis o ordina il libro cartaceo.',
+            lblFormTitle: 'Dettagli libro', lblPhoto: '📷 Foto del bimbo', photoChoose: 'Clicca per scegliere la foto',
+            photoDisclaimer: '🎨 Stile artistico: Illustrazioni fiabesche create dall\'IA ispirate alla foto, non una copia identica al 100%.',
+            lblDedication: '❤️ Dedica dei genitori', lblHeroName: 'Nome dell\'eroe', valHeroName: 'Sofia', lblHeroAge: 'Età', lblStoryTheme: 'Tema della favola',
             btnCreateStory: '🪄 Genera il libro', badgeCover: 'Capitolo 1', badgePage: 'Capitolo', defaultWelcome: 'Compila i parametri a sinistra e clicca su «Genera il libro».',
             btnPrev: '❮ Indietro', btnNext: 'Avanti ❯', btnAudioLbl: 'Audiofavola', btnEpubLbl: 'Scarica ePub', btnOrderLbl: 'Ordina libro',
-            lockTitle: 'Capitolo finale bloccato', lockDesc: 'Sblocca il magico finale della favola e il download ePub!', lockBtn: '✨ Sblocca il libro intero',
+            lockTitle: 'Capitolo finale bloccato', lockDesc: 'Sblocca il magico finale della favola e il download gratuito ePub!', lockBtn: '✨ Sblocca il libro intero',
             fmtModalTitle: '✨ Scegli il formato del libro', fmtModalSubtitle: 'Come preferisci ricevere la tua favola?',
-            fmtCard1Title: 'Leggi online', fmtCard1Btn: 'Leggi ora', fmtCard2Title: 'E-book digitale', fmtCard2Btn: 'Scarica ePub', fmtCard3Title: 'Libro stampato', fmtCard3Btn: 'Ordina stampa',
+            fmtCard1Title: 'Leggi online', fmtCard1Desc: 'Visualizzazione interattiva nel browser con download ePub gratuito incluso.', fmtCard1Price: 'Anteprima gratuita + ePub', fmtCard1Btn: 'Leggi ora',
+            fmtCard2Title: 'E-book digitale', fmtCard2Desc: 'Storia completa, file ePub per tablet e voce narrante.', fmtCard2Price: 'Da £4.99', fmtCard2Btn: 'Scarica ePub',
+            fmtBadgeHit: 'Più venduto', fmtCard3Title: 'Libro stampato', fmtCard3Desc: 'Libro cartaceo con copertina rigida spedito a casa tua via Lulu.', fmtCard3Price: '£14.99 + spedizione', fmtCard3Btn: 'Ordina stampa',
             statusGen: '✨ Scrittura della favola...', statusDone: '🎉 Il libro è pronto!'
         },
         tr: {
             navAbout: 'Ana Sayfa', navCreate: 'Masal Oluştur', navLibrary: 'Kitaplarım', navOrder: 'Baskı Siparişi', btnAuth: '👤 Giriş Yap / Kaydol',
             heroTitle: 'Çocuklar İçin Kişiselleştirilmiş Terapötik Kitaplar', heroDesc: 'Çocuğunuzun fotoğrafını yükleyin, eğitici ve sıcak bir masal hazırlayalım.', heroCta: '🚀 Oluşturmaya Başla',
-            lblFormTitle: 'Kitap Seçenekleri', lblPhoto: '📷 Çocuk Fotoğrafı', photoChoose: 'Fotoğraf seçmek için tıklayın', lblDedication: '❤️ Aile İthafı', lblHeroName: 'Kahramanın Adı', valHeroName: 'Elif', lblHeroAge: 'Yaş', lblStoryTheme: 'Masal Teması',
+            step1Title: '1. Fotoğraf ve Kahraman', step1Desc: 'İsim girin ve fotoğraf yükleyin.', step2Title: '2. Terapötik Konu', step2Desc: 'Masalın eğitici konusunu seçin.', step3Title: '3. Oku veya Sipariş Ver', step3Desc: 'Çevrimiçi oku, ücretsiz ePub indir ya da baskı sipariş et.',
+            lblFormTitle: 'Kitap Seçenekleri', lblPhoto: '📷 Çocuk Fotoğrafı', photoChoose: 'Fotoğraf seçmek için tıklayın',
+            photoDisclaimer: '🎨 Sanatsal Çizim: Çizimler fotoğraftan esinlenilerek masalsı yapay zekâ tarzında oluşturulur, %100 vesikalık kopya değildir.',
+            lblDedication: '❤️ Aile İthafı', lblHeroName: 'Kahramanın Adı', valHeroName: 'Elif', lblHeroAge: 'Yaş', lblStoryTheme: 'Masal Teması',
             btnCreateStory: '🪄 Kitabı Oluştur', badgeCover: '1. Bölüm', badgePage: 'Bölüm', defaultWelcome: 'Soldaki alanları doldurun ve «Kitabı Oluştur» butonuna tıklayın.',
             btnPrev: '❮ Geri', btnNext: 'İleri ❯', btnAudioLbl: 'Sesli Masal', btnEpubLbl: 'ePub İndir', btnOrderLbl: 'Kitap Siparişi',
-            lockTitle: 'Son Bölüm Kilitli', lockDesc: 'Masalın büyülü finalini ve ePub indirme özelliğini açın!', lockBtn: '✨ Tüm Kitabı Aç',
+            lockTitle: 'Son Bölüm Kilitli', lockDesc: 'Masalın büyülü finalini ve ücretsiz ePub indirme özelliğini açın!', lockBtn: '✨ Tüm Kitabı Aç',
             fmtModalTitle: '✨ Kitap Formatını Seçin', fmtModalSubtitle: 'Masalınızı nasıl almak istersiniz?',
-            fmtCard1Title: 'Çevrimiçi Oku', fmtCard1Btn: 'Şimdi Oku', fmtCard2Title: 'Dijital Kitap (ePub)', fmtCard2Btn: 'ePub İndir', fmtCard3Title: 'Basılı Kitap', fmtCard3Btn: 'Baskı Siparişi',
+            fmtCard1Title: 'Çevrimiçi Oku', fmtCard1Desc: 'Tarayıcıda iki sayfalı etkileşimli okuma ve ücretsiz ePub indirme imkânı.', fmtCard1Price: 'Ücretsiz Önizleme + ePub', fmtCard1Btn: 'Şimdi Oku',
+            fmtCard2Title: 'Dijital Kitap (ePub)', fmtCard2Desc: 'Tam masal kilidi, tabletler için ePub ve seslendirme desteği.', fmtCard2Price: '£4.99\'den başlayanlarla', fmtCard2Btn: 'ePub İndir',
+            fmtBadgeHit: 'En Çok Satan', fmtCard3Title: 'Basılı Kitap', fmtCard3Desc: 'Sert kapaklı yüksek kaliteli basılı kitap doğrudan adresinize teslim edilir.', fmtCard3Price: '£14.99 + Kargo', fmtCard3Btn: 'Baskı Siparişi',
             statusGen: '✨ Masal yazılıyor...', statusDone: '🎉 Kitap hazır!'
         }
     };
@@ -2093,6 +2137,7 @@ async function loadLibrary() {
         setText('lbl-form-title', d.lblFormTitle);
         setText('lbl-photo', d.lblPhoto);
         if (!selectedPhotoFile) setText('photoStatusText', d.photoChoose);
+        setText('photo-disclaimer-lbl', d.photoDisclaimer);
         setText('lbl-dedication', d.lblDedication);
 
         setText('lbl-hero-name', d.lblHeroName);
@@ -2213,17 +2258,13 @@ async function loadLibrary() {
 
     document.addEventListener('DOMContentLoaded', function() {
         try {
-            var savedUser = localStorage.getItem('storymagic_user');
+            var savedUser = localStorage.getItem('supermestory_user');
             if (savedUser) currentUser = JSON.parse(savedUser);
         } catch (e) {}
         initFloatingBubbles(15);
         changeLanguage('en');
     });
 </script>
-
-<footer style="text-align: center; padding: 20px; color: #94a3b8; font-size: 0.85em; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 40px;">
-    <p>© 2026 SuperMeStory Hub. All rights reserved. <a href="/privacy" style="color: #a1c4fd; text-decoration: none; margin-left: 10px;">Privacy Policy</a></p>
-</footer>
 
 </body>
 </html>
