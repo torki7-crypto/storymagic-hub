@@ -991,7 +991,7 @@ async def privacy_policy():
     if os.path.exists("templates/privacy.html"):
         return FileResponse("templates/privacy.html")
     return HTMLResponse("<h1>privacy.html not found</h1>", status_code=404)
-    @app.get("/terms", response_class=HTMLResponse)
+@app.get("/terms", response_class=HTMLResponse)
 async def terms_policy():
     if os.path.exists("templates/terms.html"):
         return FileResponse("templates/terms.html")
