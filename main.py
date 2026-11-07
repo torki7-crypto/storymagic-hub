@@ -23,16 +23,26 @@ import models
 
 app = FastAPI(title="StoryMagic Hub Backend")
 
-# Sozdaet tablitsy v PostgreSQL pri zapuske servisa
+# Создает таблицы в PostgreSQL при запуске сервиса
 Base.metadata.create_all(bind=engine)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
 
 SQUARE_ACCESS_TOKEN = os.environ.get("SQUARE_ACCESS_TOKEN", "")
 SQUARE_ENVIRONMENT = os.environ.get("SQUARE_ENVIRONMENT", "sandbox")
 SQUARE_LOCATION_ID = os.environ.get("SQUARE_LOCATION_ID", "")
 
 SQUARE_BASE_URL = (
-    "https://connect.squareupsandbox.com" 
-    if SQUARE_ENVIRONMENT == "sandbox" 
+    "https://connect.squareupsandbox.com"
+    if SQUARE_ENVIRONMENT.lower() == "sandbox"
     else "https://connect.squareup.com"
 )
 
@@ -59,22 +69,9 @@ TIERS_CONFIG = {
     }
 }
 
-# Sozdaet tablitsy v PostgreSQL pri zapuske servisa
-Base.metadata.create_all(bind=engine)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
-
 
 # ==========================================
-# 1. Modeli dannyh
+# 1. Модели данных
 # ==========================================
 
 
@@ -114,8 +111,17 @@ class AuthRequest(BaseModel):
     password: str
 
 
+class CheckoutRequest(BaseModel):
+    story_id: int
+    tier: str = "digital"
+
+
+class ConfirmPaymentRequest(BaseModel):
+    story_id: int
+
+
 # ==========================================
-# 2. Modul sborki ePub3
+# 2. Модуль сборки ePub3
 # ==========================================
 
 
@@ -151,10 +157,7 @@ class EpubBuilder:
         spine = ["nav"]
         toc = []
 
-        async with httpx.AsyncClient(
-            timeout=30.0, follow_redirects=True
-        ) as http_client:
-
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as http_client:
             dedication = (story.dedication_text or "").strip()
             if dedication:
                 safe_dedication = dedication.replace("\n", "<br/>")
@@ -188,7 +191,7 @@ class EpubBuilder:
 
                 if ch.image_url and ch.image_url.startswith("data:image"):
                     try:
-                        header, b64_data = ch.image_url.split(",", 1)
+                        _, b64_data = ch.image_url.split(",", 1)
                         img_bytes = base64.b64decode(b64_data)
                     except Exception as e:
                         print(f"Failed to decode base64 image for chapter {ch_num}: {e}")
@@ -245,14 +248,13 @@ class EpubBuilder:
                 psych_headers = {
                     "ru": ("💡 Вопросы для душевного разговора", "Эти вопросы помогут обсудить сказку с ребенком и закрепить ее терапевтический эффект:"),
                     "pl": ("💡 Pytania do szczerej rozmowy", "Te pytania pomogą omówić bajkę z dzieckiem i utrwalić jej efekt terapeutyczny:"),
-                    "ro": ("💡 Întrebări для о discuție sinceră", "Aceste întrebări vă vor ajuta să discutați povestea cu copilul și să-i consolidați efectul terapeutic:"),
+                    "ro": ("💡 Întrebări pentru o discuție sinceră", "Aceste întrebări vă vor ajuta să discutați povestea cu copilul și să-i consolidați efectul terapeutic:"),
                     "it": ("💡 Domande per una conversazione intima", "Queste domande aiuteranno a discutere la fiaba con il bambino e a consolidare il suo effetto terapeutico:"),
                     "tr": ("💡 İçten Bir Sohbet İçin Sorular", "Bu sorular, masalı çocuğunuzla tartışmanıza ve terapötik etkisini pekiştirmenize yardımcı olacaktır:")
                 }
                 default_header = ("💡 Questions for a Heart-to-Heart Talk", "These questions will help discuss the story with your child and reinforce its therapeutic effect:")
 
                 h_title, h_desc = psych_headers.get(lang, default_header)
-
                 questions_html = "".join([f"<li>{q}</li>" for q in story.psychology_questions])
                 psych_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
@@ -289,7 +291,7 @@ class EpubBuilder:
 
 
 # ==========================================
-# 2.3. Generator Print-Ready PDF i razdacha failov dlja Lulu
+# 2.3. Генератор Print-Ready PDF для Lulu
 # ==========================================
 
 LULU_PDF_STORAGE: Dict[str, bytes] = {}
@@ -297,7 +299,7 @@ LULU_PDF_STORAGE: Dict[str, bytes] = {}
 
 @app.get("/api/lulu-files/{file_id}.pdf")
 async def serve_lulu_pdf(file_id: str):
-    """Publichniy endpoint, po kotoromu Lulu skachivaet interior.pdf i cover.pdf"""
+    """Публичный endpoint, по которому Lulu скачивает interior.pdf и cover.pdf"""
     pdf_data = LULU_PDF_STORAGE.get(file_id)
     if not pdf_data:
         raise HTTPException(status_code=404, detail="PDF file not found")
@@ -305,7 +307,7 @@ async def serve_lulu_pdf(file_id: str):
 
 
 def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
-    """Generiruet vnutrenniy blok knigi 6x9 duymov (s vyletami 6.25x9.25in) rovno po glavam"""
+    """Генерирует внутренний блок книги 6x9 дюймов (с вылетами 6.25x9.25in)"""
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -398,7 +400,7 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
 
 
 def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
-    """Generiruet oblozhku pod 6x9 duymov (razvorot 12.25in x 9.25in)"""
+    """Генерирует обложку под 6x9 дюймов (разворот 12.25in x 9.25in)"""
     cover_img = ""
     if story.chapters and story.chapters[0].image_url:
         cover_img = f'<img src="{story.chapters[0].image_url}" style="width: 4.2in; height: 4.2in; object-fit: cover; border-radius: 12px; margin-top: 0.4in;" />'
@@ -459,8 +461,9 @@ def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
 
 
 # ==========================================
-# 2.4. Integratsiya s Lulu Print API
+# 2.4. Интеграция с Lulu Print API
 # ==========================================
+
 
 async def get_lulu_access_token() -> str:
     is_sandbox = os.environ.get("LULU_ENV", "sandbox") == "sandbox"
@@ -492,7 +495,7 @@ async def get_lulu_access_token() -> str:
 
 
 # ==========================================
-# 2.5. Opredelenie modeley kartinok + Fallback
+# 2.5. Генерация изображений + Fallback
 # ==========================================
 
 image_semaphore = asyncio.Semaphore(3)
@@ -644,7 +647,7 @@ async def generate_book_illustration(
 
 
 # ==========================================
-# 3. Marshruty API
+# 3. Маршруты API
 # ==========================================
 
 
@@ -719,7 +722,7 @@ Requirements for each chapter:
         contents_for_gemini.append(prompt)
 
         gemini_response = client.models.generate_content(
-            model="gemini-3.8-flash",
+            model="gemini-2.5-flash",
             contents=contents_for_gemini,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -750,7 +753,6 @@ Requirements for each chapter:
 
         image_urls = await asyncio.gather(*tasks)
 
-        # Синхронизируем ссылки на сгенерированные изображения в объекте книги
         for idx, ch in enumerate(story_data.chapters):
             ch.image_url = image_urls[idx]
 
@@ -767,7 +769,6 @@ Requirements for each chapter:
                 }
             )
 
-        # Сохранение сгенерированной истории в PostgreSQL
         new_db_story = models.SavedStory(
             title=story_data.title or f"Story for {hero_name}",
             hero_name=hero_name,
@@ -811,22 +812,10 @@ async def get_saved_story(story_id: int, db: Session = Depends(get_db)):
         "user_id": story.user_id,
         "age": story.age,
         "is_paid": story.is_paid,
-        "created_at": story.created_at.isoformat(),
+        "created_at": story.created_at.isoformat() if story.created_at else "",
         "story_data": story.story_data,
     }
 
-
-# ==========================================
-# ВСТАВЛЯТЬ СЮДА (с самого левого края):
-# ==========================================
-class CheckoutRequest(BaseModel):
-    story_id: int
-    tier: str = "digital"
-
-
-class CheckoutRequest(BaseModel):
-    story_id: int
-    tier: str = "digital"
 
 @app.post("/api/create-checkout")
 async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(get_db)):
@@ -877,8 +866,8 @@ async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(ge
         "Content-Type": "application/json"
     }
 
-    async with httpx.AsyncClient() as client:
-        res = await client.post(
+    async with httpx.AsyncClient() as http_client:
+        res = await http_client.post(
             f"{base_api_url}/v2/online-checkout/payment-links",
             json=body,
             headers=headers
@@ -896,6 +885,23 @@ async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(ge
         }
     else:
         return {"success": False, "error": data}
+
+
+@app.post("/api/confirm-payment-manual")
+async def confirm_payment_manual(req: ConfirmPaymentRequest, db: Session = Depends(get_db)):
+    """Подтверждение оплаты и снятие ограничений с книги"""
+    story = db.query(models.SavedStory).filter(models.SavedStory.id == req.story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+
+    story.is_paid = True
+    if story.story_data and isinstance(story.story_data, dict):
+        updated_data = dict(story.story_data)
+        updated_data["is_paid"] = True
+        story.story_data = updated_data
+
+    db.commit()
+    return {"success": True, "message": "Payment confirmed, story unlocked"}
 
 
 @app.get("/api/my-stories")
@@ -983,7 +989,7 @@ async def export_print_pdf(story: StoryBookData):
 
 @app.post("/api/lulu-create-order")
 async def lulu_create_order(req: LuluOrderRequest):
-    """Endpoint dlja otpravki pechatnogo zakaza v Sandbox/Production Lulu API"""
+    """Отправка печатного заказа в Lulu API"""
     if not req.story.is_paid:
         raise HTTPException(status_code=402, detail="Payment Required")
 
@@ -1007,7 +1013,7 @@ async def lulu_create_order(req: LuluOrderRequest):
     LULU_PDF_STORAGE[interior_id] = generate_print_pdf_bytes(req.story)
     LULU_PDF_STORAGE[cover_id] = generate_cover_pdf_bytes(req.story)
 
-    base_url = os.environ.get("PUBLIC_BASE_URL", "https://storymagic-hub-production.up.railway.app").rstrip("/")
+    base_url = os.environ.get("PUBLIC_BASE_URL", "https://supermestory.com").rstrip("/")
     interior_url = f"{base_url}/api/lulu-files/{interior_id}.pdf"
     cover_url = f"{base_url}/api/lulu-files/{cover_id}.pdf"
 
@@ -1054,8 +1060,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     )
 
 
-@app.post("/api/auth/register")
-async def auth_register(req: AuthRequest, db: Session = Depends(get_db)):
+async def _handle_register(req: AuthRequest, db: Session):
     existing_user = (
         db.query(models.User).filter(models.User.email == req.email.lower()).first()
     )
@@ -1079,8 +1084,7 @@ async def auth_register(req: AuthRequest, db: Session = Depends(get_db)):
     }
 
 
-@app.post("/api/auth/login")
-async def auth_login(req: AuthRequest, db: Session = Depends(get_db)):
+async def _handle_login(req: AuthRequest, db: Session):
     user = (
         db.query(models.User).filter(models.User.email == req.email.lower()).first()
     )
@@ -1094,6 +1098,20 @@ async def auth_login(req: AuthRequest, db: Session = Depends(get_db)):
         "name": user.name,
     }
 
+
+# Регистрация / вход (поддерживает оба формата пути фронтенда)
+@app.post("/api/register")
+@app.post("/api/auth/register")
+async def auth_register(req: AuthRequest, db: Session = Depends(get_db)):
+    return await _handle_register(req, db)
+
+
+@app.post("/api/login")
+@app.post("/api/auth/login")
+async def auth_login(req: AuthRequest, db: Session = Depends(get_db)):
+    return await _handle_login(req, db)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     if os.path.exists("templates/index.html"):
@@ -1106,6 +1124,8 @@ async def privacy_policy():
     if os.path.exists("templates/privacy.html"):
         return FileResponse("templates/privacy.html")
     return HTMLResponse("<h1>privacy.html not found</h1>", status_code=404)
+
+
 @app.get("/terms", response_class=HTMLResponse)
 async def terms_policy():
     if os.path.exists("templates/terms.html"):
