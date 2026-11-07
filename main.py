@@ -26,6 +26,19 @@ app = FastAPI(title="SuperMeStory Backend")
 
 # Создает таблицы в PostgreSQL при запуске сервиса
 Base.metadata.create_all(bind=engine)
+from sqlalchemy import text
+
+# Создает таблицы в PostgreSQL при запуске сервиса
+Base.metadata.create_all(bind=engine)
+
+# Безопасное добавление недостающих колонок в существующую таблицу PostgreSQL
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE saved_stories ADD COLUMN IF NOT EXISTS stripe_session_id VARCHAR;"))
+        conn.execute(text("ALTER TABLE saved_stories ADD COLUMN IF NOT EXISTS plan_tier VARCHAR DEFAULT 'digital';"))
+        conn.commit()
+    except Exception as e:
+        print(f"Schema check warning: {e}")
 
 app.add_middleware(
     CORSMiddleware,
