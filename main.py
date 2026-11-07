@@ -870,7 +870,14 @@ async def confirm_payment_manual(payload: dict, db: Session = Depends(get_db)):
     story_id = payload.get("story_id")
     story = db.query(models.SavedStory).filter(models.SavedStory.id == story_id).first()
     if not story:
-        raise HTTPException(status_code=4
+        raise HTTPException(status_code=404, detail="Story not found")
+
+    story.is_paid = True
+    db.commit()
+    db.refresh(story)
+    return {"success": True, "story_id": story.id, "is_paid": story.is_paid}
+
+
 @app.get("/api/my-stories")
 async def get_my_stories(user_id: Optional[int] = None, db: Session = Depends(get_db)):
     """Возвращает истории конкретного пользователя (или последние общие, если не авторизован)"""
