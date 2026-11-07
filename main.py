@@ -8,6 +8,7 @@ import urllib.parse
 import uuid
 from ebooklib import epub
 import edge_tts
+from square.client import Client
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -22,6 +23,33 @@ from database import Base, engine, get_db
 import models
 
 app = FastAPI(title="StoryMagic Hub Backend")
+square_client = Client(
+    access_token=os.environ.get("SQUARE_ACCESS_TOKEN", ""),
+    environment=os.environ.get("SQUARE_ENVIRONMENT", "sandbox")
+)
+
+TIERS_CONFIG = {
+    "digital": {
+        "name": "SuperMeStory: Digital Book (PDF + ePub)",
+        "amount": 499,
+        "shipping": False
+    },
+    "audio": {
+        "name": "SuperMeStory: Digital + Audio Narration",
+        "amount": 649,
+        "shipping": False
+    },
+    "hardcover": {
+        "name": "SuperMeStory: Hardcover Print + Digital",
+        "amount": 1799,
+        "shipping": True
+    },
+    "vip": {
+        "name": "SuperMeStory VIP: Hardcover + Audio + Digital",
+        "amount": 1699,
+        "shipping": True
+    }
+}
 
 # Sozdaet tablitsy v PostgreSQL pri zapuske servisa
 Base.metadata.create_all(bind=engine)
@@ -783,6 +811,66 @@ async def get_saved_story(story_id: int, db: Session = Depends(get_db)):
 # ==========================================
 # ВСТАВЛЯТЬ СЮДА (с самого левого края):
 # ==========================================
+class CheckoutRequest(BaseModel):
+    story_id: int
+    tier: str = "digital"
+
+
+@app.post("/api/create-checkout")
+async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(get_db)):
+    """Создает платежную ссылку Square Checkout под выбранный тариф"""
+    story = db.query(models.SavedStory).filter(models.SavedStory.id == req.story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+
+    tier_key = req.tier.lower()
+    if tier_key not in TIERS_CONFIG:
+        raise HTTPException(status_code=400, detail="Invalid plan tier selected")
+
+    location_id = os.environ.get("SQUARE_LOCATION_ID")
+    if not location_id:
+        raise HTTPException(status_code=500, detail="SQUARE_LOCATION_ID not set on server")
+
+    tier_info = TIERS_CONFIG[tier_key]
+    base_url = os.environ.get("PUBLIC_BASE_URL", "https://supermestory.com").rstrip("/")
+
+    body = {
+        "idempotency_key": str(uuid.uuid4()),
+        "quick_pay": {
+            "name": f"{story.title} - {tier_info['name']}",
+            "price_money": {
+                "amount": tier_info["amount"],
+                "currency": "GBP"
+            },
+            "location_id": location_id
+        },
+        "checkout_options": {
+            "redirect_url": f"{base_url}/?payment=success&story_id={story.id}&tier={tier_key}",
+            "ask_for_shipping_address": tier_info["shipping"]
+        }
+    }
+
+    result = square_client.checkout.payment_links.create_payment_link(body=body)
+
+    if result.is_success():
+        payment_link = result.body.get("payment_link", {})
+        return {
+            "success": True,
+            "checkout_url": payment_link.get("url"),
+            "order_id": payment_link.get("order_id")
+        }
+    else:
+        print(f"Square Link Error: {result.errors}")
+        raise HTTPException(status_code=400, detail=str(result.errors))
+
+
+@app.post("/api/confirm-payment-manual")
+async def confirm_payment_manual(payload: dict, db: Session = Depends(get_db)):
+    """Временный callback/webhook: отмечает историю оплаченной в базе"""
+    story_id = payload.get("story_id")
+    story = db.query(models.SavedStory).filter(models.SavedStory.id == story_id).first()
+    if not story:
+        raise HTTPException(status_code=4
 @app.get("/api/my-stories")
 async def get_my_stories(user_id: Optional[int] = None, db: Session = Depends(get_db)):
     """Возвращает истории конкретного пользователя (или последние общие, если не авторизован)"""
