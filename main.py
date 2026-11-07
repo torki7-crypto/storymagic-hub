@@ -8,7 +8,7 @@ import urllib.parse
 import uuid
 from ebooklib import epub
 import edge_tts
-import square.client
+import square
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -22,7 +22,7 @@ from weasyprint import HTML
 from database import Base, engine, get_db
 import models
 
-square_client = square.client.Client(
+square_client = square.Client(
     access_token=os.environ.get("SQUARE_ACCESS_TOKEN", ""),
     environment=os.environ.get("SQUARE_ENVIRONMENT", "sandbox")
 )
