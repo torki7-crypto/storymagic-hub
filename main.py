@@ -1,11 +1,12 @@
 import asyncio
 import base64
-import bcrypt
 import io
 import os
 from typing import Dict, List, Optional
 import urllib.parse
 import uuid
+
+import bcrypt
 from ebooklib import epub
 import edge_tts
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
@@ -21,7 +22,7 @@ from weasyprint import HTML
 from database import Base, engine, get_db
 import models
 
-app = FastAPI(title="StoryMagic Hub Backend")
+app = FastAPI(title="SuperMeStory Backend")
 
 # Создает таблицы в PostgreSQL при запуске сервиса
 Base.metadata.create_all(bind=engine)
@@ -50,23 +51,23 @@ TIERS_CONFIG = {
     "digital": {
         "name": "SuperMeStory: Digital Book (PDF + ePub)",
         "amount": 499,
-        "shipping": False
+        "shipping": False,
     },
     "audio": {
         "name": "SuperMeStory: Digital + Audio Narration",
         "amount": 649,
-        "shipping": False
+        "shipping": False,
     },
     "hardcover": {
         "name": "SuperMeStory: Hardcover Print + Digital",
         "amount": 1799,
-        "shipping": True
+        "shipping": True,
     },
     "vip": {
         "name": "SuperMeStory VIP: Hardcover + Audio + Digital",
         "amount": 1699,
-        "shipping": True
-    }
+        "shipping": True,
+    },
 }
 
 
@@ -86,7 +87,7 @@ class ChapterData(BaseModel):
 class StoryBookData(BaseModel):
     title: str
     language_code: str = "en"
-    author: str = "StoryMagic Hub"
+    author: str = "SuperMeStory"
     description: Optional[str] = Field(default="")
     dedication_text: Optional[str] = Field(default="")
     psychology_questions: List[str] = Field(default_factory=list)
@@ -142,7 +143,7 @@ class EpubBuilder:
         book = epub.EpubBook()
         lang = (story.language_code or "en").lower()
         book.set_identifier(str(uuid.uuid4()))
-        book.set_title(story.title or "StoryMagic Book")
+        book.set_title(story.title or "SuperMeStory Book")
         book.set_language(lang)
         book.add_author(story.author)
 
@@ -246,13 +247,31 @@ class EpubBuilder:
 
             if story.psychology_questions:
                 psych_headers = {
-                    "ru": ("💡 Вопросы для душевного разговора", "Эти вопросы помогут обсудить сказку с ребенком и закрепить ее терапевтический эффект:"),
-                    "pl": ("💡 Pytania do szczerej rozmowy", "Te pytania pomogą omówić bajkę z dzieckiem i utrwalić jej efekt terapeutyczny:"),
-                    "ro": ("💡 Întrebări pentru o discuție sinceră", "Aceste întrebări vă vor ajuta să discutați povestea cu copilul și să-i consolidați efectul terapeutic:"),
-                    "it": ("💡 Domande per una conversazione intima", "Queste domande aiuteranno a discutere la fiaba con il bambino e a consolidare il suo effetto terapeutico:"),
-                    "tr": ("💡 İçten Bir Sohbet İçin Sorular", "Bu sorular, masalı çocuğunuzla tartışmanıza ve terapötik etkisini pekiştirmenize yardımcı olacaktır:")
+                    "ru": (
+                        "💡 Вопросы для душевного разговора",
+                        "Эти вопросы помогут обсудить сказку с ребенком и закрепить ее терапевтический эффект:",
+                    ),
+                    "pl": (
+                        "💡 Pytania do szczerej rozmowy",
+                        "Te pytania pomogą omówić bajkę z dzieckiem i utrwalić jej efekt terapeutyczny:",
+                    ),
+                    "ro": (
+                        "💡 Întrebări pentru o discuție sinceră",
+                        "Aceste întrebări vă vor ajuta să discutați povestea cu copilul și să-i consolidați efectul terapeutic:",
+                    ),
+                    "it": (
+                        "💡 Domande per una conversazione intima",
+                        "Queste domande aiuteranno a discutere la fiaba con il bambino e a consolidare il suo effetto terapeutico:",
+                    ),
+                    "tr": (
+                        "💡 İçten Bir Sohbet İçin Sorular",
+                        "Bu sorular, masalı çocuğunuzla tartışmanıza ve terapötik etkisini pekiştirmenize yardımcı olacaktır:",
+                    ),
                 }
-                default_header = ("💡 Questions for a Heart-to-Heart Talk", "These questions will help discuss the story with your child and reinforce its therapeutic effect:")
+                default_header = (
+                    "💡 Questions for a Heart-to-Heart Talk",
+                    "These questions will help discuss the story with your child and reinforce its therapeutic effect:",
+                )
 
                 h_title, h_desc = psych_headers.get(lang, default_header)
                 questions_html = "".join([f"<li>{q}</li>" for q in story.psychology_questions])
@@ -299,7 +318,6 @@ LULU_PDF_STORAGE: Dict[str, bytes] = {}
 
 @app.get("/api/lulu-files/{file_id}.pdf")
 async def serve_lulu_pdf(file_id: str):
-    """Публичный endpoint, по которому Lulu скачивает interior.pdf и cover.pdf"""
     pdf_data = LULU_PDF_STORAGE.get(file_id)
     if not pdf_data:
         raise HTTPException(status_code=404, detail="PDF file not found")
@@ -307,7 +325,6 @@ async def serve_lulu_pdf(file_id: str):
 
 
 def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
-    """Генерирует внутренний блок книги 6x9 дюймов (с вылетами 6.25x9.25in)"""
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -400,7 +417,6 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
 
 
 def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
-    """Генерирует обложку под 6x9 дюймов (разворот 12.25in x 9.25in)"""
     cover_img = ""
     if story.chapters and story.chapters[0].image_url:
         cover_img = f'<img src="{story.chapters[0].image_url}" style="width: 4.2in; height: 4.2in; object-fit: cover; border-radius: 12px; margin-top: 0.4in;" />'
@@ -444,7 +460,7 @@ def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
     </head>
     <body>
         <div class="back-cover">
-            <h3 style="margin-top: 2.5in; color: #fecfef;">StoryMagic Hub</h3>
+            <h3 style="margin-top: 2.5in; color: #fecfef;">SuperMeStory</h3>
             <p style="font-size: 12pt; color: #cbd5e1; line-height: 1.6;">
                 A personalized therapeutic story crafted especially to inspire courage, kindness, and confidence.
             </p>
@@ -481,7 +497,7 @@ async def get_lulu_access_token() -> str:
 
     headers = {
         "Authorization": f"Basic {encoded_creds}",
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
     }
     data = {"grant_type": "client_credentials"}
 
@@ -548,9 +564,7 @@ async def generate_book_illustration(
 
         contents = []
         if photo_bytes:
-            contents.append(
-                types.Part.from_bytes(data=photo_bytes, mime_type=photo_mime)
-            )
+            contents.append(types.Part.from_bytes(data=photo_bytes, mime_type=photo_mime))
             full_prompt += (
                 " CRITICAL: Preserve the child's exact facial features, hair color, hairstyle, "
                 "and eye color from the attached reference photo while rendering them in the requested illustration style!"
@@ -565,9 +579,7 @@ async def generate_book_illustration(
                     response = await asyncio.to_thread(
                         client.models.generate_content,
                         model=model_name,
-                        contents=(
-                            contents if "gemini" in model_name else [full_prompt]
-                        ),
+                        contents=(contents if "gemini" in model_name else [full_prompt]),
                         config=types.GenerateContentConfig(
                             response_modalities=modalities,
                             temperature=0.7,
@@ -581,9 +593,7 @@ async def generate_book_illustration(
                     ):
                         for part in response.candidates[0].content.parts:
                             if part.inline_data and part.inline_data.data:
-                                b64_img = base64.b64encode(
-                                    part.inline_data.data
-                                ).decode("utf-8")
+                                b64_img = base64.b64encode(part.inline_data.data).decode("utf-8")
                                 mime = part.inline_data.mime_type or "image/jpeg"
                                 return f"data:{mime};base64,{b64_img}"
                 except Exception as e:
@@ -661,7 +671,7 @@ async def generate_story(
     lang: str = Form("en"),
     custom_dedication: Optional[str] = Form(None),
     photo: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     try:
         lang_names = {
@@ -800,7 +810,6 @@ Requirements for each chapter:
 
 @app.get("/api/stories/{story_id}")
 async def get_saved_story(story_id: int, db: Session = Depends(get_db)):
-    """Получение сохраненной книги из базы данных по её id"""
     story = db.query(models.SavedStory).filter(models.SavedStory.id == story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
@@ -819,7 +828,6 @@ async def get_saved_story(story_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/create-checkout")
 async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(get_db)):
-    """Создает платежную ссылку Square Checkout под выбранный тариф"""
     story = db.query(models.SavedStory).filter(models.SavedStory.id == req.story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
@@ -850,27 +858,27 @@ async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(ge
             "name": f"{story.title} - {tier_info['name']}",
             "price_money": {
                 "amount": tier_info["amount"],
-                "currency": "GBP"
+                "currency": "GBP",
             },
-            "location_id": location_id
+            "location_id": location_id,
         },
         "checkout_options": {
             "redirect_url": f"{base_url}/?payment=success&story_id={story.id}&tier={tier_key}",
-            "ask_for_shipping_address": tier_info["shipping"]
-        }
+            "ask_for_shipping_address": tier_info["shipping"],
+        },
     }
 
     headers = {
         "Square-Version": "2024-01-18",
         "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     async with httpx.AsyncClient() as http_client:
         res = await http_client.post(
             f"{base_api_url}/v2/online-checkout/payment-links",
             json=body,
-            headers=headers
+            headers=headers,
         )
 
     data = res.json()
@@ -881,7 +889,7 @@ async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(ge
         db.commit()
         return {
             "success": True,
-            "checkout_url": payment_link.get("url") or payment_link.get("long_url")
+            "checkout_url": payment_link.get("url") or payment_link.get("long_url"),
         }
     else:
         return {"success": False, "error": data}
@@ -889,7 +897,6 @@ async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(ge
 
 @app.post("/api/confirm-payment-manual")
 async def confirm_payment_manual(req: ConfirmPaymentRequest, db: Session = Depends(get_db)):
-    """Подтверждение оплаты и снятие ограничений с книги"""
     story = db.query(models.SavedStory).filter(models.SavedStory.id == req.story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
@@ -906,7 +913,6 @@ async def confirm_payment_manual(req: ConfirmPaymentRequest, db: Session = Depen
 
 @app.get("/api/my-stories")
 async def get_my_stories(user_id: Optional[int] = None, db: Session = Depends(get_db)):
-    """Возвращает истории конкретного пользователя (или последние общие, если не авторизован)"""
     query = db.query(models.SavedStory)
     if user_id:
         query = query.filter(models.SavedStory.user_id == user_id)
@@ -918,16 +924,18 @@ async def get_my_stories(user_id: Optional[int] = None, db: Session = Depends(ge
         if s.story_data and "chapters" in s.story_data and len(s.story_data["chapters"]) > 0:
             cover_image = s.story_data["chapters"][0].get("image_url", "")
 
-        result.append({
-            "id": s.id,
-            "title": s.title,
-            "hero_name": s.hero_name,
-            "age": s.age,
-            "theme": s.theme,
-            "created_at": s.created_at.strftime("%d.%m.%Y %H:%M") if s.created_at else "",
-            "cover_image": cover_image,
-            "is_paid": s.is_paid,
-        })
+        result.append(
+            {
+                "id": s.id,
+                "title": s.title,
+                "hero_name": s.hero_name,
+                "age": s.age,
+                "theme": s.theme,
+                "created_at": s.created_at.strftime("%d.%m.%Y %H:%M") if s.created_at else "",
+                "cover_image": cover_image,
+                "is_paid": s.is_paid,
+            }
+        )
     return {"success": True, "stories": result}
 
 
@@ -964,9 +972,7 @@ async def export_epub(story: StoryBookData):
     return Response(
         content=epub_bytes,
         media_type="application/epub+zip",
-        headers={
-            "Content-Disposition": 'attachment; filename="StoryMagic_Book.epub"'
-        },
+        headers={"Content-Disposition": 'attachment; filename="SuperMeStory_Book.epub"'},
     )
 
 
@@ -982,14 +988,13 @@ async def export_print_pdf(story: StoryBookData):
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": 'attachment; filename="StoryMagic_Print_Ready_6x9.pdf"'
+            "Content-Disposition": 'attachment; filename="SuperMeStory_Print_Ready_6x9.pdf"'
         },
     )
 
 
 @app.post("/api/lulu-create-order")
 async def lulu_create_order(req: LuluOrderRequest):
-    """Отправка печатного заказа в Lulu API"""
     if not req.story.is_paid:
         raise HTTPException(status_code=402, detail="Payment Required")
 
@@ -1004,7 +1009,7 @@ async def lulu_create_order(req: LuluOrderRequest):
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
-        "Lulu-Source": "StoryMagicHub"
+        "Lulu-Source": "SuperMeStory",
     }
 
     interior_id = f"interior_{uuid.uuid4().hex}"
@@ -1035,9 +1040,9 @@ async def lulu_create_order(req: LuluOrderRequest):
                 "quantity": 1,
                 "pod_package_id": pod_package_id,
                 "cover": cover_url,
-                "interior": interior_url
+                "interior": interior_url,
             }
-        ]
+        ],
     }
 
     async with httpx.AsyncClient() as client_http:
@@ -1050,14 +1055,15 @@ async def lulu_create_order(req: LuluOrderRequest):
 
 
 def hash_password(password: str) -> str:
+    pwd_bytes = password.encode("utf-8")[:72]
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(
-        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
-    )
+    pwd_bytes = plain_password.encode("utf-8")[:72]
+    hash_bytes = hashed_password.encode("utf-8")
+    return bcrypt.checkpw(pwd_bytes, hash_bytes)
 
 
 async def _handle_register(req: AuthRequest, db: Session):
@@ -1099,7 +1105,6 @@ async def _handle_login(req: AuthRequest, db: Session):
     }
 
 
-# Регистрация / вход (поддерживает оба формата пути фронтенда)
 @app.post("/api/register")
 @app.post("/api/auth/register")
 async def auth_register(req: AuthRequest, db: Session = Depends(get_db)):
