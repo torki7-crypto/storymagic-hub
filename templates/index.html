@@ -1291,16 +1291,33 @@
     }
 
     function switchTab(tabName) {
-        document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
-        document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
-        
-        var targetTab = document.getElementById('tab-' + tabName);
-        if (targetTab) targetTab.classList.add('active');
-        
-        var navBtn = document.getElementById('nav-' + tabName);
-        if (navBtn) navBtn.classList.add('active');
+window.switchTab = function(tabName) {
+    var contents = document.querySelectorAll('.tab-content');
+    for (var i = 0; i < contents.length; i++) {
+        contents[i].classList.remove('active');
+        contents[i].style.display = 'none';
+    }
 
-        if (tabName === 'library') loadLibrary();
+    var btns = document.querySelectorAll('.tab-btn');
+    for (var j = 0; j < btns.length; j++) {
+        btns[j].classList.remove('active');
+    }
+
+    var target = document.getElementById('tab-' + tabName);
+    if (target) {
+        target.classList.add('active');
+        target.style.display = 'block';
+    }
+
+    var activeBtn = document.getElementById('nav-' + tabName);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+
+    if (tabName === 'library' && typeof loadLibrary === 'function') {
+        loadLibrary();
+    }
+};
     }
 
     /* --- УПРАВЛЕНИЕ МОДАЛКОЙ ВЫБОРА ФОРМАТА --- */
