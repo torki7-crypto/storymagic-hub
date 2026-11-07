@@ -337,7 +337,6 @@
             min-height: 20px;
         }
 
-        /* ФИКСИРОВАННАЯ ВЕРСТКА РАЗВОРОТА КНИГИ */
         .book-container {
             display: flex;
             flex-direction: column;
@@ -571,7 +570,6 @@
         .book-item-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; color: #ff9a9e; }
         .book-item-meta { font-size: 0.85em; color: #b39ddb; }
 
-        /* МОДАЛЬНЫЕ ОКНА */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -606,7 +604,6 @@
         }
         .modal-close:hover { color: #fff; }
 
-        /* КАРТОЧКИ ВЫБОРА ФОРМАТА */
         .format-cards-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -701,7 +698,6 @@
             color: #fff;
         }
 
-        /* ТАБЫ АВТОРИЗАЦИИ / РЕГИСТРАЦИИ */
         .auth-tabs {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -726,22 +722,6 @@
             background: linear-gradient(135deg, #a18cd1, #fbc2eb);
             color: #240e48;
         }
-
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            margin: 20px 0;
-        }
-        .pricing-tier {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 14px;
-            padding: 16px;
-            text-align: center;
-        }
-        .pricing-tier.featured { border-color: #ff6b8b; background: rgba(255, 107, 139, 0.1); }
-        .price-val { font-size: 1.6em; font-weight: 800; margin: 8px 0; color: #fecfef; }
 
         .site-footer {
             background: rgba(14, 9, 26, 0.85);
@@ -1046,7 +1026,7 @@
             </div>
         </div>
 
-        <!-- Библиотека (подключена к базе PostgreSQL) -->
+        <!-- Библиотека -->
         <div id="tab-library" class="tab-content">
             <div class="panel-card" style="max-width: 1000px; margin: 0 auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px;">
@@ -1061,7 +1041,7 @@
             </div>
         </div>
 
-        <!-- Заказ печати (с раздельными полями для Lulu API) -->
+        <!-- Заказ печати -->
         <div id="tab-order" class="tab-content">
             <div class="hero-box" style="text-align:left; max-width:620px;">
                 <h2 style="font-family:'Comfortaa', cursive; margin-bottom:12px;" id="order-title">🚚 Order a Printed Hardcover Book</h2>
@@ -1133,7 +1113,7 @@
         </div>
     </main>
 
-    <!-- МОДАЛЬНОЕ ОКНО: ВЫБОР ФОРМАТА КНИГИ ПЕРЕД ГЕНЕРАЦИЕЙ -->
+    <!-- МОДАЛЬНОЕ ОКНО: ВЫБОР ФОРМАТА КНИГИ -->
     <div id="formatModal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
         <div class="modal-card modal-wide">
             <div class="modal-close" onclick="closeFormatModal()">✕</div>
@@ -1214,8 +1194,7 @@
         </div>
     </div>
 
-   <!-- Модалка оплаты цифрового доступа и книг -->
-<!-- Модалка оплаты цифрового доступа и книг -->
+    <!-- МОДАЛЬНОЕ ОКНО: ОПЛАТА ЧЕРЕЗ SQUARE -->
     <div id="paymentModal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
         <div class="modal-card modal-wide">
             <div class="modal-close" onclick="closePaymentModal()">✕</div>
@@ -1280,47 +1259,48 @@
     var pendingFormatAction = null;
     var authMode = 'login';
     var currentUser = null;
+    var currentStoryId = null;
+    var currentAudio = null;
+    var audioCache = {};
 
     function setText(id, val) {
         var el = document.getElementById(id);
         if (el && val !== undefined) el.innerText = val;
     }
+
     function setHtml(id, val) {
         var el = document.getElementById(id);
         if (el && val !== undefined) el.innerHTML = val;
     }
 
     function switchTab(tabName) {
-window.switchTab = function(tabName) {
-    var contents = document.querySelectorAll('.tab-content');
-    for (var i = 0; i < contents.length; i++) {
-        contents[i].classList.remove('active');
-        contents[i].style.display = 'none';
+        var contents = document.querySelectorAll('.tab-content');
+        for (var i = 0; i < contents.length; i++) {
+            contents[i].classList.remove('active');
+            contents[i].style.display = 'none';
+        }
+
+        var btns = document.querySelectorAll('.tab-btn');
+        for (var j = 0; j < btns.length; j++) {
+            btns[j].classList.remove('active');
+        }
+
+        var target = document.getElementById('tab-' + tabName);
+        if (target) {
+            target.classList.add('active');
+            target.style.display = 'block';
+        }
+
+        var activeBtn = document.getElementById('nav-' + tabName);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+
+        if (tabName === 'library' && typeof loadLibrary === 'function') {
+            loadLibrary();
+        }
     }
 
-    var btns = document.querySelectorAll('.tab-btn');
-    for (var j = 0; j < btns.length; j++) {
-        btns[j].classList.remove('active');
-    }
-
-    var target = document.getElementById('tab-' + tabName);
-    if (target) {
-        target.classList.add('active');
-        target.style.display = 'block';
-    }
-
-    var activeBtn = document.getElementById('nav-' + tabName);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
-    }
-
-    if (tabName === 'library' && typeof loadLibrary === 'function') {
-        loadLibrary();
-    }
-};
-    }
-
-    /* --- УПРАВЛЕНИЕ МОДАЛКОЙ ВЫБОРА ФОРМАТА --- */
     function openFormatModal() {
         var consent = document.getElementById('legalConsent');
         var d = dictionary[currentLang] || dictionary['en'];
@@ -1358,7 +1338,6 @@ window.switchTab = function(tabName) {
         }
     }
 
-    /* --- УПРАВЛЕНИЕ МОДАЛКОЙ АВТОРИЗАЦИИ / РЕГИСТРАЦИИ --- */
     function openAuthModal() {
         if (currentUser) {
             var confirmLogout = confirm(currentLang === 'ru' 
@@ -1421,8 +1400,8 @@ window.switchTab = function(tabName) {
 
             if (response.ok && data.success) {
                 currentUser = { 
-                    id: data.user_id,
-                    user_id: data.user_id,
+                    id: data.user_id, 
+                    user_id: data.user_id, 
                     name: data.name || nameVal || emailVal.split('@')[0], 
                     email: emailVal 
                 };
@@ -1457,7 +1436,6 @@ window.switchTab = function(tabName) {
         }
     }
 
-    /* --- МОДАЛКА ОПЛАТЫ --- */
     function openPaymentModal() { 
         var modal = document.getElementById('paymentModal');
         if (modal) modal.style.display = 'flex'; 
@@ -1474,8 +1452,6 @@ window.switchTab = function(tabName) {
         if (e.target.id === 'formatModal') closeFormatModal();
         if (e.target.id === 'authModal') closeAuthModal();
     }
-
-  var currentStoryId = null;
 
     async function redirectToSquareCheckout(tierKey) {
         if (!currentStoryId) {
@@ -1590,7 +1566,7 @@ window.switchTab = function(tabName) {
         if (!currentUser || (!currentUser.user_id && !currentUser.id)) {
             alert('Пожалуйста, войдите в аккаунт или зарегистрируйтесь, чтобы создать сказку!');
             if (typeof openAuthModal === 'function') {
-                openAuthModal('register');
+                openAuthModal();
             }
             return false;
         }
@@ -1651,7 +1627,6 @@ window.switchTab = function(tabName) {
         }
     }
 
-    /* --- ПОЛУЧЕНИЕ ИСТОРИЙ НАПРЯМУЮ ИЗ БАЗЫ POSTGRESQL --- */
     async function loadLibrary() {
         var box = document.getElementById('myBooksGrid');
         if (!box) return;
@@ -1713,9 +1688,6 @@ window.switchTab = function(tabName) {
         }
     }
 
-    var currentAudio = null;
-    var audioCache = {};
-
     async function toggleAudioStory() {
         if (!currentPages || currentPages.length === 0) return;
         if (currentPages.length > 1 && currentIndex === currentPages.length - 1 && !isPaidUser) {
@@ -1728,7 +1700,7 @@ window.switchTab = function(tabName) {
             currentAudio = null;
             isSpeaking = false;
             var btnAudio = document.getElementById('btn-audio-lbl');
-            if (btnAudio) btnAudio.innerText = '▶ Audio Story';
+            if (btnAudio) btnAudio.innerText = 'Audio Story';
             return;
         }
 
@@ -1807,19 +1779,14 @@ window.switchTab = function(tabName) {
         if (currentIndex < currentPages.length - 1) {
             if (currentIndex + 1 === currentPages.length - 1 && !isPaidUser) {
                 var btnAudio = document.getElementById('btn-audio-lbl');
-                if (btnAudio) btnAudio.innerText = '▶ Audio Story';
+                if (btnAudio) btnAudio.innerText = 'Audio Story';
                 isSpeaking = false;
                 currentAudio = null;
                 openPaymentModal();
                 return;
             }
 
-            if (typeof nextSlide === 'function') {
-                nextSlide();
-            } else {
-                var nextBtn = document.getElementById('btn-next');
-                if (nextBtn) nextBtn.click();
-            }
+            nextSlide();
 
             setTimeout(function() {
                 if (isSpeaking) {
@@ -1830,7 +1797,7 @@ window.switchTab = function(tabName) {
             isSpeaking = false;
             currentAudio = null;
             var btnAudio = document.getElementById('btn-audio-lbl');
-            if (btnAudio) btnAudio.innerText = '▶ Audio Story';
+            if (btnAudio) btnAudio.innerText = 'Audio Story';
         }
     }
 
@@ -2026,9 +1993,7 @@ window.switchTab = function(tabName) {
             lblOrderCountry: 'Country', lblOrderAddr: 'Street Address Line 1 (Max 30 chars)', lblOrderAddr2: 'Apt / Suite / Line 2 (Optional)',
             lblOrderCity: 'City / Town', lblOrderPostcode: 'Postcode / ZIP', lblOrderType: 'Cover Type',
             optOrderHard: 'Matte Hardcover — £14.99', optOrderPrem: 'Premium Gloss with Foil — £19.99', btnOrderPay: 'Proceed to Payment / Sandbox Order',
-            payTitle: 'Choose Your Plan', paySubtitle: 'Unlock the final chapter, voice narration, and free ePub downloads',
-            plan1Title: 'Starter', plan1Desc: '5 personalized stories + FREE ePub', plan1Btn: 'Buy Now',
-            plan2Title: 'Unlimited', plan2Desc: 'Unlimited stories + FREE ePub exports', plan2Btn: 'Select Plan',
+            payTitle: 'Choose Your Edition', paySubtitle: 'Unlock the full story, high-res ePub, voice narration, or a printed hardcover',
             fmtModalTitle: '✨ Choose Your Book Edition', fmtModalSubtitle: 'How would you like to experience your child\'s personalized story?',
             fmtCard1Title: 'Read Online', fmtCard1Desc: 'Interactive two-page book spread in browser with a Free ePub file download included.', fmtCard1Price: 'Free Preview + ePub', fmtCard1Btn: 'Read Now',
             fmtCard2Title: 'Digital eBook', fmtCard2Desc: 'Full story unlocked, Apple Books / Kindle ePub download & voice narration.', fmtCard2Price: 'From £4.99', fmtCard2Btn: 'Get eBook',
@@ -2075,8 +2040,6 @@ window.switchTab = function(tabName) {
             lblOrderCity: 'Город', lblOrderPostcode: 'Почтовый индекс (Postcode)', lblOrderType: 'Тип переплета',
             optOrderHard: 'Твердый матовый переплет — £14.99', optOrderPrem: 'Премиум глянец с тиснением — £19.99', btnOrderPay: 'Отправить заказ в Sandbox Lulu',
             payTitle: 'Выберите тариф', paySubtitle: 'Разблокируйте финал истории, озвучку и бесплатный экспорт в ePub',
-            plan1Title: 'Starter', plan1Desc: '5 персональных сказок + бесплатный ePub', plan1Btn: 'Купить',
-            plan2Title: 'Unlimited', plan2Desc: 'Безлимит сказок + бесплатный экспорт ePub', plan2Btn: 'Выбрать',
             fmtModalTitle: '✨ Выберите формат вашей книги', fmtModalSubtitle: 'В каком виде вы хотите получить персональную сказку?',
             fmtCard1Title: 'Читать на месте', fmtCard1Desc: 'Интерактивный книжный разворот прямо в браузере со скачиванием бесплатного ePub.', fmtCard1Price: 'Бесплатное превью + ePub', fmtCard1Btn: 'Открыть книгу',
             fmtCard2Title: 'Электронная книга', fmtCard2Desc: 'Полная версия сказки, файл ePub для планшетов и аудио-озвучка.', fmtCard2Price: 'От £4.99', fmtCard2Btn: 'Скачать ePub',
@@ -2252,12 +2215,6 @@ window.switchTab = function(tabName) {
 
         setText('pay-title', d.payTitle);
         setText('pay-subtitle', d.paySubtitle);
-        setText('plan1-title', d.plan1Title);
-        setText('plan1-desc', d.plan1Desc);
-        setText('plan1-btn', d.plan1Btn);
-        setText('plan2-title', d.plan2Title);
-        setText('plan2-desc', d.plan2Desc);
-        setText('plan2-btn', d.plan2Btn);
 
         setText('fmt-modal-title', d.fmtModalTitle);
         setText('fmt-modal-subtitle', d.fmtModalSubtitle);
@@ -2309,7 +2266,32 @@ window.switchTab = function(tabName) {
         }
     }
 
-   document.addEventListener('DOMContentLoaded', function() {
+    // Привязка ключевых функций к объекту window для стабильной работы onclick
+    window.switchTab = switchTab;
+    window.openFormatModal = openFormatModal;
+    window.closeFormatModal = closeFormatModal;
+    window.handleFormatSelection = handleFormatSelection;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+    window.switchAuthMode = switchAuthMode;
+    window.submitAuthForm = submitAuthForm;
+    window.openPaymentModal = openPaymentModal;
+    window.closePaymentModal = closePaymentModal;
+    window.closeModalOnBackdrop = closeModalOnBackdrop;
+    window.redirectToSquareCheckout = redirectToSquareCheckout;
+    window.handlePhotoSelect = handlePhotoSelect;
+    window.checkCustomTheme = checkCustomTheme;
+    window.showSlide = showSlide;
+    window.nextSlide = nextSlide;
+    window.prevSlide = prevSlide;
+    window.generateStory = generateStory;
+    window.loadLibrary = loadLibrary;
+    window.toggleAudioStory = toggleAudioStory;
+    window.exportEpub = exportEpub;
+    window.submitLuluOrder = submitLuluOrder;
+    window.changeLanguage = changeLanguage;
+
+    document.addEventListener('DOMContentLoaded', function() {
         try {
             var savedUser = localStorage.getItem('supermestory_user');
             if (savedUser) currentUser = JSON.parse(savedUser);
@@ -2337,3 +2319,6 @@ window.switchTab = function(tabName) {
             }
         }
     });
+</script>
+</body>
+</html>
