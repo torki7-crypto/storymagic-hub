@@ -8,7 +8,6 @@ import urllib.parse
 import uuid
 from ebooklib import epub
 import edge_tts
-from square.client import Client
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -27,9 +26,14 @@ app = FastAPI(title="StoryMagic Hub Backend")
 # Sozdaet tablitsy v PostgreSQL pri zapuske servisa
 Base.metadata.create_all(bind=engine)
 
-square_client = Client(
-    access_token=os.environ.get("SQUARE_ACCESS_TOKEN", ""),
-    environment=os.environ.get("SQUARE_ENVIRONMENT", "sandbox")
+SQUARE_ACCESS_TOKEN = os.environ.get("SQUARE_ACCESS_TOKEN", "")
+SQUARE_ENVIRONMENT = os.environ.get("SQUARE_ENVIRONMENT", "sandbox")
+SQUARE_LOCATION_ID = os.environ.get("SQUARE_LOCATION_ID", "")
+
+SQUARE_BASE_URL = (
+    "https://connect.squareupsandbox.com" 
+    if SQUARE_ENVIRONMENT == "sandbox" 
+    else "https://connect.squareup.com"
 )
 
 TIERS_CONFIG = {
@@ -820,6 +824,10 @@ class CheckoutRequest(BaseModel):
     tier: str = "digital"
 
 
+class CheckoutRequest(BaseModel):
+    story_id: int
+    tier: str = "digital"
+
 @app.post("/api/create-checkout")
 async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(get_db)):
     """Создает платежную ссылку Square Checkout под выбранный тариф"""
@@ -832,8 +840,17 @@ async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(ge
         raise HTTPException(status_code=400, detail="Invalid plan tier selected")
 
     location_id = os.environ.get("SQUARE_LOCATION_ID")
-    if not location_id:
-        raise HTTPException(status_code=500, detail="SQUARE_LOCATION_ID not set on server")
+    access_token = os.environ.get("SQUARE_ACCESS_TOKEN")
+    env = os.environ.get("SQUARE_ENVIRONMENT", "sandbox")
+
+    if not location_id or not access_token:
+        raise HTTPException(status_code=500, detail="Square credentials not set on server")
+
+    base_api_url = (
+        "https://connect.squareupsandbox.com"
+        if env.lower() == "sandbox"
+        else "https://connect.squareup.com"
+    )
 
     tier_info = TIERS_CONFIG[tier_key]
     base_url = os.environ.get("PUBLIC_BASE_URL", "https://supermestory.com").rstrip("/")
@@ -854,32 +871,31 @@ async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(ge
         }
     }
 
-    result = square_client.checkout.payment_links.create_payment_link(body=body)
+    headers = {
+        "Square-Version": "2024-01-18",
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
 
-    if result.is_success():
-        payment_link = result.body.get("payment_link", {})
+    async with httpx.AsyncClient() as client:
+        res = await client.post(
+            f"{base_api_url}/v2/online-checkout/payment-links",
+            json=body,
+            headers=headers
+        )
+
+    data = res.json()
+    if res.status_code in [200, 201] and "payment_link" in data:
+        payment_link = data["payment_link"]
+        story.stripe_session_id = payment_link.get("id")
+        story.plan_tier = tier_key
+        db.commit()
         return {
             "success": True,
-            "checkout_url": payment_link.get("url"),
-            "order_id": payment_link.get("order_id")
+            "checkout_url": payment_link.get("url") or payment_link.get("long_url")
         }
     else:
-        print(f"Square Link Error: {result.errors}")
-        raise HTTPException(status_code=400, detail=str(result.errors))
-
-
-@app.post("/api/confirm-payment-manual")
-async def confirm_payment_manual(payload: dict, db: Session = Depends(get_db)):
-    """Временный callback/webhook: отмечает историю оплаченной в базе"""
-    story_id = payload.get("story_id")
-    story = db.query(models.SavedStory).filter(models.SavedStory.id == story_id).first()
-    if not story:
-        raise HTTPException(status_code=404, detail="Story not found")
-
-    story.is_paid = True
-    db.commit()
-    db.refresh(story)
-    return {"success": True, "story_id": story.id, "is_paid": story.is_paid}
+        return {"success": False, "error": data}
 
 
 @app.get("/api/my-stories")
