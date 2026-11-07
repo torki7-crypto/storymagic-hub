@@ -1214,25 +1214,43 @@
         </div>
     </div>
 
-    <!-- Модалка оплаты цифрового доступа -->
+   <!-- Модалка оплаты цифрового доступа и книг -->
+<!-- Модалка оплаты цифрового доступа и книг -->
     <div id="paymentModal" class="modal-overlay" onclick="closeModalOnBackdrop(event)">
-        <div class="modal-card">
+        <div class="modal-card modal-wide">
             <div class="modal-close" onclick="closePaymentModal()">✕</div>
-            <h2 style="font-family:'Comfortaa', cursive; margin-bottom:6px;" id="pay-title">Choose Your Plan</h2>
-            <p style="font-size:0.85em; color:#ccc;" id="pay-subtitle">Unlock the final chapter, ePub downloads, and voice narration</p>
+            <h2 style="font-family:'Comfortaa', cursive; margin-bottom:6px; text-align:center;" id="pay-title">Choose Your Edition</h2>
+            <p style="font-size:0.85em; color:#ccc; text-align:center;" id="pay-subtitle">Unlock the full story, high-res ePub, voice narration, or a printed hardcover</p>
 
-            <div class="pricing-grid">
-                <div class="pricing-tier">
-                    <h3 id="plan1-title">Starter</h3>
-                    <div class="price-val">£4.99</div>
-                    <p style="font-size:0.8em; color:#ccc;" id="plan1-desc">5 personalized stories + FREE ePub</p>
-                    <button type="button" class="magic-btn" style="margin-top:12px; padding:8px;" onclick="activatePaidAccess('Starter')" id="plan1-btn">Buy Now</button>
+            <div class="format-cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+                <div class="format-option-card" onclick="redirectToSquareCheckout('digital')">
+                    <div class="format-icon">📖</div>
+                    <div class="format-title">Digital</div>
+                    <div class="format-desc">Full story + ePub & PDF</div>
+                    <div class="format-price-tag">£4.99</div>
+                    <button type="button" class="format-select-btn">Select</button>
                 </div>
-                <div class="pricing-tier featured">
-                    <h3 id="plan2-title">Unlimited</h3>
-                    <div class="price-val">£12.99</div>
-                    <p style="font-size:0.8em; color:#ccc;" id="plan2-desc">Unlimited stories + FREE ePub exports</p>
-                    <button type="button" class="magic-btn" style="margin-top:12px; padding:8px;" onclick="activatePaidAccess('Unlimited')" id="plan2-btn">Select Plan</button>
+                <div class="format-option-card" onclick="redirectToSquareCheckout('audio')">
+                    <div class="format-icon">🎧</div>
+                    <div class="format-title">Digital + Audio</div>
+                    <div class="format-desc">Full story + audio voice narration</div>
+                    <div class="format-price-tag">£6.49</div>
+                    <button type="button" class="format-select-btn">Select</button>
+                </div>
+                <div class="format-option-card featured-print" onclick="redirectToSquareCheckout('hardcover')">
+                    <span class="format-badge-hit">Popular</span>
+                    <div class="format-icon">📚</div>
+                    <div class="format-title">Hardcover Print</div>
+                    <div class="format-desc">Printed book + Digital included</div>
+                    <div class="format-price-tag">£17.99</div>
+                    <button type="button" class="format-select-btn">Order Print</button>
+                </div>
+                <div class="format-option-card" style="border: 2px solid #a1c4fd;" onclick="redirectToSquareCheckout('vip')">
+                    <div class="format-icon">👑</div>
+                    <div class="format-title">VIP Complete</div>
+                    <div class="format-desc">Hardcover + Audio + Digital ePub</div>
+                    <div class="format-price-tag">£16.99</div>
+                    <button type="button" class="format-select-btn">Get All</button>
                 </div>
             </div>
         </div>
@@ -1440,18 +1458,34 @@
         if (e.target.id === 'authModal') closeAuthModal();
     }
 
-    async function activatePaidAccess(planName) {
-        isPaidUser = true;
-        closePaymentModal();
-        updateSlideUI();
-        alert(currentLang === 'ru' 
-            ? ('Тариф ' + planName + ' активирован! Финальная глава и скачивание ePub разблокированы.') 
-            : (planName + ' plan activated! Final chapter and ePub export are now unlocked.'));
+  var currentStoryId = null;
 
-        if (pendingFormatAction === 'digital') {
-            pendingFormatAction = null;
-            var ok = await generateStory();
-            if (ok) exportEpub();
+    async function redirectToSquareCheckout(tierKey) {
+        if (!currentStoryId) {
+            alert(currentLang === 'ru' ? 'Сначала создайте книгу!' : 'Please generate or select a book first!');
+            closePaymentModal();
+            return;
+        }
+
+        try {
+            var res = await fetch('/api/create-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    story_id: currentStoryId,
+                    tier: tierKey || 'digital'
+                })
+            });
+
+            var data = await res.json();
+            if (res.ok && data.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                alert('Payment error: ' + (data.detail || JSON.stringify(data.error || 'Server error')));
+            }
+        } catch (err) {
+            console.error('Checkout redirect error:', err);
+            alert('Payment initialization failed. Please check internet connection.');
         }
     }
 
@@ -1583,6 +1617,7 @@
             var result = await response.json();
             if (result.success && result.pages) {
                 currentPages = result.pages;
+                if (result.story_id) currentStoryId = result.story_id;
                 if (result.title) currentBookTitle = result.title;
                 currentDedicationText = result.dedication_text || dedicationVal;
                 currentPsychologyQuestions = result.psychology_questions || [];
@@ -1646,6 +1681,7 @@
                             currentDedicationText = s.dedication_text || '';
                             currentPsychologyQuestions = s.psychology_questions || [];
                             isPaidUser = storyData.is_paid || false;
+                            currentStoryId = story.id;
                             switchTab('create');
                             showSlide(0);
                         }
@@ -2256,15 +2292,31 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+   document.addEventListener('DOMContentLoaded', function() {
         try {
             var savedUser = localStorage.getItem('supermestory_user');
             if (savedUser) currentUser = JSON.parse(savedUser);
         } catch (e) {}
         initFloatingBubbles(15);
         changeLanguage('en');
-    });
-</script>
 
-</body>
-</html>
+        // Проверка возврата после оплаты в Square Checkout
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('payment') === 'success') {
+            var paidStoryId = urlParams.get('story_id');
+            isPaidUser = true;
+            if (paidStoryId) {
+                currentStoryId = parseInt(paidStoryId, 10);
+                fetch('/api/confirm-payment-manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ story_id: currentStoryId })
+                }).then(function() {
+                    alert(currentLang === 'ru' 
+                        ? '🎉 Оплата прошла успешно! Все материалы книги разблокированы.' 
+                        : '🎉 Payment successful! All book features are unlocked.');
+                    updateSlideUI();
+                });
+            }
+        }
+    });
