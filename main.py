@@ -547,7 +547,7 @@ def get_available_image_models() -> List[str]:
         print(f"Error listing Google models: {e}")
 
     if not found:
-        found = ["gemini-2.5-flash-image", "imagen-3.0-generate-002"]
+        found = ["gemini-3.8-flash-image", "imagen-3.0-generate-002"]
 
     CACHED_IMAGE_MODELS = found
     return found
@@ -745,7 +745,7 @@ Requirements for each chapter:
         contents_for_gemini.append(prompt)
 
         gemini_response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=contents_for_gemini,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
