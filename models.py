@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON
-from sqlalchemy.orm import relationship
 from datetime import datetime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON
+from sqlalchemy.orm import relationship
 from database import Base
+
 
 class User(Base):
     __tablename__ = "users"
@@ -27,7 +28,9 @@ class SavedStory(Base):
     style = Column(String, default="")
     language_code = Column(String, default="en")
     is_paid = Column(Boolean, default=False)
-    story_data = Column(JSON, nullable=False)  # хранит полный json с главами, картинками и текстом
+    stripe_session_id = Column(String, nullable=True, default="")
+    plan_tier = Column(String, nullable=True, default="digital")
+    story_data = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="stories")
