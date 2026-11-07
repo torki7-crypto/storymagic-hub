@@ -11,3 +11,4 @@ weasyprint
 sqlalchemy
 psycopg[binary]
 bcrypt
+squareup
