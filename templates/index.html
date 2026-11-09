@@ -1045,7 +1045,7 @@
         <div id="tab-order" class="tab-content">
             <div class="hero-box" style="text-align:left; max-width:620px;">
                 <h2 style="font-family:'Comfortaa', cursive; margin-bottom:12px;" id="order-title">🚚 Order a Printed Hardcover Book</h2>
-                <p style="color:#ded1f7; font-size:1em; margin-bottom:20px;" id="order-desc">We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep via Lulu.</p>
+                <p style="color:#ded1f7; font-size:1em; margin-bottom:20px;" id="order-desc">We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.</p>
                 
                 <div class="input-row-2">
                     <div class="input-group">
@@ -1060,7 +1060,7 @@
 
                 <div class="input-row-2">
                     <div class="input-group">
-                        <label class="input-label" id="lbl-order-phone">Phone Number (Required by Lulu)</label>
+                        <label class="input-label" id="lbl-order-phone">Phone Number (Required for delivery)</label>
                         <input type="tel" class="custom-input" id="order-phone-input" placeholder="+44 7700 900077" value="+447700900077">
                     </div>
                     <div class="input-group">
@@ -1153,7 +1153,7 @@
                     <div>
                         <div class="format-icon">📚</div>
                         <div class="format-title" id="fmt-card3-title">Printed Book</div>
-                        <div class="format-desc" id="fmt-card3-desc">Premium physical hardcover printed & delivered straight to your door via Lulu.</div>
+                        <div class="format-desc" id="fmt-card3-desc">Premium physical hardcover printed & delivered straight to your door.</div>
                     </div>
                     <div>
                         <div class="format-price-tag" id="fmt-card3-price">£14.99 + Shipping</div>
@@ -1954,7 +1954,7 @@
 
         var btnOrder = document.getElementById('btn-order-pay');
         var origBtnText = btnOrder ? btnOrder.innerText : 'Proceed to Payment';
-        if (btnOrder) btnOrder.innerText = '⏳ Sending to Lulu...';
+        if (btnOrder) btnOrder.innerText = '⏳ Processing Order...';
 
         try {
             var response = await fetch('/api/lulu-create-order', {
@@ -1965,7 +1965,7 @@
 
             var result = await response.json();
             if (response.ok && result.success) {
-                alert('🎉 Заказ успешно отправлен в Sandbox Lulu! ID заказа: ' + (result.lulu_response.id || 'создан'));
+                alert('🎉 Заказ печати успешно оформлен! Номер заказа: ' + (result.lulu_response.id || 'создан'));
             } else {
                 alert('Ошибка при оформлении заказа: ' + (result.detail || 'Неизвестная ошибка'));
             }
@@ -2009,7 +2009,7 @@
             btnPrev: '❮ Back', btnNext: 'Next ❯', btnAudioLbl: 'Audio Story', btnEpubLbl: 'Download ePub', btnOrderLbl: 'Order Hardcover',
             lockTitle: 'Chapters 3–8 Locked', lockDesc: 'Unlock the full 8-chapter story, audio bedtime narration, and high-res tablet ePub download!', lockBtn: '✨ Unlock Full Book (£4.99)',
             libTitle: '📚 Your Created Books', libDesc: 'All stories saved in PostgreSQL database', libEmpty: 'No stories saved yet. Create your first book!',
-            orderTitle: '🚚 Order a Printed Hardcover Book', orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep via Lulu.',
+            orderTitle: '🚚 Order a Printed Hardcover Book', orderDesc: 'We print your story on premium 170 gsm glossy paper with vibrant full-bleed illustrations and deliver to your doorstep.',
             lblOrderName: 'Recipient Full Name', lblOrderEmail: 'Contact Email', lblOrderPhone: 'Phone Number (Required)',
             lblOrderCountry: 'Country', lblOrderAddr: 'Street Address Line 1 (Max 30 chars)', lblOrderAddr2: 'Apt / Suite / Line 2 (Optional)',
             lblOrderCity: 'City / Town', lblOrderPostcode: 'Postcode / ZIP', lblOrderType: 'Cover Type',
@@ -2018,7 +2018,7 @@
             fmtModalTitle: '✨ Choose Your Book Edition', fmtModalSubtitle: 'How would you like to experience your child\'s personalized story?',
             fmtCard1Title: 'Free Preview (Pages 1–2)', fmtCard1Desc: 'Preview the first 2 illustrated chapters in browser. Chapters 3–8 unlock for £4.99.', fmtCard1Price: 'FREE / £0.00', fmtCard1Btn: 'Read Sample',
             fmtCard2Title: 'Full Book + Audio', fmtCard2Desc: 'Unlock all 8 chapters, high-res ePub download, plus gentle bedtime voice narration!', fmtCard2Price: '£6.49 (£4.99 + £1.50)', fmtCard2Btn: 'Get Audio Edition',
-            fmtBadgeHit: 'Most Popular', fmtCard3Title: 'Printed Book', fmtCard3Desc: 'Premium physical hardcover printed & delivered straight to your door via Lulu.', fmtCard3Price: '£14.99 + Shipping', fmtCard3Btn: 'Order Print',
+            fmtBadgeHit: 'Most Popular', fmtCard3Title: 'Printed Book', fmtCard3Desc: 'Premium physical hardcover printed & delivered straight to your door.', fmtCard3Price: '£14.99 + Shipping', fmtCard3Btn: 'Order Print',
             authModalTitle: 'Account Access', authModalSubtitle: 'Save your generated books and track print orders across all devices.',
             authSignIn: 'Sign In', authRegister: 'Create Account', lblAuthName: 'Your Name', lblAuthEmail: 'Email Address', lblAuthPass: 'Password',
             statusGen: '✨ Creating your personal story and illustrations...', statusDone: '🎉 Book is ready!'
@@ -2064,7 +2064,7 @@
             fmtModalTitle: '✨ Выберите формат вашей книги', fmtModalSubtitle: 'В каком виде вы хотите получить персональную сказку?',
             fmtCard1Title: 'Бесплатное демо (1–2 стр.)', fmtCard1Desc: 'Оцените сказку и сходство с ребенком. Главы 3–8 открываются за £4.99.', fmtCard1Price: 'Бесплатно / £0.00', fmtCard1Btn: 'Читать демо',
             fmtCard2Title: 'Полная книга + Аудио', fmtCard2Desc: 'Все 8 глав, файл ePub для планшета и мягкая озвучка перед сном!', fmtCard2Price: '£6.49 (£4.99 + £1.50)', fmtCard2Btn: 'Купить с аудио',
-            fmtBadgeHit: 'Хит продаж', fmtCard3Title: 'Печатная книга', fmtCard3Desc: 'Настоящая книга в твердом переплете с доставкой на дом через Lulu.', fmtCard3Price: '£14.99 + доставка', fmtCard3Btn: 'Заказать печать',
+            fmtBadgeHit: 'Хит продаж', fmtCard3Title: 'Печатная книга', fmtCard3Desc: 'Настоящая книга в твердом переплете с доставкой на дом.', fmtCard3Price: '£14.99 + доставка', fmtCard3Btn: 'Заказать печать',
             authModalTitle: 'Личный кабинет', authModalSubtitle: 'Сохраняйте созданные книги и историю заказов в базе данных.',
             authSignIn: 'Войти', authRegister: 'Регистрация', lblAuthName: 'Ваше имя', lblAuthEmail: 'Ваш Email', lblAuthPass: 'Пароль',
             statusGen: '✨ Создаем персональную сказку и волшебные иллюстрации...', statusDone: '🎉 Сказка готова!'
@@ -2098,7 +2098,7 @@
             fmtModalTitle: '✨ Alege formatul cărții', fmtModalSubtitle: 'Cum dorești să primești povestea?',
             fmtCard1Title: 'Previzualizare gratuită', fmtCard1Desc: 'Primele 2 capitole gratuite în browser.', fmtCard1Price: 'Gratuit', fmtCard1Btn: 'Citește acum',
             fmtCard2Title: 'Carte completă + Audio', fmtCard2Desc: 'Poveste completă, fișier ePub și narațiune audio.', fmtCard2Price: '£6.49', fmtCard2Btn: 'Cumpără cu audio',
-            fmtBadgeHit: 'Cel mai popular', fmtCard3Title: 'Carte tipărită', fmtCard3Desc: 'Carte fizică de calitate livrată la ușă prin Lulu.', fmtCard3Price: '£14.99 + livrare', fmtCard3Btn: 'Comandă tipar',
+            fmtBadgeHit: 'Cel mai popular', fmtCard3Title: 'Carte tipărită', fmtCard3Desc: 'Carte fizică de calitate livrată la ușă ta.', fmtCard3Price: '£14.99 + livrare', fmtCard3Btn: 'Comandă tipar',
             statusGen: '✨ Scriem povestea...', statusDone: '🎉 Cartea este gata!'
         },
         it: {
@@ -2114,7 +2114,7 @@
             fmtModalTitle: '✨ Scegli il formato del libro', fmtModalSubtitle: 'Come preferisci ricevere la tua favola?',
             fmtCard1Title: 'Anteprima gratis (1–2 pag.)', fmtCard1Desc: 'Visualizzazione interattiva dei primi capitoli.', fmtCard1Price: 'Gratuito', fmtCard1Btn: 'Leggi ora',
             fmtCard2Title: 'Libro completo + Audio', fmtCard2Desc: 'Storia completa, file ePub per tablet e voce narrante.', fmtCard2Price: '£6.49', fmtCard2Btn: 'Acquista con audio',
-            fmtBadgeHit: 'Più venduto', fmtCard3Title: 'Libro stampato', fmtCard3Desc: 'Libro cartaceo con copertina rigida spedito a casa tua via Lulu.', fmtCard3Price: '£14.99 + spedizione', fmtCard3Btn: 'Ordina stampa',
+            fmtBadgeHit: 'Più venduto', fmtCard3Title: 'Libro stampato', fmtCard3Desc: 'Libro cartaceo con copertina rigida spedito a casa tua.', fmtCard3Price: '£14.99 + spedizione', fmtCard3Btn: 'Ordina stampa',
             statusGen: '✨ Scrittura della favola...', statusDone: '🎉 Il libro è pronto!'
         },
         tr: {
