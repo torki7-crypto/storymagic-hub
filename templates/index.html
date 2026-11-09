@@ -968,9 +968,9 @@
                     <div class="input-group">
                         <label class="input-label" id="lbl-art-style">Art Style</label>
                         <select id="artStyle" class="custom-select">
-                            <option value="Watercolor children book illustration" id="opt-style1" selected>Watercolor / Fairy Tale</option>
-                            <option value="Pixar 3D cute animated render" id="opt-style2">3D Animation</option>
-                            <option value="Classic pencil gouache fairy tale" id="opt-style3">Classic Gouache</option>
+                            <option value="Watercolor children book illustration, soft gentle pastel tones, classic fairy tale art" id="opt-style1" selected>Watercolor / Fairy Tale</option>
+                            <option value="Classic vintage storybook gouache, warm textured gouache illustration" id="opt-style3">Classic Gouache</option>
+                            <option value="Cozy bedtime colored pencil and soft chalk pastel storybook art" id="opt-style4">Bedtime Pastel & Pencil</option>
                         </select>
                     </div>
 
@@ -1540,7 +1540,11 @@
         var overlay = document.getElementById('paywallLockOverlay');
         if (overlay) overlay.style.display = isLocked ? 'flex' : 'none';
 
-        setText('pageBadge', (d.badgePage || 'Chapter') + ' ' + p.page_number);
+        // Отображение бейджа страницы или терапевтической беседы
+        var badgeText = p.title && p.title.indexOf('💡') !== -1 
+            ? p.title 
+            : ((d.badgePage || 'Chapter') + ' ' + p.page_number);
+        setText('pageBadge', badgeText);
         setText('pageCounter', p.page_number + ' / ' + currentPages.length);
         
         var textContainer = document.getElementById('currentText');
@@ -1690,6 +1694,19 @@
                                     image_url: ch.image_url
                                 };
                             });
+
+                            // Если есть вопросы психолога, добавляем их 9-й страницей в читалку
+                            if (s.psychology_questions && s.psychology_questions.length > 0) {
+                                var psychTitle = currentLang === 'ru' ? '💡 Поговорим по душам' : '💡 Heart-to-Heart Talk';
+                                var qText = s.psychology_questions.map(function(q) { return '✨ ' + q; }).join('\n\n');
+                                currentPages.push({
+                                    page_number: currentPages.length + 1,
+                                    title: psychTitle,
+                                    text: '«' + psychTitle + '»\n\n' + qText,
+                                    image_url: (s.chapters && s.chapters.length) ? s.chapters[s.chapters.length - 1].image_url : coverUrl
+                                });
+                            }
+
                             currentBookTitle = s.title || story.title;
                             currentDedicationText = s.dedication_text || '';
                             currentPsychologyQuestions = s.psychology_questions || [];
@@ -1829,7 +1846,9 @@
         if (btn) btn.innerText = '⏳ ...';
 
         var d = dictionary[currentLang] || dictionary['en'];
-        var chapters = currentPages.map(function(page, index) {
+        // Берем первые 8 глав для структуры ePub, вопросы передаются отдельным полем
+        var storyChapters = currentPages.filter(function(p) { return !p.title || p.title.indexOf('💡') === -1; });
+        var chapters = storyChapters.map(function(page, index) {
             var paragraphs = page.text.split('\n\n').filter(Boolean);
             return {
                 chapter_number: index + 1,
@@ -1913,7 +1932,8 @@
         var safeStreet1 = street1Val.substring(0, 30);
         var safeStreet2 = street2Val.substring(0, 30);
 
-        var chapters = currentPages.map(function(page, index) {
+        var storyChapters = currentPages.filter(function(p) { return !p.title || p.title.indexOf('💡') === -1; });
+        var chapters = storyChapters.map(function(page, index) {
             var paragraphs = page.text.split('\n\n').filter(Boolean);
             return {
                 chapter_number: index + 1,
@@ -2001,7 +2021,7 @@
             themeAnger: 'Anger, tantrums & big feelings', themeToys: 'Tidying up toys & order', themeShare: 'Kindness, sharing & making friends',
             grpAdv: '🚀 Magical Adventures', themeForest: 'Enchanted forest & wise talking cat', themeSpace: 'Space voyage to the Star Island',
             themeDino: 'Expedition to the gentle dinosaurs', optCustom: '✍️ Custom Story Idea...',
-            lblArtStyle: 'Art Style', optStyle1: 'Watercolor / Fairy Tale', optStyle2: '3D Animation', optStyle3: 'Classic Gouache',
+            lblArtStyle: 'Art Style', optStyle1: 'Watercolor / Fairy Tale', optStyle3: 'Classic Gouache', optStyle4: 'Bedtime Pastel & Pencil',
             lblConsentText: 'I confirm that I am the parent or legal guardian and consent to photo processing for book illustration. Photos are deleted immediately and never shared publicly.',
             consentAlert: 'Please confirm parental/guardian consent to proceed.', btnCreateStory: '🪄 Generate Book',
             badgeCover: 'Chapter 1', badgePage: 'Chapter',
@@ -2047,7 +2067,7 @@
             themeAnger: 'Злость, капризы и эмоции', themeToys: 'Уборка игрушек и аккуратность', themeShare: 'Умение делиться и дружба',
             grpAdv: '🚀 Волшебные приключения', themeForest: 'Зачарованный лес и мудрый кот', themeSpace: 'Космическая экспедиция к звёздам',
             themeDino: 'Экспедиция в мир динозавров', optCustom: '✍️ Написать свою тему...',
-            lblArtStyle: 'Стиль графики', optStyle1: 'Акварель / Сказка', optStyle2: '3D Мультфильм', optStyle3: 'Классическая гуашь',
+            lblArtStyle: 'Стиль графики', optStyle1: 'Акварель / Сказка', optStyle3: 'Классическая гуашь', optStyle4: 'Пастель и мягкий карандаш',
             lblConsentText: 'Я являюсь родителем или опекуном ребёнка и даю согласие на обработку фото для создания книги. Фото удаляется сразу после обработки.',
             consentAlert: 'Пожалуйста, подтвердите согласие родителя/опекуна.', btnCreateStory: '🪄 Создать сказку',
             badgeCover: 'Глава 1', badgePage: 'Глава',
@@ -2076,6 +2096,7 @@
             lblFormTitle: 'Ustawienia książki', lblPhoto: '📷 Zdjęcie dziecka', photoChoose: 'Kliknij, aby wybrać zdjęcie',
             photoDisclaimer: '🎨 Stylizacja artystyczna: Ilustracje są tworzone przez AI w stylu bajkowym na podstawie zdjęcia, a nie jako 100% kopia fotograficzna.',
             lblDedication: '❤️ Dedykacja od rodziców', lblHeroName: 'Imię bohatera', valHeroName: 'Zosia', lblHeroAge: 'Wiek', lblStoryTheme: 'Temat bajki',
+            lblArtStyle: 'Styl grafiki', optStyle1: 'Akwarela / Bajka', optStyle3: 'Klasyczny gwasz', optStyle4: 'Pastele i miękki ołówek',
             btnCreateStory: '🪄 Wygeneruj bajkę', badgeCover: 'Rozdział 1', badgePage: 'Rozdział', defaultWelcome: 'Wypełnij formularz po lewej stronie i kliknij «Wygeneruj bajkę». Pierwsze 2 strony są bezpłatne!',
             btnPrev: '❮ Wstecz', btnNext: 'Dalej ❯', btnAudioLbl: 'Audiobook', btnEpubLbl: 'Pobierz ePub', btnOrderLbl: 'Zamów książkę',
             lockTitle: 'Rozdziały 3–8 zablokowane', lockDesc: 'Odblokuj finał bajki, audiobook oraz plik ePub!', lockBtn: '✨ Odblokuj pełną bajkę (£4.99)',
@@ -2092,6 +2113,7 @@
             lblFormTitle: 'Setări carte', lblPhoto: '📷 Poză copil', photoChoose: 'Apasă pentru a alege poza',
             photoDisclaimer: '🎨 Stil artistic: Ilustrațiile sunt create de AI în stil de poveste, nu o copie fidelă 100%.',
             lblDedication: '❤️ Dedicație de la părinți', lblHeroName: 'Nume erou', valHeroName: 'Ana', lblHeroAge: 'Vârstă', lblStoryTheme: 'Tema poveștii',
+            lblArtStyle: 'Stil artistic', optStyle1: 'Acuarelă / Poveste', optStyle3: 'Guașă clasică', optStyle4: 'Pastel și creion',
             btnCreateStory: '🪄 Generează cartea', badgeCover: 'Capitolul 1', badgePage: 'Capitolul', defaultWelcome: 'Completează formularul din stânga. Primele 2 pagini sunt gratuite!',
             btnPrev: '❮ Înapoi', btnNext: 'Înainte ❯', btnAudioLbl: 'Audiobook', btnEpubLbl: 'Descarcă ePub', btnOrderLbl: 'Comandă cartea',
             lockTitle: 'Capitolele 3–8 blocate', lockDesc: 'Deblochează povestea completă și audiobook-ul!', lockBtn: '✨ Deblochează cartea (£4.99)',
@@ -2108,6 +2130,7 @@
             lblFormTitle: 'Dettagli libro', lblPhoto: '📷 Foto del bimbo', photoChoose: 'Clicca per scegliere la foto',
             photoDisclaimer: '🎨 Stile artistico: Illustrazioni fiabesche create dall\'IA ispirate alla foto, non una copia identica al 100%.',
             lblDedication: '❤️ Dedica dei genitori', lblHeroName: 'Nome dell\'eroe', valHeroName: 'Sofia', lblHeroAge: 'Età', lblStoryTheme: 'Tema della favola',
+            lblArtStyle: 'Stile artistico', optStyle1: 'Acquerello / Fiaba', optStyle3: 'Guazzo classico', optStyle4: 'Pastelli e matita morbida',
             btnCreateStory: '🪄 Genera il libro', badgeCover: 'Capitolo 1', badgePage: 'Capitolo', defaultWelcome: 'Compila i parametri a sinistra. Le prime 2 pagine sono gratuite!',
             btnPrev: '❮ Indietro', btnNext: 'Avanti ❯', btnAudioLbl: 'Audiofavola', btnEpubLbl: 'Scarica ePub', btnOrderLbl: 'Ordina libro',
             lockTitle: 'Capitoli 3–8 bloccati', lockDesc: 'Sblocca il magico finale della favola e l\'audiolibro!', lockBtn: '✨ Sblocca il libro intero (£4.99)',
@@ -2124,6 +2147,7 @@
             lblFormTitle: 'Kitap Seçenekleri', lblPhoto: '📷 Çocuk Fotoğrafı', photoChoose: 'Fotoğraf seçmek için tıklayın',
             photoDisclaimer: '🎨 Sanatsal Çizim: Çizimler fotoğraftan esinlenilerek masalsı yapay zekâ tarzında oluşturulur, %100 vesikalık kopya değildir.',
             lblDedication: '❤️ Aile İthafı', lblHeroName: 'Kahramanın Adı', valHeroName: 'Elif', lblHeroAge: 'Yaş', lblStoryTheme: 'Masal Teması',
+            lblArtStyle: 'Çizim Tarzı', optStyle1: 'Sulu Boya / Masal', optStyle3: 'Klasik Guaj', optStyle4: 'Pastel ve Yumuşak Kalem',
             btnCreateStory: '🪄 Kitabı Oluştur', badgeCover: '1. Bölüm', badgePage: 'Bölüm', defaultWelcome: 'Soldaki alanları doldurun. İlk 2 sayfa ücretsizdir!',
             btnPrev: '❮ Geri', btnNext: 'İleri ❯', btnAudioLbl: 'Sesli Masal', btnEpubLbl: 'ePub İndir', btnOrderLbl: 'Kitap Siparişi',
             lockTitle: '3–8. Bölümler Kilitli', lockDesc: 'Masalın tümünü, ePub dosyasını ve seslendirmeyi açın!', lockBtn: '✨ Tüm Kitabı Aç (£4.99)',
@@ -2201,8 +2225,8 @@
 
         setText('lbl-art-style', d.lblArtStyle);
         setText('opt-style1', d.optStyle1);
-        setText('opt-style2', d.optStyle2);
         setText('opt-style3', d.optStyle3);
+        setText('opt-style4', d.optStyle4);
         setText('lbl-consent-text', d.lblConsentText);
         setText('btn-create-story', d.btnCreateStory);
 
@@ -2287,7 +2311,6 @@
         }
     }
 
-    // Привязка ключевых функций к объекту window
     window.switchTab = switchTab;
     window.openFormatModal = openFormatModal;
     window.closeFormatModal = closeFormatModal;
@@ -2320,7 +2343,6 @@
         initFloatingBubbles(15);
         changeLanguage('en');
 
-        // Проверка возврата после оплаты в Square Checkout
         var urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('payment') === 'success') {
             var paidStoryId = urlParams.get('story_id');
