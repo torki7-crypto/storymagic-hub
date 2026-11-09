@@ -9,13 +9,14 @@ import uuid
 import bcrypt
 from ebooklib import epub
 import edge_tts
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from google import genai
 from google.genai import types
 import httpx
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from weasyprint import HTML
 
@@ -26,12 +27,8 @@ app = FastAPI(title="SuperMeStory Backend")
 
 # Создает таблицы в PostgreSQL при запуске сервиса
 Base.metadata.create_all(bind=engine)
-from sqlalchemy import text
 
-# Создает таблицы в PostgreSQL при запуске сервиса
-Base.metadata.create_all(bind=engine)
-
-# Безопасное добавление недостающих колонок в существующую таблицу PostgreSQL
+# Автоматическое добавление колонок, если таблица была создана ранее без них
 with engine.connect() as conn:
     try:
         conn.execute(text("ALTER TABLE saved_stories ADD COLUMN IF NOT EXISTS stripe_session_id VARCHAR;"))
@@ -60,25 +57,26 @@ SQUARE_BASE_URL = (
     else "https://connect.squareup.com"
 )
 
+# Тарифная сетка SuperMeStory в пенсах (GBP)
 TIERS_CONFIG = {
     "digital": {
-        "name": "SuperMeStory: Digital Book (PDF + ePub)",
-        "amount": 499,
+        "name": "SuperMeStory: Full Story Unlock + ePub",
+        "amount": 499,   # £4.99
         "shipping": False,
     },
     "audio": {
-        "name": "SuperMeStory: Digital + Audio Narration",
-        "amount": 649,
+        "name": "SuperMeStory: Full Story + Audio Narration + ePub",
+        "amount": 649,   # £6.49 (Базовая £4.99 + £1.50 за аудио)
         "shipping": False,
     },
     "hardcover": {
-        "name": "SuperMeStory: Hardcover Print + Digital",
-        "amount": 1799,
+        "name": "SuperMeStory: Hardcover Print + Digital + ePub",
+        "amount": 1799,  # £17.99
         "shipping": True,
     },
     "vip": {
         "name": "SuperMeStory VIP: Hardcover + Audio + Digital",
-        "amount": 1699,
+        "amount": 1699,  # £16.99 (Спецпредложение)
         "shipping": True,
     },
 }
@@ -547,7 +545,7 @@ def get_available_image_models() -> List[str]:
         print(f"Error listing Google models: {e}")
 
     if not found:
-        found = ["gemini-3.8-flash-image", "imagen-3.0-generate-002"]
+        found = ["gemini-3.8-flash", "imagen-3.0-generate-002"]
 
     CACHED_IMAGE_MODELS = found
     return found
@@ -906,6 +904,38 @@ async def create_checkout_session(req: CheckoutRequest, db: Session = Depends(ge
         }
     else:
         return {"success": False, "error": data}
+
+
+@app.post("/api/square-webhook")
+async def square_webhook(request: Request, db: Session = Depends(get_db)):
+    """Вебхук Square для надежного подтверждения оплаты без участия редиректа браузера"""
+    try:
+        payload = await request.json()
+        event_type = payload.get("type")
+
+        if event_type in ["payment.updated", "order.updated"]:
+            payment_obj = payload.get("data", {}).get("object", {}).get("payment", {})
+            order_id = payment_obj.get("order_id") or payload.get("data", {}).get("id")
+            payment_status = payment_obj.get("status")
+
+            if payment_status == "COMPLETED" or event_type == "order.updated":
+                story = db.query(models.SavedStory).filter(
+                    models.SavedStory.stripe_session_id == order_id
+                ).first()
+
+                if story and not story.is_paid:
+                    story.is_paid = True
+                    if story.story_data and isinstance(story.story_data, dict):
+                        updated = dict(story.story_data)
+                        updated["is_paid"] = True
+                        story.story_data = updated
+                    db.commit()
+                    print(f"✅ Webhook: Story {story.id} successfully marked as PAID")
+
+        return {"success": True}
+    except Exception as e:
+        print(f"⚠️ Webhook error: {e}")
+        return {"success": False, "error": str(e)}
 
 
 @app.post("/api/confirm-payment-manual")
