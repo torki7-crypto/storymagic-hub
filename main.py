@@ -779,7 +779,7 @@ Requirements for each chapter:
         for idx, ch in enumerate(story_data.chapters):
             ch.image_url = image_urls[idx]
 
-     pages = []
+        pages = []
         for idx, ch in enumerate(story_data.chapters):
             full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
             pages.append(
@@ -800,12 +800,10 @@ Requirements for each chapter:
                 "pl": "💡 Rozmowa od serca",
                 "ro": "💡 Discuție de la suflet la suflet",
                 "it": "💡 Conversazione a cuore aperto",
-                "tr": "💡 Kalpten Kalbe Sohbet"
+                "tr": "💡 Kalpten Kalbe Sohbet",
             }
             p_title = psych_titles.get(lang, "💡 Heart-to-Heart Talk")
             questions_text = "\n\n".join([f"✨ {q}" for q in story_data.psychology_questions])
-            
-            # Для иллюстрации 9-й страницы берем теплую картинку из 1-й или 8-й главы (победа / дом)
             conclusion_img = image_urls[-1] if image_urls else image_urls[0]
 
             pages.append(
