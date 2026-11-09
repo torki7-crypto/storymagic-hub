@@ -604,6 +604,8 @@ async def generate_book_illustration(
                     ):
                         for part in response.candidates[0].content.parts:
                             if part.inline_data and part.inline_data.data:
+                                if photo_bytes and len(part.inline_data.data) == len(photo_bytes):
+                                    continue
                                 b64_img = base64.b64encode(part.inline_data.data).decode("utf-8")
                                 mime = part.inline_data.mime_type or "image/jpeg"
                                 return f"data:{mime};base64,{b64_img}"
@@ -777,7 +779,7 @@ Requirements for each chapter:
         for idx, ch in enumerate(story_data.chapters):
             ch.image_url = image_urls[idx]
 
-        pages = []
+     pages = []
         for idx, ch in enumerate(story_data.chapters):
             full_text = f"«{ch.title}»\n\n" + "\n\n".join(ch.paragraphs)
             pages.append(
@@ -787,6 +789,32 @@ Requirements for each chapter:
                     "text": full_text,
                     "paragraphs": ch.paragraphs,
                     "image_url": image_urls[idx],
+                }
+            )
+
+        # 9-я страница: Терапевтическая беседа и вопросы для родителя
+        if story_data.psychology_questions:
+            psych_titles = {
+                "ru": "💡 Поговорим по душам",
+                "en": "💡 Heart-to-Heart Talk",
+                "pl": "💡 Rozmowa od serca",
+                "ro": "💡 Discuție de la suflet la suflet",
+                "it": "💡 Conversazione a cuore aperto",
+                "tr": "💡 Kalpten Kalbe Sohbet"
+            }
+            p_title = psych_titles.get(lang, "💡 Heart-to-Heart Talk")
+            questions_text = "\n\n".join([f"✨ {q}" for q in story_data.psychology_questions])
+            
+            # Для иллюстрации 9-й страницы берем теплую картинку из 1-й или 8-й главы (победа / дом)
+            conclusion_img = image_urls[-1] if image_urls else image_urls[0]
+
+            pages.append(
+                {
+                    "page_number": len(pages) + 1,
+                    "title": p_title,
+                    "text": f"«{p_title}»\n\n{questions_text}",
+                    "paragraphs": story_data.psychology_questions,
+                    "image_url": conclusion_img,
                 }
             )
 
