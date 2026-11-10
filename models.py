@@ -34,6 +34,8 @@ class SavedStory(Base):
     plan_tier = Column(String, nullable=True, default="digital")   # tier chosen at checkout (not yet paid)
     paid_tier = Column(String, nullable=True)                      # tier actually paid for (set by webhook)
     lulu_job_id = Column(String, nullable=True)                    # prevents double print orders
+    print_status = Column(String, nullable=True)                   # queued / placed / failed
+    shipping_json = Column(JSON, nullable=True)                    # address kept only until the print order is placed
     story_data = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
