@@ -7,7 +7,7 @@ from typing import List, Optional
 import httpx
 from ebooklib import epub
 from pydantic import BaseModel, Field
-from weasyprint import HTML, default_url_fetcher
+from weasyprint import HTML
 
 esc = html.escape
 
@@ -136,11 +136,9 @@ class EpubBuilder:
 
 # ---------- Print PDFs (Lulu); layout is reworked for A5 in a later step ----------
 
-def safe_fetcher(url, *args, **kwargs):
-    """WeasyPrint may only load inline data: images, never files or network."""
-    if url.startswith("data:"):
-        return default_url_fetcher(url)
-    raise ValueError("External resources are blocked")
+def inline_image(url: Optional[str]) -> str:
+    """Only inline data: images are allowed in PDFs, never files or network URLs."""
+    return url if (url or "").startswith("data:image") else ""
 
 
 PRINT_CSS = """
@@ -172,7 +170,7 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
     for i, ch in enumerate(story.chapters):
         brk = "" if (i == last and not story.psychology_questions) else ' class="page-break"'
         parts.append(f"<div{brk}><h1>{esc(ch.title)}</h1>")
-        if ch.image_url:
+        if inline_image(ch.image_url):
             parts.append(f'<div class="img-container"><img src="{esc(ch.image_url)}" alt="" /></div>')
         parts += [f"<p>{esc(p)}</p>" for p in ch.paragraphs]
         parts.append("</div>")
@@ -181,12 +179,12 @@ def generate_print_pdf_bytes(story: StoryBookData) -> bytes:
         parts.append('<div class="psychology-page" style="page-break-after:avoid;"><h2>💡 Questions &amp; Discussion</h2>'
                      f'<ul style="text-align:left;display:inline-block;">{items}</ul></div>')
     parts.append("</body></html>")
-    return HTML(string="".join(parts), url_fetcher=safe_fetcher).write_pdf()
+    return HTML(string="".join(parts)).write_pdf()
 
 
 def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
     img = ""
-    if story.chapters and story.chapters[0].image_url:
+    if story.chapters and inline_image(story.chapters[0].image_url):
         img = (f'<img src="{esc(story.chapters[0].image_url)}" '
                'style="width:4.2in;height:4.2in;object-fit:cover;border-radius:12px;margin-top:0.4in;" />')
     body = (
@@ -197,4 +195,4 @@ def generate_cover_pdf_bytes(story: StoryBookData) -> bytes:
         f'<p style="margin-top:0.5in;font-size:12pt;color:#f1e4ff;">{esc(story.author)}</p></div>'
     )
     doc = f'<!DOCTYPE html><html><head><meta charset="utf-8"><style>{COVER_CSS}</style></head><body>{body}</body></html>'
-    return HTML(string=doc, url_fetcher=safe_fetcher).write_pdf()
+    return HTML(string=doc).write_pdf()
