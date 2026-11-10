@@ -870,7 +870,7 @@
                 <div class="step-card">
                     <div class="step-icon">📖</div>
                     <h3 id="step3-title">3. Read or Order</h3>
-                    <p id="step3-desc">Read sample online, download full ePub with final chapters, or order a hardcover print book.</p>
+                    <p id="step3-desc">Read sample online, download full ePub with final chapters, or order a printed book.</p>
                 </div>
             </div>
 
@@ -894,7 +894,7 @@
                     <div class="about-item">
                         <div style="font-size: 2em; margin-bottom: 8px;">📚</div>
                         <h3 id="about-col3-title">Formats & Print</h3>
-                        <p id="about-col3-desc">Read free sample, unlock full ePub & audio bedtime narration, or order a beautifully bound physical hardcover delivered to your door.</p>
+                        <p id="about-col3-desc">Read free sample, unlock full ePub & audio bedtime narration, or order a printed A5 book delivered to your door.</p>
                     </div>
                 </div>
 
@@ -1045,7 +1045,7 @@
         <div id="tab-order" class="tab-content">
             <div class="hero-box" style="text-align:left; max-width:620px;">
                 <h2 style="font-family:'Comfortaa', cursive; margin-bottom:12px;" id="order-title">🚚 Order a Printed Book</h2>
-                <p style="color:#ded1f7; font-size:1em; margin-bottom:20px;" id="order-desc">We print your story on premium glossy paper with vibrant full-page illustrations and deliver it to your doorstep (UK only for now).</p>
+                <p style="color:#ded1f7; font-size:1em; margin-bottom:20px;" id="order-desc">We print your story as a 12-page A5 book on premium glossy paper with full-colour illustrations and deliver it to your doorstep (UK only for now). Your ePub is included.</p>
                 
                 <div class="input-row-2">
                     <div class="input-group">
@@ -1093,11 +1093,11 @@
                     </div>
                 </div>
 
-                <div class="input-group">
-                    <label class="input-label" id="lbl-order-type">Cover Type</label>
+                <div class="input-group" id="order-type-group">
+                    <label class="input-label" id="lbl-order-type">Edition</label>
                     <select class="custom-select" id="order-cover-type">
-                        <option id="opt-order-hard">Printed book — £14.99</option>
-                        
+                        <option value="hardcover" id="opt-order-hardcover">Printed book + ePub — £14.99</option>
+                        <option value="vip" id="opt-order-vip">Printed book + Audio + ePub — £16.49</option>
                     </select>
                 </div>
 
@@ -1146,7 +1146,7 @@
                     <div>
                         <div class="format-icon">📚</div>
                         <div class="format-title" id="fmt-card3-title">Printed Book</div>
-                        <div class="format-desc" id="fmt-card3-desc">Premium physical hardcover printed & delivered straight to your door.</div>
+                        <div class="format-desc" id="fmt-card3-desc">Premium A5 book printed & delivered straight to your door.</div>
                     </div>
                     <div>
                         <div class="format-price-tag" id="fmt-card3-price">£14.99 (UK delivery included)</div>
@@ -1195,37 +1195,37 @@
         <div class="modal-card modal-wide">
             <div class="modal-close" onclick="closePaymentModal()">✕</div>
             <h2 style="font-family:'Comfortaa', cursive; margin-bottom:6px; text-align:center;" id="pay-title">Choose Your Edition</h2>
-            <p style="font-size:0.85em; color:#ccc; text-align:center;" id="pay-subtitle">Unlock all 8 chapters, high-res ePub, voice narration, or a printed hardcover</p>
+            <p style="font-size:0.85em; color:#ccc; text-align:center;" id="pay-subtitle">Unlock all 8 chapters, high-res ePub, voice narration, or a printed book</p>
 
             <div class="format-cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
-                <div class="format-option-card" onclick="redirectToSquareCheckout('digital')">
+                <div class="format-option-card" id="pm-card-digital" onclick="chooseTier('digital')">
                     <div class="format-icon">📖</div>
                     <div class="format-title">Full Digital</div>
-                    <div class="format-desc">All 8 chapters + ePub & PDF</div>
-                    <div class="format-price-tag">£4.99</div>
-                    <button type="button" class="format-select-btn">Unlock (£4.99)</button>
+                    <div class="format-desc">All 8 chapters + ePub download</div>
+                    <div class="format-price-tag" id="pm-price-digital">£4.99</div>
+                    <button type="button" class="format-select-btn" id="pm-btn-digital">Unlock (£4.99)</button>
                 </div>
-                <div class="format-option-card" onclick="redirectToSquareCheckout('audio')">
+                <div class="format-option-card" id="pm-card-audio" onclick="chooseTier('audio')">
                     <div class="format-icon">🎧</div>
                     <div class="format-title">Digital + Audio</div>
                     <div class="format-desc">Full story + voice bedtime narration</div>
-                    <div class="format-price-tag">£6.49</div>
-                    <button type="button" class="format-select-btn">Get Audio (£6.49)</button>
+                    <div class="format-price-tag" id="pm-price-audio">£6.49</div>
+                    <button type="button" class="format-select-btn" id="pm-btn-audio">Get Audio (£6.49)</button>
                 </div>
-                <div class="format-option-card featured-print" onclick="redirectToSquareCheckout('hardcover')">
+                <div class="format-option-card featured-print" id="pm-card-hardcover" onclick="chooseTier('hardcover')">
                     <span class="format-badge-hit">Popular</span>
                     <div class="format-icon">📚</div>
                     <div class="format-title">Printed Book</div>
-                    <div class="format-desc">Printed book + ePub included</div>
-                    <div class="format-price-tag">£14.99</div>
-                    <button type="button" class="format-select-btn">Order Print</button>
+                    <div class="format-desc">Printed A5 book + ePub included</div>
+                    <div class="format-price-tag" id="pm-price-hardcover">£14.99</div>
+                    <button type="button" class="format-select-btn" id="pm-btn-hardcover">Order Print (£14.99)</button>
                 </div>
-                <div class="format-option-card" style="border: 2px solid #a1c4fd;" onclick="redirectToSquareCheckout('vip')">
+                <div class="format-option-card" id="pm-card-vip" style="border: 2px solid #a1c4fd;" onclick="chooseTier('vip')">
                     <div class="format-icon">👑</div>
                     <div class="format-title">Print + Audio</div>
                     <div class="format-desc">Printed book + Audio + ePub</div>
-                    <div class="format-price-tag">£16.49</div>
-                    <button type="button" class="format-select-btn">Get Print + Audio</button>
+                    <div class="format-price-tag" id="pm-price-vip">£16.49</div>
+                    <button type="button" class="format-select-btn" id="pm-btn-vip">Get Print + Audio (£16.49)</button>
                 </div>
             </div>
         </div>
@@ -1258,6 +1258,11 @@
     var currentAudio = null;
     var audioCache = {};
     var currentTier = null;
+    var currentPrices = null;      // what each edition costs this book right now (full price or upgrade difference)
+    var progressToken = 0;
+
+    function money(pence) { return '£' + (pence / 100).toFixed(2); }
+    function sleep(ms) { return new Promise(function(res) { setTimeout(res, ms); }); }
 
     function esc(x) {
         return String(x == null ? '' : x).replace(/[&<>"']/g, function(c) {
@@ -1302,6 +1307,7 @@
         if (tabName === 'library' && typeof loadLibrary === 'function') {
             loadLibrary();
         }
+        if (tabName === 'order') renderTierPrices();
     }
 
     function openFormatModal() {
@@ -1344,7 +1350,7 @@
         if (formatType === 'hardcover') {
             var success = await generateStory();
             if (!success) return;
-            redirectToSquareCheckout('hardcover');
+            switchTab('order');
             return;
         }
     }
@@ -1448,8 +1454,117 @@
     }
 
     function openPaymentModal() { 
+        renderTierPrices();
         var modal = document.getElementById('paymentModal');
         if (modal) modal.style.display = 'flex'; 
+    }
+
+    function tierDue(t) {
+        var info = currentPrices && currentPrices[t];
+        return info ? info.due : ({digital: 499, audio: 649, hardcover: 1499, vip: 1649})[t];
+    }
+
+    function renderTierPrices() {
+        var ru = currentLang === 'ru';
+        var verb = {digital: ru ? 'Открыть' : 'Unlock', audio: ru ? 'Добавить аудио' : 'Get Audio',
+                    hardcover: ru ? 'Заказать печать' : 'Order Print', vip: ru ? 'Печать + аудио' : 'Get Print + Audio'};
+        ['digital', 'audio', 'hardcover', 'vip'].forEach(function(t) {
+            var info = currentPrices && currentPrices[t];
+            var owned = !!(info && info.owned);
+            var due = tierDue(t);
+            var upgrade = isPaidUser && !owned;
+            var card = document.getElementById('pm-card-' + t);
+            var price = document.getElementById('pm-price-' + t);
+            var btn = document.getElementById('pm-btn-' + t);
+            if (card) { card.style.opacity = owned ? '0.45' : '1'; card.style.pointerEvents = owned ? 'none' : 'auto'; }
+            if (price) price.innerText = owned ? (ru ? '✓ Уже есть' : '✓ Included') : (upgrade ? '+' + money(due) : money(due));
+            if (btn) btn.innerText = owned ? '✓' : (upgrade ? (ru ? 'Доплатить ' : 'Upgrade ') + money(due) : verb[t] + ' (' + money(due) + ')');
+        });
+
+        // order form: a paid print edition only needs the address, otherwise the form leads to payment
+        var printOwned = hasTier(['hardcover', 'vip']);
+        var group = document.getElementById('order-type-group');
+        if (group) group.style.display = printOwned ? 'none' : 'block';
+        var o1 = document.getElementById('opt-order-hardcover');
+        var o2 = document.getElementById('opt-order-vip');
+        if (o1) o1.innerText = (ru ? 'Печатная книга + ePub — ' : 'Printed book + ePub — ') + money(tierDue('hardcover'));
+        if (o2) o2.innerText = (ru ? 'Печатная книга + аудио + ePub — ' : 'Printed book + Audio + ePub — ') + money(tierDue('vip'));
+        var btnPay = document.getElementById('btn-order-pay');
+        if (btnPay && !btnPay.disabled) {
+            btnPay.innerText = printOwned
+                ? (ru ? 'Отправить книгу в печать' : 'Send my book to print')
+                : (ru ? 'Оплатить и отправить в печать' : 'Pay & send to print');
+        }
+        var epubBadge = document.getElementById('badge-epub-free');
+        if (epubBadge) epubBadge.style.display = isPaidUser ? 'inline-block' : 'none';
+    }
+
+    function chooseTier(t) {
+        closePaymentModal();
+        if (t === 'hardcover' || t === 'vip') {  // print needs a delivery address first
+            switchTab('order');
+            var sel = document.getElementById('order-cover-type');
+            if (sel && !hasTier(['hardcover', 'vip'])) sel.value = t;
+            return;
+        }
+        redirectToSquareCheckout(t);
+    }
+
+    function applyStoryState(sd) {
+        currentPages = sd.pages;
+        if (sd.title) currentBookTitle = sd.title;
+        currentDedicationText = sd.dedication_text || '';
+        currentPsychologyQuestions = sd.psychology_questions || [];
+        isPaidUser = !!sd.is_paid;
+        currentTier = sd.paid_tier || null;
+        currentPrices = sd.prices || currentPrices;
+        renderTierPrices();
+    }
+
+    // After payment: waits for the remaining illustrations and the print order, and restarts them if the server lost them.
+    async function watchProgress(id) {
+        var ru = currentLang === 'ru';
+        var token = ++progressToken;
+        var lastResume = 0;
+        for (var i = 0; i < 150; i++) {
+            if (token !== progressToken || currentStoryId !== id) return;
+            var sd;
+            try {
+                var r = await fetch('/api/stories/' + id);
+                if (!r.ok) return;
+                sd = await r.json();
+            } catch (e) { await sleep(4000); continue; }
+            if (token !== progressToken || currentStoryId !== id) return;
+            applyStoryState(sd);
+            updateSlideUI();
+
+            var waitingImages = sd.is_paid && !sd.images_ready;
+            var waitingPrint = sd.print_status === 'queued';
+            if (waitingImages) {
+                setText('statusMsg', ru ? '🎨 Дорисовываем остальные иллюстрации, это займёт около минуты...'
+                                        : '🎨 Painting the remaining illustrations, this takes about a minute...');
+            } else if (waitingPrint) {
+                setText('statusMsg', ru ? '📦 Отправляем книгу в печать...' : '📦 Sending your book to print...');
+            } else {
+                if (sd.print_status === 'placed') {
+                    setText('statusMsg', ru ? '🎉 Заказ печати оформлен! Номер заказа: ' + sd.print_order
+                                            : '🎉 Print order placed! Order number: ' + sd.print_order);
+                } else if (sd.print_status === 'failed') {
+                    setText('statusMsg', ru ? '⚠️ Не удалось отправить заказ в печать. Нажмите «Заказать печать», чтобы попробовать ещё раз, или напишите hello@supermestory.com.'
+                                            : '⚠️ We could not send your print order. Press "Order Print" to try again, or email hello@supermestory.com.');
+                } else if (sd.is_paid) {
+                    setText('statusMsg', ru ? '🎉 Все иллюстрации готовы!' : '🎉 All illustrations are ready!');
+                }
+                return;
+            }
+            if (!sd.busy && Date.now() - lastResume > 15000) {
+                lastResume = Date.now();
+                fetch('/api/stories/' + id + '/resume', { method: 'POST' }).catch(function() {});
+            }
+            await sleep(3000);
+        }
+        setText('statusMsg', ru ? 'Книга ещё готовится. Откройте её позже в разделе «My Books».'
+                                : 'Your book is still being prepared. Please open it again later from My Books.');
     }
 
     function closePaymentModal() { 
@@ -1501,6 +1616,7 @@
         reader.onload = function(evt) {
             var thumb = document.getElementById('photoThumb');
             if (thumb) {
+                thumb.onerror = function() { thumb.style.display = 'none'; };
                 thumb.src = evt.target.result;
                 thumb.style.display = 'block';
             }
@@ -1532,9 +1648,9 @@
                 img.src = temp.src;
                 img.style.opacity = '1';
             };
-            temp.src = p.image_url;
+            temp.src = p.image_url || (currentPages[0] && currentPages[0].image_url) || '';
 
-            if (isLocked) img.classList.add('locked-blur');
+            if (isLocked || !p.image_url) img.classList.add('locked-blur');
             else img.classList.remove('locked-blur');
         }
 
@@ -1642,6 +1758,8 @@
             var result = await response.json();
             if (result.success && result.pages) {
                 isPaidUser = false; currentTier = null;
+                currentPrices = result.prices || null;
+                renderTierPrices();
                 currentPages = result.pages;
                 if (result.story_id) currentStoryId = result.story_id;
                 if (result.title) currentBookTitle = result.title;
@@ -1695,15 +1813,13 @@
                         var r = await fetch('/api/stories/' + story.id);
                         var sd = await r.json();
                         if (!sd.success) return;
-                        currentPages = sd.pages;
-                        currentBookTitle = sd.title || story.title;
-                        currentDedicationText = sd.dedication_text || '';
-                        currentPsychologyQuestions = sd.psychology_questions || [];
-                        isPaidUser = !!sd.is_paid;
-                        currentTier = sd.paid_tier || null;
+                        applyStoryState(sd);
+                        if (!sd.title) currentBookTitle = story.title;
                         currentStoryId = story.id;
                         switchTab('create');
                         showSlide(0);
+                        if (sd.is_paid && (!sd.images_ready || sd.print_status === 'queued')) watchProgress(story.id);
+                        else setText('statusMsg', '');
                     } catch (err) {
                         alert('Error loading story: ' + err.message);
                     }
@@ -1841,7 +1957,10 @@
                 openPaymentModal();
                 return;
             }
-            if (!response.ok) throw new Error('ePub export failed');
+            if (!response.ok) {
+                var errBody = await response.json().catch(function() { return {}; });
+                throw new Error(errBody.detail || 'ePub export failed');
+            }
 
             var blob = await response.blob();
             var downloadUrl = window.URL.createObjectURL(blob);
@@ -1861,16 +1980,9 @@
     }
 
     async function submitLuluOrder() {
+        var ru = currentLang === 'ru';
         if (!currentStoryId || !currentPages || currentPages.length === 0) {
-            alert(currentLang === 'ru' ? 'Сначала сгенерируйте книгу!' : 'Please generate a book first!');
-            return;
-        }
-
-        if (!hasTier(['hardcover', 'vip'])) {
-            alert(currentLang === 'ru'
-                ? 'Для заказа печати сначала оплатите печатное издание.'
-                : 'Please purchase the printed edition first.');
-            openPaymentModal();
+            alert(ru ? 'Сначала сгенерируйте книгу!' : 'Please generate a book first!');
             return;
         }
 
@@ -1884,7 +1996,7 @@
         var countryVal = (document.getElementById('order-country-input').value || 'GB').trim();
 
         if (!nameVal || !emailVal || !phoneVal || !street1Val || !cityVal || !postcodeVal) {
-            alert(currentLang === 'ru'
+            alert(ru
                 ? 'Пожалуйста, заполните все обязательные поля: имя, email, телефон, улицу, город и индекс.'
                 : 'Please fill in all required fields: name, email, phone, street, city and postcode.');
             return;
@@ -1900,56 +2012,63 @@
         };
         if (street2Val) shippingAddress.street2 = street2Val.substring(0, 30);
 
-        var payload = {
-            story_id: currentStoryId,
-            contact_email: emailVal,
-            shipping_address: shippingAddress
-        };
+        // Print already paid: just send the address. Otherwise the address goes with the payment and the
+        // server orders the print by itself as soon as the payment is confirmed.
+        var printOwned = hasTier(['hardcover', 'vip']);
+        var tierEl = document.getElementById('order-cover-type');
+        var body = { story_id: currentStoryId, contact_email: emailVal, shipping_address: shippingAddress };
+        if (!printOwned) body.tier = (tierEl && tierEl.value) || 'hardcover';
 
         var btnOrder = document.getElementById('btn-order-pay');
-        var origBtnText = btnOrder ? btnOrder.innerText : 'Proceed to Payment';
-        if (btnOrder) { btnOrder.innerText = '⏳ Processing Order...'; btnOrder.disabled = true; }
+        if (btnOrder) { btnOrder.innerText = '⏳ ...'; btnOrder.disabled = true; }
 
         try {
-            var response = await fetch('/api/lulu-create-order', {
+            var response = await fetch(printOwned ? '/api/lulu-create-order' : '/api/create-checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(body)
             });
-
+            if (response.status === 401) {
+                currentUser = null; updateAuthButtonUI(); openAuthModal();
+                return;
+            }
             var result = await response.json();
-            if (response.ok && result.success) {
-                alert(currentLang === 'ru'
-                    ? '🎉 Заказ печати оформлен! Номер заказа: ' + ((result.lulu_response && result.lulu_response.id) || 'создан')
-                    : '🎉 Print order placed! Order number: ' + ((result.lulu_response && result.lulu_response.id) || 'created'));
+            if (printOwned) {
+                if (response.ok && result.success) {
+                    switchTab('create');
+                    setText('statusMsg', ru ? '📦 Отправляем книгу в печать...' : '📦 Sending your book to print...');
+                    watchProgress(currentStoryId);
+                } else {
+                    alert((ru ? 'Ошибка при оформлении заказа: ' : 'Order error: ') + (result.detail || 'Unknown error'));
+                }
+            } else if (response.ok && result.checkout_url) {
+                window.location.href = result.checkout_url;
             } else {
-                alert((currentLang === 'ru' ? 'Ошибка при оформлении заказа: ' : 'Order error: ') + (result.detail || 'Unknown error'));
+                alert((ru ? 'Ошибка оплаты: ' : 'Payment error: ') + (result.detail || result.error || 'Server error'));
             }
         } catch (err) {
-            alert(currentLang === 'ru' ? 'Произошла ошибка соединения с сервером.' : 'Server connection error.');
+            alert(ru ? 'Произошла ошибка соединения с сервером.' : 'Server connection error.');
         } finally {
-            if (btnOrder) { btnOrder.innerText = origBtnText; btnOrder.disabled = false; }
+            if (btnOrder) btnOrder.disabled = false;
+            renderTierPrices();
         }
     }
 
-    async function waitForPayment(id) {
+    async function waitForPayment(id, before) {
         switchTab('create');
+        currentStoryId = id;
         setText('statusMsg', '⏳ Confirming payment...');
         for (var i = 0; i < 20; i++) {
             var r = await fetch('/api/stories/' + id);
             if (r.status === 401) { setText('statusMsg', ''); openAuthModal(); return; }
             var sd = await r.json();
-            if (sd.success && sd.is_paid) {
-                currentPages = sd.pages;
-                currentStoryId = id;
-                currentBookTitle = sd.title;
-                currentDedicationText = sd.dedication_text || '';
-                currentPsychologyQuestions = sd.psychology_questions || [];
-                isPaidUser = true;
-                currentTier = sd.paid_tier;
+            // for an upgrade the book is already paid, so wait until the paid edition has actually changed
+            if (sd.success && sd.is_paid && (sd.paid_tier || '') !== (before || '')) {
+                applyStoryState(sd);
                 showSlide(0);
-                setText('statusMsg', '🎉 Payment successful! All book features are unlocked.');
                 history.replaceState({}, '', '/');
+                setText('statusMsg', '🎉 Payment successful!');
+                watchProgress(id);
                 return;
             }
             await new Promise(function(res) { setTimeout(res, 2000); });
@@ -1965,11 +2084,11 @@
             heroCta: '🚀 Start Creating',
             step1Title: '1. Photo & Hero', step1Desc: 'Upload a picture and enter child\'s name for tailored character resemblance.',
             step2Title: '2. Gentle Narrative', step2Desc: 'Choose therapeutic themes: dark fears, first day of school, anger, sharing.',
-            step3Title: '3. Read or Order', step3Desc: 'Read sample online, download full ePub with final chapters, or order a hardcover print book.',
+            step3Title: '3. Read or Order', step3Desc: 'Read sample online, download full ePub with final chapters, or order a printed book.',
             aboutTitle: 'About SuperMeStory', aboutTagline: 'Personalized therapeutic tales helping children grow confident, resilient, and happy.',
             aboutCol1Title: 'Why Story Therapy?', aboutCol1Desc: 'Each story is uniquely crafted for your child. Story therapy gently resolves childhood fears, builds emotional intelligence, and encourages kindness.',
             aboutCol2Title: 'Safety & Privacy', aboutCol2Desc: 'Fully compliant with UK GDPR & the ICO Children\'s Code. Photos are strictly used to create illustrations, never train public models, and are immediately deleted.',
-            aboutCol3Title: 'Formats & Print', aboutCol3Desc: 'Read free sample, unlock full ePub & audio bedtime narration, or order a beautifully bound physical hardcover delivered to your door.',
+            aboutCol3Title: 'Formats & Print', aboutCol3Desc: 'Read free sample, unlock full ePub & audio bedtime narration, or order a printed A5 book delivered to your door.',
             aboutStepsTitle: '3 Simple Steps:',
             aboutStep1: '<strong>Step 1:</strong> Enter child details and choose an inspiring story theme.',
             aboutStep2: '<strong>Step 2:</strong> Upload an optional photo & confirm parental consent.',
@@ -1990,16 +2109,16 @@
             btnPrev: '❮ Back', btnNext: 'Next ❯', btnAudioLbl: 'Audio Story', btnEpubLbl: 'Download ePub', btnOrderLbl: 'Order Print',
             lockTitle: 'Chapters 3–8 Locked', lockDesc: 'Unlock the full 8-chapter story, audio bedtime narration, and high-res tablet ePub download!', lockBtn: '✨ Unlock Full Book (£4.99)',
             libTitle: '📚 Your Created Books', libDesc: 'All your stories are saved in your account', libEmpty: 'No stories saved yet. Create your first book!',
-            orderTitle: '🚚 Order a Printed Book', orderDesc: 'We print your story on premium glossy paper with vibrant full-page illustrations and deliver it to your doorstep (UK only for now).',
+            orderTitle: '🚚 Order a Printed Book', orderDesc: 'We print your story as a 12-page A5 book on premium glossy paper with full-colour illustrations and deliver it to your doorstep (UK only for now). Your ePub is included.',
             lblOrderName: 'Recipient Full Name', lblOrderEmail: 'Contact Email', lblOrderPhone: 'Phone Number (Required)',
             lblOrderCountry: 'Country', lblOrderAddr: 'Street Address Line 1 (Max 30 chars)', lblOrderAddr2: 'Apt / Suite / Line 2 (Optional)',
-            lblOrderCity: 'City / Town', lblOrderPostcode: 'Postcode / ZIP', lblOrderType: 'Cover Type',
+            lblOrderCity: 'City / Town', lblOrderPostcode: 'Postcode / ZIP', lblOrderType: 'Edition',
             optOrderHard: 'Printed book — £14.99', btnOrderPay: 'Proceed to Payment & Printing',
-            payTitle: 'Choose Your Edition', paySubtitle: 'Unlock all 8 chapters, high-res ePub, voice narration, or a printed hardcover',
+            payTitle: 'Choose Your Edition', paySubtitle: 'Unlock all 8 chapters, high-res ePub, voice narration, or a printed book',
             fmtModalTitle: '✨ Choose Your Book Edition', fmtModalSubtitle: 'How would you like to experience your child\'s personalized story?',
             fmtCard1Title: 'Free Preview (Pages 1–2)', fmtCard1Desc: 'Preview the first 2 illustrated chapters in browser. Chapters 3–8 unlock for £4.99.', fmtCard1Price: 'FREE / £0.00', fmtCard1Btn: 'Read Sample',
             fmtCard2Title: 'Full Book + Audio', fmtCard2Desc: 'Unlock all 8 chapters, high-res ePub download, plus gentle bedtime voice narration!', fmtCard2Price: '£6.49 (£4.99 + £1.50)', fmtCard2Btn: 'Get Audio Edition',
-            fmtBadgeHit: 'Most Popular', fmtCard3Title: 'Printed Book', fmtCard3Desc: 'Premium physical hardcover printed & delivered straight to your door.', fmtCard3Price: '£14.99 (UK delivery included)', fmtCard3Btn: 'Order Print',
+            fmtBadgeHit: 'Most Popular', fmtCard3Title: 'Printed Book', fmtCard3Desc: 'Premium A5 book printed & delivered straight to your door.', fmtCard3Price: '£14.99 (UK delivery included)', fmtCard3Btn: 'Order Print',
             authModalTitle: 'Account Access', authModalSubtitle: 'Save your generated books and track print orders across all devices.',
             authSignIn: 'Sign In', authRegister: 'Create Account', lblAuthName: 'Your Name', lblAuthEmail: 'Email Address', lblAuthPass: 'Password',
             statusGen: '✨ Creating your personal story and illustrations...', statusDone: '🎉 Book is ready!'
@@ -2036,16 +2155,16 @@
             btnPrev: '❮ Назад', btnNext: 'Вперед ❯', btnAudioLbl: 'Аудиосказка', btnEpubLbl: 'Скачать ePub', btnOrderLbl: 'Заказать книжку',
             lockTitle: 'Главы 3–8 закрыты', lockDesc: 'Разблокируйте полную сказку из 8 глав, озвучку перед сном и скачивание файла ePub!', lockBtn: '✨ Разблокировать книгу (£4.99)',
             libTitle: '📚 Ваши созданные книги', libDesc: 'Все ваши истории сохранены в вашем аккаунте', libEmpty: 'Пока нет сохраненных книг. Создайте первую сказку!',
-            orderTitle: '🚚 Заказ книги в твердом переплете', orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге 170 г/м² с яркими иллюстрациями и доставим до двери.',
+            orderTitle: '🚚 Заказ печатной книги', orderDesc: 'Мы напечатаем сказку на премиальной глянцевой бумаге с яркими цветными иллюстрациями и доставим до двери.',
             lblOrderName: 'ФИО получателя', lblOrderEmail: 'Email для заказа', lblOrderPhone: 'Телефон (обязательно для курьера)',
             lblOrderCountry: 'Страна', lblOrderAddr: 'Улица и дом (до 30 символов)', lblOrderAddr2: 'Квартира / корпус (необязательно)',
-            lblOrderCity: 'Город', lblOrderPostcode: 'Почтовый индекс (Postcode)', lblOrderType: 'Тип переплета',
+            lblOrderCity: 'Город', lblOrderPostcode: 'Почтовый индекс (Postcode)', lblOrderType: 'Издание',
             optOrderHard: 'Печатная книга — £14.99', btnOrderPay: 'Перейти к оплате печати',
             payTitle: 'Выберите тариф', paySubtitle: 'Разблокируйте все 8 глав, озвучку и экспорт в ePub',
             fmtModalTitle: '✨ Выберите формат вашей книги', fmtModalSubtitle: 'В каком виде вы хотите получить персональную сказку?',
             fmtCard1Title: 'Бесплатное демо (1–2 стр.)', fmtCard1Desc: 'Оцените сказку и сходство с ребенком. Главы 3–8 открываются за £4.99.', fmtCard1Price: 'Бесплатно / £0.00', fmtCard1Btn: 'Читать демо',
             fmtCard2Title: 'Полная книга + Аудио', fmtCard2Desc: 'Все 8 глав, файл ePub для планшета и мягкая озвучка перед сном!', fmtCard2Price: '£6.49 (£4.99 + £1.50)', fmtCard2Btn: 'Купить с аудио',
-            fmtBadgeHit: 'Хит продаж', fmtCard3Title: 'Печатная книга', fmtCard3Desc: 'Настоящая книга в твердом переплете с доставкой на дом.', fmtCard3Price: '£14.99 (доставка по Британии включена)', fmtCard3Btn: 'Заказать печать',
+            fmtBadgeHit: 'Хит продаж', fmtCard3Title: 'Печатная книга', fmtCard3Desc: 'Настоящая печатная книга формата A5 с доставкой на дом.', fmtCard3Price: '£14.99 (доставка по Британии включена)', fmtCard3Btn: 'Заказать печать',
             authModalTitle: 'Личный кабинет', authModalSubtitle: 'Сохраняйте созданные книги и историю заказов в базе данных.',
             authSignIn: 'Войти', authRegister: 'Регистрация', lblAuthName: 'Ваше имя', lblAuthEmail: 'Ваш Email', lblAuthPass: 'Пароль',
             statusGen: '✨ Создаем персональную сказку и волшебные иллюстрации...', statusDone: '🎉 Сказка готова!'
@@ -2098,7 +2217,7 @@
             fmtModalTitle: '✨ Scegli il formato del libro', fmtModalSubtitle: 'Come preferisci ricevere la tua favola?',
             fmtCard1Title: 'Anteprima gratis (1–2 pag.)', fmtCard1Desc: 'Visualizzazione interattiva dei primi capitoli.', fmtCard1Price: 'Gratuito', fmtCard1Btn: 'Leggi ora',
             fmtCard2Title: 'Libro completo + Audio', fmtCard2Desc: 'Storia completa, file ePub per tablet e voce narrante.', fmtCard2Price: '£6.49', fmtCard2Btn: 'Acquista con audio',
-            fmtBadgeHit: 'Più venduto', fmtCard3Title: 'Libro stampato', fmtCard3Desc: 'Libro cartaceo con copertina rigida spedito a casa tua.', fmtCard3Price: '£14.99 + spedizione', fmtCard3Btn: 'Ordina stampa',
+            fmtBadgeHit: 'Più venduto', fmtCard3Title: 'Libro stampato', fmtCard3Desc: 'Libro cartaceo in formato A5 spedito a casa tua.', fmtCard3Price: '£14.99 + spedizione', fmtCard3Btn: 'Ordina stampa',
             statusGen: '✨ Scrittura della favola...', statusDone: '🎉 Il libro è pronto!'
         },
         tr: {
@@ -2215,9 +2334,9 @@
         setText('lbl-order-city', d.lblOrderCity);
         setText('lbl-order-postcode', d.lblOrderPostcode);
         setText('lbl-order-type', d.lblOrderType);
-        setText('opt-order-hard', d.optOrderHard);
+        
         setText('opt-order-prem', d.optOrderPrem);
-        setText('btn-order-pay', d.btnOrderPay);
+        setText('btn-order-pay', d.btnOrderPay); renderTierPrices();
 
         setText('pay-title', d.payTitle);
         setText('pay-subtitle', d.paySubtitle);
@@ -2302,6 +2421,7 @@
 
         var urlParams = new URLSearchParams(window.location.search);
         var payStoryId = (urlParams.get('payment') === 'success') ? parseInt(urlParams.get('story_id'), 10) : null;
+        var payBefore = urlParams.get('from') || '';
 
         fetch('/api/auth/me').then(function(r) { return r.ok ? r.json() : null; }).then(function(u) {
             if (u && u.success) {
@@ -2310,8 +2430,8 @@
                 var orderEmail = document.getElementById('order-email-input');
                 if (orderEmail && !orderEmail.value) orderEmail.value = u.email;
             }
-            if (payStoryId) waitForPayment(payStoryId);
-        }).catch(function() { if (payStoryId) waitForPayment(payStoryId); });
+            if (payStoryId) waitForPayment(payStoryId, payBefore);
+        }).catch(function() { if (payStoryId) waitForPayment(payStoryId, payBefore); });
     });
 </script>
 </body>
