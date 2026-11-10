@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import copy
 import hashlib
 import hmac
 import io
@@ -13,14 +14,14 @@ from typing import Dict, List, Optional
 import bcrypt
 import edge_tts
 import httpx
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import models
 from books import (ChapterData, EpubBuilder, StoryBookData,
@@ -28,12 +29,13 @@ from books import (ChapterData, EpubBuilder, StoryBookData,
 from database import Base, engine, get_db
 
 app = FastAPI(title="SuperMeStory Backend")
+SessionLocal = sessionmaker(bind=engine, autoflush=False)  # for background jobs that outlive a request
 
 Base.metadata.create_all(bind=engine)
 with engine.connect() as conn:  # adds columns to a table created by an older version
     try:
         for col in ("stripe_session_id VARCHAR", "plan_tier VARCHAR DEFAULT 'digital'",
-                    "paid_tier VARCHAR", "lulu_job_id VARCHAR"):
+                    "paid_tier VARCHAR", "lulu_job_id VARCHAR", "print_status VARCHAR", "shipping_json JSON"):
             conn.execute(text(f"ALTER TABLE saved_stories ADD COLUMN IF NOT EXISTS {col};"))
         conn.commit()
     except Exception as e:
@@ -107,6 +109,8 @@ class AuthRequest(BaseModel):
 class CheckoutRequest(BaseModel):
     story_id: int
     tier: str = "digital"
+    contact_email: Optional[str] = ""          # only for print editions
+    shipping_address: Optional[dict] = None    # only for print editions
 
 
 # ---------- sessions and access helpers ----------
@@ -154,6 +158,41 @@ def can(story: models.SavedStory, feature: str) -> bool:
     return {"epub": True, "audio": t in ("audio", "vip"), "print": t in ("hardcover", "vip")}[feature]
 
 
+def tier_prices(paid_tier: Optional[str]) -> dict:
+    """What each edition costs this book right now: the full price, or only the difference once something is owned."""
+    base = TIERS_CONFIG[paid_tier]["amount"] if paid_tier in TIERS_CONFIG else 0
+    out = {}
+    for key in TIERS_CONFIG:
+        target = merge_tier(paid_tier, key)
+        due = TIERS_CONFIG[target]["amount"] - base
+        out[key] = {"due": max(0, due), "owned": bool(paid_tier) and target == paid_tier}
+    return out
+
+
+def clean_shipping(addr: Optional[dict], email: Optional[str]) -> dict:
+    """Validates a UK delivery address for Lulu; raises 400 with a readable message."""
+    addr = addr or {}
+    a = {k: str(addr.get(k, "") or "").strip()[:100]
+         for k in ("name", "street1", "street2", "city", "postcode", "country_code", "phone_number")}
+    a["country_code"] = (a["country_code"] or "GB").upper()
+    if a["country_code"] not in ALLOWED_PRINT_COUNTRIES:
+        raise HTTPException(status_code=400, detail="Printing is currently available in the UK only")
+    if not all(a[k] for k in ("name", "street1", "city", "postcode", "phone_number")):
+        raise HTTPException(status_code=400, detail="Please fill in the name, phone, street, city and postcode")
+    a["street1"], a["street2"] = a["street1"][:30], a["street2"][:30]
+    if not a["street2"]:
+        del a["street2"]
+    email = (email or "").strip()[:200]
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="Please enter a valid contact email")
+    return {"contact_email": email, "shipping_address": a}
+
+
+def images_ready(s: models.SavedStory) -> bool:
+    chapters = (s.story_data or {}).get("chapters", [])
+    return bool(chapters) and all(c.get("image_url") for c in chapters)
+
+
 def story_pages(s: models.SavedStory) -> list:
     d = s.story_data or {}
     pages = [{"page_number": i + 1, "title": c["title"],
@@ -164,8 +203,8 @@ def story_pages(s: models.SavedStory) -> list:
     if qs and pages:
         t = PSYCH_TITLES.get(s.language_code, PSYCH_TITLES["en"])
         pages.append({"page_number": len(pages) + 1, "title": t,
-                      "text": f"«{t}»\n\n" + "\n\n".join(f"✨ {q}" for q in qs),
-                      "paragraphs": qs, "image_url": pages[-1]["image_url"]})
+                      "text": "\n\n".join(f"✨ {q}" for q in qs),
+                      "paragraphs": qs, "image_url": pages[0]["image_url"]})
     return pages
 
 
@@ -231,7 +270,8 @@ image_semaphore = asyncio.Semaphore(3)
 
 
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int,
-                                     photo_bytes: Optional[bytes] = None, photo_mime: str = "image/jpeg") -> str:
+                                     photo_bytes: Optional[bytes] = None, photo_mime: str = "image/jpeg",
+                                     reference_is_photo: bool = True) -> str:
     scene = prompt.replace('"', "").replace("'", "")
     full_prompt = (
         f"Create a high-quality square children's book illustration in {style} style. "
@@ -243,8 +283,13 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
     contents = []
     if photo_bytes:
         contents.append(types.Part.from_bytes(data=photo_bytes, mime_type=photo_mime))
-        full_prompt += (" CRITICAL: Preserve the child's exact facial features, hair color, hairstyle, and eye "
-                        "color from the attached reference photo while rendering them in the requested style!")
+        if reference_is_photo:
+            full_prompt += (" CRITICAL: Preserve the child's exact facial features, hair color, hairstyle, and eye "
+                            "color from the attached reference photo while rendering them in the requested style!")
+        else:  # the reference is an earlier illustration of this same book
+            full_prompt += (" CRITICAL: The attached image is an illustration from the same book. Draw the SAME "
+                            "main character: identical face, hair color, hairstyle, eye color, skin tone, age and "
+                            "the same art style and color palette. Only the scene and pose change.")
     contents.append(full_prompt)
     models_to_try = [m for m in (IMAGE_MODEL, IMAGE_MODEL_FALLBACK) if m]
 
@@ -265,6 +310,57 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
                     print(f"Image error ({model_name}, illustration {index + 1}): {e}")
             await asyncio.sleep(2)
     raise RuntimeError(f"Illustration {index + 1} could not be generated")
+
+
+def parse_data_url(url: str):
+    try:
+        head, b64 = url.split(",", 1)
+        return base64.b64decode(b64), (head[5:].split(";")[0] or "image/png")
+    except Exception:
+        return None, "image/png"
+
+
+_story_locks: Dict[int, asyncio.Lock] = {}
+PRINT_RUNNING: set = set()
+
+
+def story_lock(story_id: int) -> asyncio.Lock:
+    return _story_locks.setdefault(story_id, asyncio.Lock())
+
+
+def is_busy(story_id: int) -> bool:
+    return story_lock(story_id).locked() or story_id in PRINT_RUNNING
+
+
+async def finish_illustrations(story_id: int):
+    """After payment: paints the chapters that were left without a picture (the free preview has only 2).
+    The first picture of the book is the character reference, so no child photo needs to be stored."""
+    async with story_lock(story_id):
+        try:
+            with SessionLocal() as db:
+                s = db.get(models.SavedStory, story_id)
+                if not s or not s.is_paid:
+                    return
+                data = copy.deepcopy(s.story_data)
+                chapters = data.get("chapters", [])
+                missing = [i for i, c in enumerate(chapters) if not c.get("image_url")]
+                if not missing:
+                    return
+                ref_bytes, ref_mime = parse_data_url(chapters[0].get("image_url", ""))
+                results = await asyncio.gather(*[
+                    generate_book_illustration(chapters[i].get("image_prompt") or f"{s.style} scene {i + 1}",
+                                               s.style or "storybook", i, s.hero_name or "the child", s.age or 7,
+                                               ref_bytes, ref_mime, reference_is_photo=False)
+                    for i in missing], return_exceptions=True)
+                for i, r in zip(missing, results):
+                    if isinstance(r, str):
+                        chapters[i]["image_url"], chapters[i]["image_prompt"] = r, ""
+                    else:
+                        print(f"Story {story_id}: illustration {i + 1} failed: {r}")
+                s.story_data = data
+                db.commit()
+        except Exception as e:
+            print(f"finish_illustrations error (story {story_id}): {e}")
 
 
 # ---------- story generation ----------
@@ -327,13 +423,17 @@ Requirements for each chapter: a captivating title, 2-3 rich paragraphs of story
         if len(gen.chapters) != 8:
             raise ValueError(f"Expected 8 chapters, got {len(gen.chapters)}")
 
+        # Only the free preview pages get a picture now; the rest are painted after payment (finish_illustrations).
         urls = await asyncio.gather(*[
-            generate_book_illustration(ch.image_prompt or f"{style} scene {i + 1}", style, i,
+            generate_book_illustration(gen.chapters[i].image_prompt or f"{style} scene {i + 1}", style, i,
                                        hero_name, age, photo_bytes, photo_mime)
-            for i, ch in enumerate(gen.chapters)])
+            for i in range(FREE_PAGES)])
         for i, ch in enumerate(gen.chapters):
-            ch.chapter_number, ch.image_url = i + 1, urls[i]
-            ch.image_prompt = ""  # do not keep the photo-derived description of the child
+            ch.chapter_number = i + 1
+            if i < FREE_PAGES:
+                ch.image_url, ch.image_prompt = urls[i], ""
+            else:
+                ch.image_url = ""  # painted after payment; the scene prompt is kept until then
 
         book = StoryBookData(title=gen.title or f"Story for {hero_name}", language_code=lang,
                              dedication_text=dedication or gen.dedication_text,
@@ -346,7 +446,7 @@ Requirements for each chapter: a captivating title, 2-3 rich paragraphs of story
         db.refresh(story)
         return {"success": True, "story_id": story.id, "title": book.title,
                 "dedication_text": book.dedication_text, "psychology_questions": book.psychology_questions,
-                "pages": lock_pages(story_pages(story), False)}
+                "prices": tier_prices(None), "pages": lock_pages(story_pages(story), False)}
     except Exception as e:
         print(f"Generation Error: {e}")
         return {"success": False, "error": "We couldn't create the book this time. Please try again."}
@@ -358,6 +458,9 @@ async def get_saved_story(story_id: int, user: models.User = Depends(current_use
     d = s.story_data or {}
     return {"success": True, "id": s.id, "title": s.title, "hero_name": s.hero_name,
             "is_paid": s.is_paid, "paid_tier": s.paid_tier,
+            "prices": tier_prices(s.paid_tier if s.is_paid else None),
+            "images_ready": images_ready(s), "busy": is_busy(s.id),
+            "print_status": s.print_status, "print_order": s.lulu_job_id,
             "dedication_text": d.get("dedication_text", ""),
             "psychology_questions": d.get("psychology_questions", []),
             "pages": lock_pages(story_pages(s), s.is_paid)}
@@ -388,14 +491,23 @@ async def create_checkout_session(req: CheckoutRequest, user: models.User = Depe
     if not SQUARE_LOCATION_ID or not SQUARE_ACCESS_TOKEN:
         raise HTTPException(status_code=500, detail="Square credentials not set on server")
 
-    tier = TIERS_CONFIG[tier_key]
+    paid_before = story.paid_tier if story.is_paid else None
+    target = merge_tier(paid_before, tier_key)
+    due = tier_prices(paid_before)[tier_key]["due"]  # full price, or only the difference for an upgrade
+    if due <= 0:
+        raise HTTPException(status_code=400, detail="You already have this edition")
+    if target in ("hardcover", "vip") and not can(story, "print"):
+        # the delivery address is kept only until the print order has been sent to Lulu
+        story.shipping_json = clean_shipping(req.shipping_address, req.contact_email)
+
+    tier = TIERS_CONFIG[target]
+    label = f"Upgrade to {tier['name']}" if paid_before else tier["name"]
     body = {
         "idempotency_key": str(uuid.uuid4()),
-        "quick_pay": {"name": f"{story.title} - {tier['name']}"[:255],
-                      "price_money": {"amount": tier["amount"], "currency": "GBP"},
+        "quick_pay": {"name": f"{story.title} - {label}"[:255],
+                      "price_money": {"amount": due, "currency": "GBP"},
                       "location_id": SQUARE_LOCATION_ID},
-        "checkout_options": {"redirect_url": f"{PUBLIC_BASE_URL}/?payment=success&story_id={story.id}",
-                             "ask_for_shipping_address": tier["shipping"]},
+        "checkout_options": {"redirect_url": f"{PUBLIC_BASE_URL}/?payment=success&story_id={story.id}&from={paid_before or ''}"},
     }
     headers = {"Square-Version": "2024-01-18", "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
                "Content-Type": "application/json"}
@@ -420,7 +532,7 @@ def verify_square_signature(body: bytes, signature: str) -> bool:
 
 
 @app.post("/api/square-webhook")
-async def square_webhook(request: Request, db: Session = Depends(get_db)):
+async def square_webhook(request: Request, background: BackgroundTasks, db: Session = Depends(get_db)):
     body = await request.body()
     if not verify_square_signature(body, request.headers.get("x-square-hmacsha256-signature", "")):
         raise HTTPException(status_code=403, detail="Bad signature")
@@ -438,11 +550,22 @@ async def square_webhook(request: Request, db: Session = Depends(get_db)):
         return {"success": True}
     story = db.query(models.SavedStory).filter(models.SavedStory.stripe_session_id == pay.get("order_id")).first()
     money = pay.get("amount_money", {})
-    if (story and story.plan_tier in TIERS_CONFIG and money.get("currency") == "GBP"
-            and money.get("amount") == TIERS_CONFIG[story.plan_tier]["amount"]):
-        story.paid_tier = merge_tier(story.paid_tier, story.plan_tier)
+    if not story or story.plan_tier not in TIERS_CONFIG:
+        print(f"Square payment {pid} matches no book (order {pay.get('order_id')})")
+        return {"success": True}
+    paid_before = story.paid_tier if story.is_paid else None
+    due = tier_prices(paid_before)[story.plan_tier]["due"]
+    if due > 0 and money.get("currency") == "GBP" and money.get("amount") == due:
+        story.paid_tier = merge_tier(paid_before, story.plan_tier)
         story.is_paid = True
+        wants_print = can(story, "print") and bool(story.shipping_json) and not story.lulu_job_id
+        if wants_print:
+            story.print_status = "queued"
         db.commit()
+        # the remaining pictures are painted, and a print order is sent to Lulu, in the background
+        background.add_task(place_print_order if wants_print else finish_illustrations, story.id)
+    elif due > 0:
+        print(f"Square payment {pid}: amount {money} does not match the {due} due for story {story.id}")
     return {"success": True}
 
 
@@ -469,14 +592,18 @@ async def export_epub(story_id: int, user: models.User = Depends(current_user), 
     s = owned_story(story_id, user, db)
     if not can(s, "epub"):
         raise HTTPException(status_code=402, detail="Payment Required")
-    data = await EpubBuilder.create_epub(StoryBookData(**{**s.story_data, "is_paid": True}))
+    if not images_ready(s):
+        raise HTTPException(status_code=409, detail="Your illustrations are still being painted. Please try again in a minute.")
+    data = await EpubBuilder.create_epub(StoryBookData(**{**s.story_data, "is_paid": True, "hero_name": s.hero_name}))
     return Response(content=data, media_type="application/epub+zip",
                     headers={"Content-Disposition": 'attachment; filename="SuperMeStory_Book.epub"'})
 
 
-# ---------- printing (Lulu); sandbox, 6x9 layout until the A5 step ----------
+# ---------- printing (Lulu): A5 saddle stitch, 12 pages ----------
 
 LULU_PDF_STORAGE: Dict[str, bytes] = {}
+# A5, Premium Color, saddle stitch, 80# coated white, glossy cover. Can be changed in Railway without code.
+LULU_POD_PACKAGE_ID = os.environ.get("LULU_POD_PACKAGE_ID", "0583X0827.FC.PRE.SS.080CW444.GXX")
 
 
 @app.get("/api/lulu-files/{file_id}.pdf")
@@ -498,26 +625,14 @@ async def get_lulu_access_token() -> str:
         res = await http.post(url, headers=headers, data={"grant_type": "client_credentials"})
     if res.status_code != 200:
         print(f"Lulu Token Error: {res.text}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Lulu API")
+        raise RuntimeError("Failed to connect to Lulu API")
     return res.json().get("access_token")
 
 
-@app.post("/api/lulu-create-order")
-async def lulu_create_order(req: LuluOrderRequest, user: models.User = Depends(current_user),
-                            db: Session = Depends(get_db)):
-    s = owned_story(req.story_id, user, db)
-    if not can(s, "print"):
-        raise HTTPException(status_code=402, detail="Print edition required")
-    if s.lulu_job_id:
-        raise HTTPException(status_code=409, detail="Print order already placed")
-    addr = dict(req.shipping_address)
-    if str(addr.get("country_code", "")).upper() not in ALLOWED_PRINT_COUNTRIES:
-        raise HTTPException(status_code=400, detail="Printing is currently available in the UK only")
-    for key in ("street1", "street2"):
-        if addr.get(key):
-            addr[key] = str(addr[key])[:30]
-
-    story = StoryBookData(**{**s.story_data, "is_paid": True})
+async def send_to_lulu(s: models.SavedStory) -> Optional[str]:
+    """Builds the A5 interior and cover PDFs, creates the Lulu print job and returns its id (None on failure)."""
+    ship = s.shipping_json or {}
+    story = StoryBookData(**{**s.story_data, "is_paid": True, "hero_name": s.hero_name})
     token = await get_lulu_access_token()
     sandbox = os.environ.get("LULU_ENV", "sandbox") == "sandbox"
     orders_url = "https://api.sandbox.lulu.com/print-jobs/" if sandbox else "https://api.lulu.com/print-jobs/"
@@ -525,29 +640,96 @@ async def lulu_create_order(req: LuluOrderRequest, user: models.User = Depends(c
     interior_id, cover_id = f"interior_{uuid.uuid4().hex}", f"cover_{uuid.uuid4().hex}"
     LULU_PDF_STORAGE[interior_id] = await asyncio.to_thread(generate_print_pdf_bytes, story)
     LULU_PDF_STORAGE[cover_id] = await asyncio.to_thread(generate_cover_pdf_bytes, story)
-    while len(LULU_PDF_STORAGE) > 20:  # keep memory bounded
+    while len(LULU_PDF_STORAGE) > 60:  # keep memory bounded (Lulu downloads the files shortly after the order)
         LULU_PDF_STORAGE.pop(next(iter(LULU_PDF_STORAGE)))
 
     payload = {
-        "contact_email": req.contact_email,
+        "external_id": f"story-{s.id}",
+        "contact_email": ship.get("contact_email", ""),
         "shipping_level": "MAIL",
-        "shipping_address": addr,
+        "shipping_address": ship.get("shipping_address", {}),
         "line_items": [{
-            "title": story.title, "quantity": 1,
-            "pod_package_id": os.environ.get("LULU_POD_PACKAGE_ID", "0600X0900.FC.PRE.SS.080CW444.GXX"),
+            "title": story.title[:255], "quantity": 1,
+            "pod_package_id": LULU_POD_PACKAGE_ID,
             "cover": f"{PUBLIC_BASE_URL}/api/lulu-files/{cover_id}.pdf",
             "interior": f"{PUBLIC_BASE_URL}/api/lulu-files/{interior_id}.pdf",
         }],
     }
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json", "Lulu-Source": "SuperMeStory"}
-    async with httpx.AsyncClient() as http:
+    async with httpx.AsyncClient(timeout=60.0) as http:
         res = await http.post(orders_url, headers=headers, json=payload)
     if res.status_code in (200, 201):
-        s.lulu_job_id = str(res.json().get("id"))
+        return str(res.json().get("id"))
+    print(f"Lulu Order Error (story {s.id}): {res.status_code} {res.text}")
+    return None
+
+
+async def place_print_order(story_id: int):
+    """Runs in the background after payment: makes sure all pictures exist, then orders the print from Lulu.
+    The delivery address is deleted as soon as Lulu has accepted the order."""
+    if story_id in PRINT_RUNNING:
+        return
+    PRINT_RUNNING.add(story_id)
+    try:
+        await finish_illustrations(story_id)
+        with SessionLocal() as db:
+            s = db.get(models.SavedStory, story_id)
+            if not s or not can(s, "print") or s.lulu_job_id or not s.shipping_json:
+                return
+            job_id = await send_to_lulu(s) if images_ready(s) else None
+            if job_id:
+                s.lulu_job_id, s.print_status, s.shipping_json = job_id, "placed", None
+            else:
+                s.print_status = "failed"
+            db.commit()
+    except Exception as e:
+        print(f"place_print_order error (story {story_id}): {e}")
+        try:
+            with SessionLocal() as db:
+                s = db.get(models.SavedStory, story_id)
+                if s and not s.lulu_job_id:
+                    s.print_status = "failed"
+                    db.commit()
+        except Exception as e2:
+            print(f"place_print_order cleanup error: {e2}")
+    finally:
+        PRINT_RUNNING.discard(story_id)
+
+
+@app.post("/api/lulu-create-order")
+async def lulu_create_order(req: LuluOrderRequest, background: BackgroundTasks,
+                            user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    """For a book whose print edition is already paid: saves the address and sends the order in the background."""
+    s = owned_story(req.story_id, user, db)
+    if not can(s, "print"):
+        raise HTTPException(status_code=402, detail="Print edition required")
+    if s.lulu_job_id:
+        raise HTTPException(status_code=409, detail="Print order already placed")
+    if is_busy(s.id):
+        return {"success": True, "status": "queued"}
+    s.shipping_json = clean_shipping(req.shipping_address, req.contact_email)
+    s.print_status = "queued"
+    db.commit()
+    background.add_task(place_print_order, s.id)
+    return {"success": True, "status": "queued"}
+
+
+@app.post("/api/stories/{story_id}/resume")
+async def resume_story(story_id: int, background: BackgroundTasks,
+                       user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    """Restarts unfinished paid work (pictures, print order), e.g. after the server was restarted."""
+    s = owned_story(story_id, user, db)
+    if not s.is_paid or is_busy(s.id):
+        return {"success": True, "started": False}
+    if can(s, "print") and s.shipping_json and not s.lulu_job_id:
+        s.print_status = "queued"
         db.commit()
-        return {"success": True, "lulu_response": res.json()}
-    print(f"Lulu Order Error: {res.text}")
-    raise HTTPException(status_code=400, detail="The print order could not be placed. Please contact support.")
+        background.add_task(place_print_order, s.id)
+        return {"success": True, "started": True}
+    if not images_ready(s):
+        background.add_task(finish_illustrations, s.id)
+        return {"success": True, "started": True}
+    return {"success": True, "started": False}
 
 
 # ---------- pages ----------
