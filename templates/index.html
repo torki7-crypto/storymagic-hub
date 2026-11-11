@@ -557,6 +557,7 @@
             margin-top: 20px;
         }
         .book-item-card {
+            position: relative;
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 14px;
@@ -569,6 +570,14 @@
         .book-item-info { padding: 14px; }
         .book-item-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; color: #ff9a9e; }
         .book-item-meta { font-size: 0.85em; color: #b39ddb; }
+        .book-delete-btn {
+            position: absolute; top: 8px; right: 8px; width: 34px; height: 34px;
+            border-radius: 50%; border: none; cursor: pointer; font-size: 1em;
+            background: rgba(19, 13, 36, 0.78); color: #fff;
+        }
+        .book-delete-btn:hover { background: #c0392b; }
+        .purchase-note { font-size: 0.75em; color: #94a3b8; margin-top: 12px; line-height: 1.5; }
+        .purchase-note a { color: #93c5fd; }
 
         .modal-overlay {
             position: fixed;
@@ -1038,6 +1047,9 @@
                 </div>
 
                 <div id="myBooksGrid" class="library-grid"></div>
+                <div style="text-align:center; margin-top:36px;">
+                    <button type="button" onclick="deleteAccount()" style="background:none; border:none; color:#94a3b8; text-decoration:underline; cursor:pointer; font-size:0.85em;" id="btn-delete-account">Delete my account and all my books</button>
+                </div>
             </div>
         </div>
 
@@ -1102,6 +1114,7 @@
                 </div>
 
                 <button type="button" class="magic-btn" onclick="submitLuluOrder()" style="margin-top:16px;" id="btn-order-pay">Proceed to Payment & Printing</button>
+                <p class="purchase-note" style="text-align:left;">By paying you agree to the <a href="/terms" target="_blank">Terms</a>. Your book is made specially for your child and digital content is delivered immediately, so the 14-day right to cancel does not apply (your other legal rights are not affected).</p>
             </div>
         </div>
     </main>
@@ -1228,6 +1241,7 @@
                     <button type="button" class="format-select-btn" id="pm-btn-vip">Get Print + Audio (£16.49)</button>
                 </div>
             </div>
+            <p class="purchase-note">By paying you agree to the <a href="/terms" target="_blank">Terms</a>. Your book is made specially for your child and digital content is delivered immediately, so the 14-day right to cancel does not apply (your other legal rights are not affected).</p>
         </div>
     </div>
 
@@ -1811,7 +1825,9 @@
                                '<div class="book-item-info">' +
                                '<div class="book-item-title">' + esc(story.title) + '</div>' +
                                '<div class="book-item-meta">' + esc(story.created_at || '') + ' • ' + esc(story.hero_name) + ' (' + esc(story.age) + ' y/o)</div>' +
-                               '</div>';
+                               '</div>' +
+                               '<button type="button" class="book-delete-btn" title="Delete">🗑</button>';
+                el.querySelector('.book-delete-btn').onclick = function(ev) { ev.stopPropagation(); deleteBook(story); };
 
                 el.onclick = async function() {
                     try {
@@ -1833,6 +1849,49 @@
             });
         } catch (e) {
             box.innerHTML = '<p style="color:#ff6b6b; grid-column: 1/-1; text-align: center;">Error loading stories: ' + esc(e.message) + '</p>';
+        }
+    }
+
+    async function deleteBook(story) {
+        var ru = currentLang === 'ru';
+        var msg = ru ? 'Удалить книгу «' + story.title + '» навсегда? Это нельзя отменить.'
+                     : 'Delete "' + story.title + '" permanently? This cannot be undone.';
+        if (story.is_paid) msg += ru ? '\n\nКнига оплачена: после удаления доступ к ней пропадёт.'
+                                     : '\n\nThis book is paid for: you will lose access to it.';
+        if (!confirm(msg)) return;
+        try {
+            var r = await fetch('/api/stories/' + story.id, { method: 'DELETE' });
+            var j = await r.json().catch(function() { return {}; });
+            if (!r.ok) { alert(j.detail || (ru ? 'Не удалось удалить книгу' : 'Could not delete the book')); return; }
+            if (story.id === currentStoryId) {
+                currentStoryId = null; currentPages = []; isPaidUser = false; currentTier = null;
+                location.reload();
+                return;
+            }
+            loadLibrary();
+        } catch (e) {
+            alert(ru ? 'Ошибка соединения с сервером.' : 'Server connection error.');
+        }
+    }
+
+    async function deleteAccount() {
+        var ru = currentLang === 'ru';
+        if (!currentUser) { openAuthModal(); return; }
+        var typed = prompt(ru
+            ? 'Аккаунт и ВСЕ ваши книги будут удалены навсегда. Для подтверждения введите ваш email (' + currentUser.email + '):'
+            : 'Your account and ALL your books will be deleted permanently. To confirm, type your email (' + currentUser.email + '):');
+        if (typed === null) return;
+        try {
+            var r = await fetch('/api/account/delete', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ confirm_email: typed })
+            });
+            var j = await r.json().catch(function() { return {}; });
+            if (!r.ok) { alert(j.detail || (ru ? 'Не удалось удалить аккаунт' : 'Could not delete the account')); return; }
+            alert(ru ? 'Ваш аккаунт и все книги удалены.' : 'Your account and all your books have been deleted.');
+            location.href = '/';
+        } catch (e) {
+            alert(ru ? 'Ошибка соединения с сервером.' : 'Server connection error.');
         }
     }
 
