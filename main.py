@@ -709,6 +709,24 @@ async def serve_lulu_pdf(file_id: str):
     return Response(content=pdf, media_type="application/pdf")
 
 
+@app.get("/api/stories/{story_id}/print-pdf")
+async def download_print_pdf(story_id: int, part: str = "interior", user: models.User = Depends(current_user),
+                             db: Session = Depends(get_db)):
+    """The exact PDF files that go to the printer, so the owner can look at them (open in the browser while signed in)."""
+    s = owned_story(story_id, user, db)
+    if part not in ("interior", "cover"):
+        raise HTTPException(status_code=400, detail="part must be 'interior' or 'cover'")
+    if not s.is_paid or s.paid_tier not in ("hardcover", "vip"):
+        raise HTTPException(status_code=403, detail="The print files are available for books with the print edition.")
+    if not images_ready(s):
+        raise HTTPException(status_code=409, detail="The illustrations are still being painted. Please try again in a minute.")
+    story = StoryBookData(**{**s.story_data, "is_paid": True, "hero_name": s.hero_name})
+    make = generate_print_pdf_bytes if part == "interior" else generate_cover_pdf_bytes
+    pdf = await asyncio.to_thread(make, story)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="book-{story_id}-{part}.pdf"'})
+
+
 async def get_lulu_access_token() -> str:
     sandbox = os.environ.get("LULU_ENV", "sandbox") == "sandbox"
     url = ("https://api.sandbox.lulu.com/auth/realms/glasstree/protocol/openid-connect/token" if sandbox
