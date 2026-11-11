@@ -1,12 +1,17 @@
 FROM python:3.13-slim
 
-# Устанавливаем системные зависимости, необходимые для WeasyPrint (Cairo, Pango, GObject)
+# Системные библиотеки для WeasyPrint (Pango, HarfBuzz) и шрифты для печатных PDF
+# (DejaVu Serif покрывает латиницу и кириллицу, Liberation Serif похож на Times)
 RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libharfbuzz0b \
     libpangoft2-1.0-0 \
     libffi-dev \
     shared-mime-info \
+    fontconfig \
+    fonts-dejavu-core \
+    fonts-liberation \
+    && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
