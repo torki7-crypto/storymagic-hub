@@ -204,7 +204,7 @@ def story_pages(s: models.SavedStory) -> list:
         t = PSYCH_TITLES.get(s.language_code, PSYCH_TITLES["en"])
         pages.append({"page_number": len(pages) + 1, "title": t,
                       "text": "\n\n".join(f"✨ {q}" for q in qs),
-                      "paragraphs": qs, "image_url": pages[0]["image_url"]})
+                      "paragraphs": qs, "image_url": pages[-1]["image_url"]})
     return pages
 
 
@@ -278,14 +278,16 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
         f"Main character: cute {age}-year-old child named {hero_name}. Scene: {scene}. "
         "Anatomically correct proportions, natural human and animal anatomy, strictly two arms and two legs "
         "for the child, four legs for animals, clean composition, vibrant warm colors, masterpiece storybook "
-        "art, no text or watermarks."
+        "art, no text or watermarks. It must look like a hand-painted illustration, clearly NOT a photograph "
+        "and NOT photorealistic."
     )
     contents = []
     if photo_bytes:
         contents.append(types.Part.from_bytes(data=photo_bytes, mime_type=photo_mime))
         if reference_is_photo:
-            full_prompt += (" CRITICAL: Preserve the child's exact facial features, hair color, hairstyle, and eye "
-                            "color from the attached reference photo while rendering them in the requested style!")
+            full_prompt += (" CRITICAL: The attached photo is ONLY a reference for the child's face, hair color, "
+                            "hairstyle and eye color. Keep that likeness, but do NOT copy the photo's background, "
+                            "clothing, objects or pose, and do not make the result look like a photo.")
         else:  # the reference is an earlier illustration of this same book
             full_prompt += (" CRITICAL: The attached image is an illustration from the same book. Draw the SAME "
                             "main character: identical face, hair color, hairstyle, eye color, skin tone, age and "
@@ -392,7 +394,13 @@ async def generate_story(
                 photo_rule = ("4. PHOTO LIKENESS (CRITICAL): Look closely at the attached photo of the child. "
                               "Identify their exact physical appearance: gender, hair color, hairstyle/length, eye "
                               "color, skin tone, and any distinctive features. Include this exact physical "
-                              "description at the beginning of EVERY chapter's 'image_prompt'!")
+                              "description at the beginning of EVERY chapter's 'image_prompt'! Describe ONLY "
+                              "the face, hair, eyes and skin tone. Do NOT copy the clothing, objects, background "
+                              "or location from the photo, and do NOT set chapter 1 where the photo was taken: "
+                              "invent an imaginative fairy-tale scene that fits the theme. Give the child ONE "
+                              "simple storybook outfit (describe it in words) and repeat exactly that outfit in "
+                              "EVERY image_prompt so it stays the same. The story text may mention at most one "
+                              "small real detail from the photo, such as a favourite accessory.")
 
         ded_rule = (f"Dedication text provided by parents: '{dedication}'." if dedication else
                     "Create a short, touching, warm parent dedication text for field 'dedication_text'.")
@@ -412,6 +420,7 @@ CRITICAL VISUAL & ANATOMY RULES FOR IMAGE PROMPTS:
 3. The image_prompts must ensure strict visual continuity and adhere to the chosen {style}.
 {photo_rule}
 5. In every 'image_prompt', describe simple, clear, natural poses.
+6. Every 'image_prompt' describes an imaginative painted storybook scene, never a photograph or a realistic portrait.
 
 Requirements for each chapter: a captivating title, 2-3 rich paragraphs of storytelling text, and a short vivid English 'image_prompt'.
 """)
