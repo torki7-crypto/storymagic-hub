@@ -6,6 +6,7 @@ import hmac
 import io
 import json
 import os
+import re
 import time
 import uuid
 from datetime import datetime, timedelta
@@ -50,6 +51,8 @@ FREE_PAGES = 2
 DAILY_STORY_LIMIT = int(os.environ.get("DAILY_STORY_LIMIT", "3"))
 UNPAID_RETENTION_DAYS = int(os.environ.get("UNPAID_RETENTION_DAYS", "30"))  # unpaid previews are deleted after this
 ALLOWED_PRINT_COUNTRIES = {"GB"}
+# Books whose first pages are shown to everybody as the example on the Create page (comma-separated ids).
+SAMPLE_STORY_IDS = [int(x) for x in re.findall(r"\d+", os.environ.get("SAMPLE_STORY_IDS", ""))]
 
 app.add_middleware(CORSMiddleware, allow_origins=[PUBLIC_BASE_URL], allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
@@ -192,6 +195,10 @@ def clean_shipping(addr: Optional[dict], email: Optional[str]) -> dict:
 def images_ready(s: models.SavedStory) -> bool:
     chapters = (s.story_data or {}).get("chapters", [])
     return bool(chapters) and all(c.get("image_url") for c in chapters)
+
+
+def images_done(s: models.SavedStory) -> int:
+    return sum(1 for c in (s.story_data or {}).get("chapters", []) if c.get("image_url"))
 
 
 def story_pages(s: models.SavedStory) -> list:
@@ -484,6 +491,7 @@ async def get_saved_story(story_id: int, user: models.User = Depends(current_use
             "is_paid": s.is_paid, "paid_tier": s.paid_tier,
             "prices": tier_prices(s.paid_tier if s.is_paid else None),
             "images_ready": images_ready(s), "busy": is_busy(s.id),
+            "images_done": images_done(s), "images_total": len((s.story_data or {}).get("chapters", [])),
             "print_status": s.print_status, "print_order": s.lulu_job_id,
             "dedication_text": d.get("dedication_text", ""),
             "psychology_questions": d.get("psychology_questions", []),
@@ -540,8 +548,9 @@ def cleanup_old_data() -> None:
     """Unpaid previews and undelivered delivery addresses are not kept longer than UNPAID_RETENTION_DAYS."""
     cutoff = datetime.utcnow() - timedelta(days=UNPAID_RETENTION_DAYS)
     with engine.begin() as conn:
-        n = conn.execute(text("DELETE FROM saved_stories WHERE COALESCE(is_paid, false) = false AND created_at < :c"),
-                         {"c": cutoff}).rowcount
+        n = conn.execute(text("DELETE FROM saved_stories WHERE COALESCE(is_paid, false) = false AND created_at < :c "
+                              "AND NOT (id = ANY(CAST(:keep AS integer[])))"),
+                         {"c": cutoff, "keep": SAMPLE_STORY_IDS}).rowcount
         m = conn.execute(text("UPDATE saved_stories SET shipping_json = NULL "
                               "WHERE shipping_json IS NOT NULL AND created_at < :c"), {"c": cutoff}).rowcount
     print(f"Clean-up: {n} unpaid books deleted, {m} old delivery addresses removed")
@@ -818,6 +827,98 @@ async def resume_story(story_id: int, background: BackgroundTasks,
     return {"success": True, "started": False}
 
 
+# ---------- example book shown on the Create page ----------
+
+_sample_cache: Dict[tuple, list] = {}
+_sample_locks: Dict[tuple, asyncio.Lock] = {}
+
+
+class SampleChapter(BaseModel):
+    title: str
+    paragraphs: List[str]
+
+
+class SampleTranslation(BaseModel):
+    chapters: List[SampleChapter]
+
+
+def pick_sample(db: Session, lang: str) -> Optional[models.SavedStory]:
+    """The sample book written in the visitor's language if there is one, otherwise the first available."""
+    found = []
+    for sid in SAMPLE_STORY_IDS:
+        s = db.get(models.SavedStory, sid)
+        if s and (s.story_data or {}).get("chapters"):
+            found.append(s)
+    for s in found:
+        if s.language_code == lang:
+            return s
+    return found[0] if found else None
+
+
+async def translate_sample(chapters: list, src: str, lang: str) -> Optional[list]:
+    payload = [{"title": c["title"], "paragraphs": c["paragraphs"]} for c in chapters]
+    prompt = (f"Translate this children's storybook excerpt from {LANG_NAMES.get(src, src)} into {LANG_NAMES[lang]}. "
+              "Keep the warm, simple storybook style, keep the same number of chapters and paragraphs, and write the "
+              "character names the way they are normally written in the target language. Return JSON only.\n\n"
+              + json.dumps(payload, ensure_ascii=False))
+    resp = await asyncio.to_thread(
+        client.models.generate_content, model=TEXT_MODEL, contents=prompt,
+        config=types.GenerateContentConfig(response_mime_type="application/json",
+                                           response_schema=SampleTranslation, temperature=0.2))
+    out = SampleTranslation.model_validate_json(resp.text).chapters
+    if len(out) != len(chapters) or any(not c.paragraphs for c in out):
+        return None
+    return [{"title": c.title, "paragraphs": c.paragraphs} for c in out]
+
+
+@app.get("/api/sample")
+async def get_sample(lang: str = "en", db: Session = Depends(get_db)):
+    """First pages of a real book for everybody to look at. The text is translated into the visitor's language
+    once and kept in memory; the pictures are the same for every language."""
+    lang = lang if lang in LANG_NAMES else "en"
+    s = pick_sample(db, lang)
+    if not s:
+        return {"success": False}
+    story_id, src = s.id, (s.language_code or "en")
+    chapters = [{"title": c["title"], "paragraphs": c["paragraphs"]}
+                for c in (s.story_data or {}).get("chapters", [])[:FREE_PAGES]]
+    with_image = [bool(c.get("image_url")) for c in (s.story_data or {}).get("chapters", [])[:FREE_PAGES]]
+    db.close()  # do not hold a database connection while the translation runs
+
+    texts, translated = chapters, False
+    if lang != src:
+        key = (story_id, lang)
+        if key not in _sample_cache:
+            async with _sample_locks.setdefault(key, asyncio.Lock()):
+                if key not in _sample_cache:
+                    try:
+                        tr = await translate_sample(chapters, src, lang)
+                        if tr:
+                            _sample_cache[key] = tr
+                    except Exception as e:
+                        print(f"Sample translation error ({lang}): {e}")
+        if key in _sample_cache:
+            texts, translated = _sample_cache[key], True
+
+    pages = [{"page_number": i + 1, "title": c["title"],
+              "text": f"«{c['title']}»\n\n" + "\n\n".join(c["paragraphs"]),
+              "image_url": f"/api/sample/image/{story_id}/{i}" if with_image[i] else ""}
+             for i, c in enumerate(texts)]
+    return {"success": True, "lang": lang if translated else src, "translated": translated, "pages": pages}
+
+
+@app.get("/api/sample/image/{story_id}/{n}")
+async def sample_image(story_id: int, n: int, db: Session = Depends(get_db)):
+    if story_id not in SAMPLE_STORY_IDS or not 0 <= n < FREE_PAGES:
+        raise HTTPException(status_code=404, detail="Not found")
+    s = db.get(models.SavedStory, story_id)
+    chapters = (s.story_data or {}).get("chapters", []) if s else []
+    raw, mime = parse_data_url(chapters[n].get("image_url", "")) if n < len(chapters) else (None, "")
+    if not raw:
+        raise HTTPException(status_code=404, detail="Not found")
+    return Response(content=raw, media_type=mime, headers={"Cache-Control": "public, max-age=86400"})
+
+
 # ---------- pages ----------
 
 def _page(name: str) -> HTMLResponse:
@@ -828,6 +929,15 @@ def _page(name: str) -> HTMLResponse:
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     return _page("index")
+
+
+@app.get("/castle.jpg")
+async def castle_picture():
+    """Default picture of the reader before a book exists (used when no example book is set)."""
+    for path in ("castle.jpg", "templates/castle.jpg", "static/castle.jpg"):
+        if os.path.exists(path):
+            return FileResponse(path, headers={"Cache-Control": "public, max-age=86400"})
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 @app.get("/privacy", response_class=HTMLResponse)
