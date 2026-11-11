@@ -337,6 +337,29 @@
             min-height: 20px;
         }
 
+        .progress-box {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(161,196,253,0.4);
+            border-radius: 16px;
+            padding: 16px 20px;
+        }
+        .progress-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+        .progress-title { font-size: 1.08em; font-weight: 700; color: #fff; }
+        .progress-close { background: none; border: none; color: #a1c4fd; font-size: 1.1em; cursor: pointer; padding: 0 4px; }
+        .progress-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        .progress-steps li { display: flex; align-items: flex-start; gap: 10px; color: #94a3b8; font-size: 0.93em; }
+        .progress-steps li.done { color: #86efac; }
+        .progress-steps li.active { color: #fde68a; font-weight: 600; }
+        .progress-steps li.failed { color: #fca5a5; }
+        .progress-icon { width: 22px; text-align: center; flex-shrink: 0; line-height: 1.3; }
+        .progress-text { flex: 1; }
+        .progress-bar { height: 6px; background: rgba(255,255,255,0.14); border-radius: 4px; overflow: hidden; margin-top: 7px; }
+        .progress-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #a1c4fd, #c2e9fb); transition: width 0.6s; }
+        .progress-note { margin-top: 12px; font-size: 0.85em; color: #cbd5e1; }
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(253,230,138,0.35);
+                   border-top-color: #fde68a; border-radius: 50%; animation: pspin 0.9s linear infinite; vertical-align: middle; }
+        @keyframes pspin { to { transform: rotate(360deg); } }
+
         .book-container {
             display: flex;
             flex-direction: column;
@@ -995,10 +1018,11 @@
                 </div>
 
                 <div class="panel-card book-container">
+                    <div id="progressBox" class="progress-box" style="display:none"></div>
                     <div class="book-spread">
                         <div class="book-left-img">
                             <img id="currentImage" 
-                                 src="https://raw.githubusercontent.com/torki7-crypto/storymagic-hub/main/castle.jpg" 
+                                 src="/castle.jpg" 
                                  alt="Magical Fairy Castle with Animals">
                         </div>
 
@@ -1274,6 +1298,9 @@
     var currentTier = null;
     var currentPrices = null;      // what each edition costs this book right now (full price or upgrade difference)
     var progressToken = 0;
+    var sampleMode = false;   // the reader shows the example book instead of the visitor's own
+    var sampleReq = 0;
+    var SAMPLE_LABELS = {en: 'Example', ru: 'Пример', pl: 'Przykład', ro: 'Exemplu', it: 'Esempio', tr: 'Örnek'};
 
     function money(pence) { return '£' + (pence / 100).toFixed(2); }
     function sleep(ms) { return new Promise(function(res) { setTimeout(res, ms); }); }
@@ -1382,8 +1409,8 @@
             if (confirmLogout) {
                 currentUser = null;
                 fetch('/api/auth/logout', { method: 'POST' });
-                currentPages = []; currentStoryId = null; isPaidUser = false; currentTier = null;
-                updateAuthButtonUI();
+                currentPages = []; currentStoryId = null; isPaidUser = false; currentTier = null; sampleMode = false; hideProgress();
+                updateAuthButtonUI(); loadSample();
             }
             return;
         }
@@ -1473,6 +1500,7 @@
     }
 
     function openPaymentModal() { 
+        if (sampleMode || !currentStoryId) { needBook(); return; }
         renderTierPrices();
         var modal = document.getElementById('paymentModal');
         if (modal) modal.style.display = 'flex'; 
@@ -1529,7 +1557,116 @@
         redirectToSquareCheckout(t);
     }
 
+    function needBook() {
+        alert(currentLang === 'ru'
+            ? 'Сначала создайте свою книгу: заполните форму слева и нажмите «Создать сказку».'
+            : 'Create your own book first: fill in the form on the left and press "Generate Book".');
+    }
+
+    // Shows the first pages of a real book (set by SAMPLE_STORY_IDS on the server) until the visitor has a book of their own.
+    async function loadSample() {
+        if (currentStoryId || (currentPages.length && !sampleMode)) return;
+        var req = ++sampleReq;
+        try {
+            var r = await fetch('/api/sample?lang=' + encodeURIComponent(currentLang));
+            var j = await r.json();
+            if (req !== sampleReq || currentStoryId || (currentPages.length && !sampleMode)) return;
+            if (!j.success || !j.pages || !j.pages.length) return;
+            sampleMode = true;
+            isPaidUser = false;
+            currentPages = j.pages;
+            if (currentIndex >= j.pages.length) currentIndex = 0;
+            updateSlideUI();
+        } catch (e) { /* the default picture stays */ }
+    }
+
+    function hideProgress() {
+        var box = document.getElementById('progressBox');
+        if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+    }
+
+    // o = { title, steps: [{state: 'done'|'active'|'pending'|'failed', text, bar (0-100, optional)}], note }
+    function renderProgress(o) {
+        var box = document.getElementById('progressBox');
+        if (!box) return;
+        var html = '<div class="progress-head"><div class="progress-title">' + esc(o.title) + '</div>' +
+                   '<button type="button" class="progress-close" onclick="hideProgress()" aria-label="Close">✕</button></div>' +
+                   '<ul class="progress-steps">';
+        o.steps.forEach(function(st) {
+            var icon = st.state === 'done' ? '✅' : st.state === 'failed' ? '⚠️'
+                     : st.state === 'active' ? '<span class="spinner"></span>' : '○';
+            html += '<li class="' + st.state + '"><span class="progress-icon">' + icon + '</span><div class="progress-text">' +
+                    esc(st.text) +
+                    (st.bar != null ? '<div class="progress-bar"><span style="width:' + st.bar + '%"></span></div>' : '') +
+                    '</div></li>';
+        });
+        html += '</ul>';
+        if (o.note) html += '<div class="progress-note">' + esc(o.note) + '</div>';
+        box.innerHTML = html;
+        if (box.style.display === 'none') {
+            box.style.display = 'block';
+            try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+        }
+    }
+
+    // Turns the book state from the server into the checklist the customer sees after paying.
+    function progressFromState(sd) {
+        var ru = currentLang === 'ru';
+        var printTier = sd.paid_tier === 'hardcover' || sd.paid_tier === 'vip';
+        var audioTier = sd.paid_tier === 'audio' || sd.paid_tier === 'vip';
+        var total = sd.images_total || 8, done = Math.min(sd.images_done || 0, total);
+        var imgDone = !!sd.images_ready;
+        var ps = sd.print_status;
+        var steps = [{ state: 'done', text: ru ? 'Оплата получена, спасибо!' : 'Payment received, thank you!' }];
+
+        steps.push(imgDone
+            ? { state: 'done', text: ru ? 'Все иллюстрации нарисованы' : 'All illustrations are painted' }
+            : { state: 'active', bar: Math.round(done * 100 / total),
+                text: (ru ? 'Рисуем иллюстрации книги: ' : 'Painting the illustrations: ') + done + (ru ? ' из ' : ' of ') + total });
+
+        var finished;
+        if (printTier) {
+            if (ps === 'placed') {
+                steps.push({ state: 'done', text: ru ? 'Заказ передан в печать. Номер заказа: ' + sd.print_order
+                                                     : 'Your order was sent to the printer. Order number: ' + sd.print_order });
+                finished = true;
+            } else if (ps === 'failed') {
+                steps.push({ state: 'failed', text: ru ? 'Не удалось передать заказ в печать'
+                                                       : 'We could not send the order to the printer' });
+                finished = true;
+            } else {
+                steps.push({ state: imgDone ? 'active' : 'pending',
+                             text: ru ? 'Готовим файлы и отправляем в типографию' : 'Preparing the print files and sending them to the printer' });
+                finished = false;
+            }
+        } else {
+            steps.push({ state: imgDone ? 'done' : 'pending',
+                         text: audioTier ? (ru ? 'ePub и аудио доступны' : 'ePub and audio are ready')
+                                         : (ru ? 'ePub доступен для скачивания' : 'ePub is ready to download') });
+            finished = imgDone;
+        }
+
+        var allOk = finished && ps !== 'failed';
+        var title = ps === 'failed' && finished ? (ru ? 'Оплата прошла, но печать не оформилась' : 'Payment went through, but printing was not set up')
+                  : allOk ? (ru ? '🎉 Всё готово!' : '🎉 All done!')
+                  : (ru ? 'Заказ принят, готовим вашу книгу' : 'Order received, we are preparing your book');
+        var note;
+        if (ps === 'failed' && finished) {
+            note = ru ? 'Нажмите «Заказать печать», чтобы попробовать ещё раз, или напишите hello@supermestory.com.'
+                      : 'Press "Order Print" to try again, or email hello@supermestory.com.';
+        } else if (!finished) {
+            note = ru ? 'Можно закрыть страницу: книга сохранится, её можно открыть в «My Books».'
+                      : 'You can close this page: your book is saved and will be in "My Books".';
+        } else {
+            note = printTier ? (ru ? 'Сохраните номер заказа. Книга всегда доступна в «My Books».'
+                                   : 'Keep your order number. Your book is always available in "My Books".')
+                             : (ru ? 'Книга всегда доступна в «My Books».' : 'Your book is always available in "My Books".');
+        }
+        return { title: title, steps: steps, note: note };
+    }
+
     function applyStoryState(sd) {
+        sampleMode = false;
         currentPages = sd.pages;
         if (sd.title) currentBookTitle = sd.title;
         currentDedicationText = sd.dedication_text || '';
@@ -1559,23 +1696,9 @@
 
             var waitingImages = sd.is_paid && !sd.images_ready;
             var waitingPrint = sd.print_status === 'queued';
-            if (waitingImages) {
-                setText('statusMsg', ru ? '🎨 Дорисовываем остальные иллюстрации, это займёт около минуты...'
-                                        : '🎨 Painting the remaining illustrations, this takes about a minute...');
-            } else if (waitingPrint) {
-                setText('statusMsg', ru ? '📦 Отправляем книгу в печать...' : '📦 Sending your book to print...');
-            } else {
-                if (sd.print_status === 'placed') {
-                    setText('statusMsg', ru ? '🎉 Заказ печати оформлен! Номер заказа: ' + sd.print_order
-                                            : '🎉 Print order placed! Order number: ' + sd.print_order);
-                } else if (sd.print_status === 'failed') {
-                    setText('statusMsg', ru ? '⚠️ Не удалось отправить заказ в печать. Нажмите «Заказать печать», чтобы попробовать ещё раз, или напишите hello@supermestory.com.'
-                                            : '⚠️ We could not send your print order. Press "Order Print" to try again, or email hello@supermestory.com.');
-                } else if (sd.is_paid) {
-                    setText('statusMsg', ru ? '🎉 Все иллюстрации готовы!' : '🎉 All illustrations are ready!');
-                }
-                return;
-            }
+            setText('statusMsg', '');
+            renderProgress(progressFromState(sd));
+            if (!waitingImages && !waitingPrint) return;
             if (!sd.busy && Date.now() - lastResume > 15000) {
                 lastResume = Date.now();
                 fetch('/api/stories/' + id + '/resume', { method: 'POST' }).catch(function() {});
@@ -1680,6 +1803,7 @@
         var badgeText = p.title && p.title.indexOf('💡') !== -1 
             ? p.title 
             : ((d.badgePage || 'Chapter') + ' ' + p.page_number);
+        if (sampleMode) badgeText = (SAMPLE_LABELS[currentLang] || SAMPLE_LABELS.en) + ' · ' + (d.badgePage || 'Chapter') + ' ' + p.page_number;
         setText('pageBadge', badgeText);
         setText('pageCounter', p.page_number + ' / ' + currentPages.length);
         
@@ -1698,6 +1822,7 @@
 
     function nextSlide() {
         if (!currentPages.length) return;
+        if (sampleMode) { showSlide((currentIndex + 1) % currentPages.length); return; }
         
         // Если книга не оплачена и пользователь пытается перелистнуть дальше 2-й страницы
         if (!isPaidUser && currentIndex >= 1) {
@@ -1776,6 +1901,7 @@
             }
             var result = await response.json();
             if (result.success && result.pages) {
+                sampleMode = false; hideProgress();
                 isPaidUser = false; currentTier = null;
                 currentPrices = result.prices || null;
                 renderTierPrices();
@@ -1897,6 +2023,7 @@
 
     async function toggleAudioStory() {
         if (!currentPages || currentPages.length === 0) return;
+        if (sampleMode || !currentStoryId) { needBook(); return; }
         
         // Аудио доступно только с тарифом Audio или VIP (проверяется и на сервере)
         if (!hasTier(['audio', 'vip'])) {
@@ -2119,25 +2246,37 @@
     }
 
     async function waitForPayment(id, before) {
+        var ru = currentLang === 'ru';
         switchTab('create');
         currentStoryId = id;
-        setText('statusMsg', '⏳ Confirming payment...');
+        sampleMode = false;
+        setText('statusMsg', '');
+        renderProgress({
+            title: ru ? 'Возвращаем вас на сайт...' : 'Welcome back, checking your payment...',
+            steps: [{ state: 'active', text: ru ? 'Подтверждаем оплату...' : 'Confirming your payment...' }],
+            note: ru ? 'Это занимает несколько секунд.' : 'This takes a few seconds.'
+        });
         for (var i = 0; i < 20; i++) {
             var r = await fetch('/api/stories/' + id);
-            if (r.status === 401) { setText('statusMsg', ''); openAuthModal(); return; }
+            if (r.status === 401) { hideProgress(); openAuthModal(); return; }
             var sd = await r.json();
             // for an upgrade the book is already paid, so wait until the paid edition has actually changed
             if (sd.success && sd.is_paid && (sd.paid_tier || '') !== (before || '')) {
                 applyStoryState(sd);
                 showSlide(0);
                 history.replaceState({}, '', '/');
-                setText('statusMsg', '🎉 Payment successful!');
+                renderProgress(progressFromState(sd));
                 watchProgress(id);
                 return;
             }
             await new Promise(function(res) { setTimeout(res, 2000); });
         }
-        setText('statusMsg', 'Payment is still being confirmed. Please refresh in a minute.');
+        renderProgress({
+            title: ru ? 'Оплата ещё подтверждается' : 'Your payment is still being confirmed',
+            steps: [{ state: 'active', text: ru ? 'Ждём подтверждение от платёжной системы' : 'Waiting for the payment provider to confirm' }],
+            note: ru ? 'Обновите страницу через минуту или откройте книгу в «My Books». Деньги не пропадут: если оплата прошла, книга откроется.'
+                     : 'Refresh this page in a minute or open the book from "My Books". If the payment went through, the book will unlock.'
+        });
     }
 
     var dictionary = {
@@ -2432,9 +2571,11 @@
 
         if (currentPages.length > 0) {
             updateSlideUI();
+            if (sampleMode) loadSample();
         } else {
             setText('pageBadge', d.badgeCover);
             setText('currentText', d.defaultWelcome);
+            loadSample();
         }
     }
 
@@ -2478,6 +2619,7 @@
     window.exportEpub = exportEpub;
     window.submitLuluOrder = submitLuluOrder;
     window.changeLanguage = changeLanguage;
+    window.hideProgress = hideProgress;
 
     document.addEventListener('DOMContentLoaded', function() {
         initFloatingBubbles(15);
