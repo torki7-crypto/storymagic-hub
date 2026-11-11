@@ -48,6 +48,7 @@ SESSION_SECRET = os.environ["SESSION_SECRET"]
 COOKIE = "sms_session"
 FREE_PAGES = 2
 DAILY_STORY_LIMIT = int(os.environ.get("DAILY_STORY_LIMIT", "3"))
+UNPAID_RETENTION_DAYS = int(os.environ.get("UNPAID_RETENTION_DAYS", "30"))  # unpaid previews are deleted after this
 ALLOWED_PRINT_COUNTRIES = {"GB"}
 
 app.add_middleware(CORSMiddleware, allow_origins=[PUBLIC_BASE_URL], allow_credentials=True,
@@ -500,6 +501,68 @@ async def get_my_stories(user: models.User = Depends(current_user), db: Session 
                     "is_paid": s.is_paid, "cover_image": first.get("image_url", ""),
                     "created_at": s.created_at.strftime("%d.%m.%Y %H:%M") if s.created_at else ""})
     return {"success": True, "stories": out}
+
+
+class DeleteAccountRequest(BaseModel):
+    confirm_email: str
+
+
+@app.delete("/api/stories/{story_id}")
+async def delete_story(story_id: int, user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    s = owned_story(story_id, user, db)
+    if is_busy(s.id):
+        raise HTTPException(status_code=409, detail="This book is still being prepared. Please try again in a minute.")
+    db.delete(s)
+    db.commit()
+    return {"success": True}
+
+
+@app.post("/api/account/delete")
+async def delete_account(req: DeleteAccountRequest, response: Response,
+                         user: models.User = Depends(current_user), db: Session = Depends(get_db)):
+    """Deletes the account and every book in it. The user has to type their email to confirm."""
+    if req.confirm_email.strip().lower() != (user.email or "").lower():
+        raise HTTPException(status_code=400, detail="The email you typed does not match your account")
+    stories = db.query(models.SavedStory).filter(models.SavedStory.user_id == user.id).all()
+    if any(is_busy(x.id) for x in stories):
+        raise HTTPException(status_code=409, detail="A book is still being prepared. Please try again in a minute.")
+    for x in stories:
+        db.delete(x)
+    db.delete(user)
+    db.commit()
+    response.delete_cookie(COOKIE)
+    return {"success": True}
+
+
+# ---------- automatic clean-up of old data ----------
+
+def cleanup_old_data() -> None:
+    """Unpaid previews and undelivered delivery addresses are not kept longer than UNPAID_RETENTION_DAYS."""
+    cutoff = datetime.utcnow() - timedelta(days=UNPAID_RETENTION_DAYS)
+    with engine.begin() as conn:
+        n = conn.execute(text("DELETE FROM saved_stories WHERE COALESCE(is_paid, false) = false AND created_at < :c"),
+                         {"c": cutoff}).rowcount
+        m = conn.execute(text("UPDATE saved_stories SET shipping_json = NULL "
+                              "WHERE shipping_json IS NOT NULL AND created_at < :c"), {"c": cutoff}).rowcount
+    print(f"Clean-up: {n} unpaid books deleted, {m} old delivery addresses removed")
+
+
+async def _cleanup_loop():
+    while True:
+        try:
+            await asyncio.to_thread(cleanup_old_data)
+        except Exception as e:
+            print(f"Clean-up error: {e}")
+        await asyncio.sleep(24 * 3600)
+
+
+_cleanup_task = None
+
+
+@app.on_event("startup")
+async def start_cleanup():
+    global _cleanup_task
+    _cleanup_task = asyncio.create_task(_cleanup_loop())
 
 
 # ---------- payments (Square) ----------
