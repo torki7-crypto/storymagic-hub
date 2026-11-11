@@ -1054,7 +1054,7 @@
                     </div>
                     <div class="input-group">
                         <label class="input-label" id="lbl-order-email">Contact Email</label>
-                        <input type="email" class="custom-input" id="order-email-input" placeholder="test@example.com">
+                        <input type="email" class="custom-input" id="order-email-input" placeholder="name@example.com" autocomplete="off" onkeydown="this.dataset.edited='1'" onpaste="this.dataset.edited='1'">
                     </div>
                 </div>
 
@@ -1307,7 +1307,12 @@
         if (tabName === 'library' && typeof loadLibrary === 'function') {
             loadLibrary();
         }
-        if (tabName === 'order') renderTierPrices();
+        if (tabName === 'order') {
+            renderTierPrices();
+            // the browser may autofill another saved address; use the account email unless the user typed one
+            var oe = document.getElementById('order-email-input');
+            if (oe && currentUser && currentUser.email && !oe.dataset.edited) oe.value = currentUser.email;
+        }
     }
 
     function openFormatModal() {
