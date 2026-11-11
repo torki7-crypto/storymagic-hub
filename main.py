@@ -269,6 +269,21 @@ async def auth_logout(response: Response):
 image_semaphore = asyncio.Semaphore(3)
 
 
+def to_jpeg_data_url(raw: bytes, mime: Optional[str]) -> str:
+    """Pictures are stored as ~150-250 KB JPEGs instead of ~1.5 MB PNGs: the database stays small and the
+    ePub and print PDFs get lighter. Falls back to the original picture if conversion is impossible."""
+    try:
+        from PIL import Image
+        im = Image.open(io.BytesIO(raw)).convert("RGB")
+        im.thumbnail((1280, 1280))
+        out = io.BytesIO()
+        im.save(out, "JPEG", quality=85, optimize=True)
+        return "data:image/jpeg;base64," + base64.b64encode(out.getvalue()).decode("utf-8")
+    except Exception as e:
+        print(f"Image compression skipped: {e}")
+        return f"data:{mime or 'image/png'};base64," + base64.b64encode(raw).decode("utf-8")
+
+
 async def generate_book_illustration(prompt: str, style: str, index: int, hero_name: str, age: int,
                                      photo_bytes: Optional[bytes] = None, photo_mime: str = "image/jpeg",
                                      reference_is_photo: bool = True) -> str:
@@ -306,8 +321,7 @@ async def generate_book_illustration(prompt: str, style: str, index: int, hero_n
                     parts = resp.candidates[0].content.parts if resp.candidates and resp.candidates[0].content else []
                     for part in parts or []:
                         if part.inline_data and part.inline_data.data:
-                            b64 = base64.b64encode(part.inline_data.data).decode("utf-8")
-                            return f"data:{part.inline_data.mime_type or 'image/png'};base64,{b64}"
+                            return to_jpeg_data_url(part.inline_data.data, part.inline_data.mime_type)
                 except Exception as e:
                     print(f"Image error ({model_name}, illustration {index + 1}): {e}")
             await asyncio.sleep(2)
