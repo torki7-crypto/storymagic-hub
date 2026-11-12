@@ -958,6 +958,20 @@ async def castle_picture():
     raise HTTPException(status_code=404, detail="Not found")
 
 
+@app.get("/media/{name}")
+async def media_file(name: str):
+    """Intro video for the home page (files live in the repo folder 'media')."""
+    allowed = {"hero-wide.mp4": "video/mp4", "hero-square.mp4": "video/mp4",
+               "hero-poster-wide.jpg": "image/jpeg", "hero-poster-square.jpg": "image/jpeg"}
+    if name not in allowed:
+        raise HTTPException(status_code=404, detail="Not found")
+    for base in ("media", "static/media", "templates/media"):
+        path = os.path.join(base, name)
+        if os.path.exists(path):
+            return FileResponse(path, media_type=allowed[name], headers={"Cache-Control": "public, max-age=86400"})
+    raise HTTPException(status_code=404, detail="Not found")
+
+
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy_policy():
     return _page("privacy")
