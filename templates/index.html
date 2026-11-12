@@ -173,6 +173,45 @@
             color: #ded1f7;
             margin-bottom: 28px;
         }
+        .hero-stage {
+            position: relative; width: 100%; max-width: 860px; margin: 0 auto 26px;
+            aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; background: #1b1330;
+            border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+        }
+        .hero-stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: #1b1330; }
+        .hero-sound {
+            position: absolute; right: 12px; bottom: 12px; z-index: 3; border: 0; cursor: pointer;
+            background: rgba(20,12,40,0.72); color: #fff; font: 600 0.9em 'Nunito', sans-serif;
+            padding: 9px 14px; border-radius: 999px; backdrop-filter: blur(6px);
+            animation: heroPulse 2s ease-in-out infinite;
+        }
+        .hero-sound.on { animation: none; }
+        @keyframes heroPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,154,158,0.6); } 50% { box-shadow: 0 0 0 10px rgba(255,154,158,0); } }
+        .hero-play {
+            position: absolute; inset: 0; z-index: 2; display: none; align-items: center; justify-content: center;
+            background: rgba(20,12,40,0.35); border: 0; cursor: pointer; color: #fff; font-size: 4em;
+        }
+        .hero-end {
+            position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; justify-content: flex-end;
+            opacity: 0; pointer-events: none; transition: opacity 0.9s ease; background: #1b1330;
+        }
+        .hero-end.show { opacity: 1; pointer-events: auto; }
+        .hero-end img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .hero-end-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(20,12,40,0.96) 0%, rgba(20,12,40,0.88) 45%, rgba(20,12,40,0.45) 72%, rgba(20,12,40,0) 100%); }
+        .hero-end-body { position: relative; padding: 18px 20px 16px; text-align: center; }
+        .hero-end-tag { font-size: 0.8em; letter-spacing: 0.08em; text-transform: uppercase; color: #fad0c4; margin-bottom: 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+        .hero-end-text { color: #fff; font-size: 1.02em; line-height: 1.5; margin: 0 auto 14px; max-width: 640px;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .hero-end-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center; }
+        .hero-end-actions .magic-btn { width: auto; max-width: none; margin: 0; padding: 12px 22px; }
+        .hero-replay { background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 999px; padding: 11px 18px; cursor: pointer; font: 600 0.95em 'Nunito', sans-serif; }
+        @media (max-width: 700px) {
+            .hero-stage { aspect-ratio: 1 / 1; border-radius: 16px; }
+            .hero-end-text { display: none; }
+            .hero-end-actions .magic-btn, .hero-replay { padding: 10px 14px; font-size: 0.9em; }
+            .hero-end-shade { background: linear-gradient(to top, rgba(20,12,40,0.92) 0%, rgba(20,12,40,0.6) 28%, rgba(20,12,40,0) 55%); }
+            .hero-end-body { padding: 14px 14px 12px; }
+        }
         .steps-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -883,6 +922,23 @@
         <!-- Главная -->
         <div id="tab-about" class="tab-content active">
             <div class="hero-box">
+                <div class="hero-stage" id="heroStage">
+                    <video id="heroVideo" playsinline muted preload="metadata" aria-label="SuperMeStory"></video>
+                    <button type="button" class="hero-play" id="heroPlay" aria-label="Play">▶</button>
+                    <button type="button" class="hero-sound" id="heroSound">🔊</button>
+                    <div class="hero-end" id="heroEnd" aria-live="polite">
+                        <img id="heroEndImg" alt="">
+                        <div class="hero-end-shade"></div>
+                        <div class="hero-end-body">
+                            <div class="hero-end-tag" id="heroEndTag"></div>
+                            <p class="hero-end-text" id="heroEndText"></p>
+                            <div class="hero-end-actions">
+                                <button type="button" class="magic-btn" id="heroEndCta" onclick="switchTab('create')">🚀 Start Creating</button>
+                                <button type="button" class="hero-replay" id="heroReplay"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <h1 id="hero-title">Personalized Therapeutic Books for Children</h1>
                 <p id="hero-desc">Upload your child's photo, and we will craft a gentle, inspiring story where a hero resembling your child conquers fears and discovers superpowers.</p>
                 <button type="button" class="magic-btn" id="hero-cta" style="max-width: 280px; margin: 0 auto 35px; display: block;" onclick="switchTab('create')">🚀 Start Creating</button>
@@ -1323,6 +1379,7 @@
     }
 
     function switchTab(tabName) {
+        if (tabName !== 'about' && window.heroPause) window.heroPause();
         var contents = document.querySelectorAll('.tab-content');
         for (var i = 0; i < contents.length; i++) {
             contents[i].classList.remove('active');
@@ -1579,6 +1636,94 @@
             updateSlideUI();
         } catch (e) { /* the default picture stays */ }
     }
+
+    // ---------- Home page: short intro video, then the example book appears in the same spot ----------
+    (function () {
+        var LABELS = {
+            en: { sound: '🔊 Sound on', mute: '🔇 Mute', again: '↻ Watch again', tag: 'A page from a real book' },
+            ru: { sound: '🔊 Включить звук', mute: '🔇 Выключить звук', again: '↻ Смотреть ещё раз', tag: 'Страница из настоящей книги' },
+            pl: { sound: '🔊 Włącz dźwięk', mute: '🔇 Wycisz', again: '↻ Obejrzyj ponownie', tag: 'Strona z prawdziwej książki' },
+            ro: { sound: '🔊 Pornește sunetul', mute: '🔇 Oprește sunetul', again: '↻ Vezi din nou', tag: 'O pagină dintr-o carte reală' },
+            it: { sound: '🔊 Attiva audio', mute: '🔇 Disattiva audio', again: '↻ Guarda di nuovo', tag: 'Una pagina di un libro vero' },
+            tr: { sound: '🔊 Sesi aç', mute: '🔇 Sesi kapat', again: '↻ Tekrar izle', tag: 'Gerçek bir kitaptan bir sayfa' }
+        };
+        var v = document.getElementById('heroVideo');
+        if (!v) return;
+        var stage = document.getElementById('heroStage');
+        var endBox = document.getElementById('heroEnd');
+        var sndBtn = document.getElementById('heroSound');
+        var playBtn = document.getElementById('heroPlay');
+        var samplePage = null, sampleLangLoaded = null, started = false;
+
+        function L() { return LABELS[currentLang] || LABELS.en; }
+        function isSquare() { return window.matchMedia('(max-width: 700px)').matches; }
+        function srcWanted() { return isSquare() ? '/media/hero-square.mp4' : '/media/hero-wide.mp4'; }
+        function posterWanted() { return isSquare() ? '/media/hero-poster-square.jpg' : '/media/hero-poster-wide.jpg'; }
+
+        function labels() {
+            sndBtn.textContent = v.muted ? L().sound : L().mute;
+            sndBtn.classList.toggle('on', !v.muted);
+            document.getElementById('heroReplay').textContent = L().again;
+            document.getElementById('heroEndTag').textContent = L().tag;
+            var cta = document.getElementById('hero-cta');
+            if (cta) document.getElementById('heroEndCta').textContent = cta.textContent;
+        }
+
+        function loadSamplePage() {
+            if (sampleLangLoaded === currentLang) return;
+            var lang = currentLang;
+            fetch('/api/sample?lang=' + encodeURIComponent(lang)).then(function (r) { return r.json(); }).then(function (j) {
+                if (!j || !j.success || !j.pages || !j.pages.length) return;
+                samplePage = j.pages[0];
+                sampleLangLoaded = lang;
+                var img = document.getElementById('heroEndImg');
+                if (samplePage.image_url) { img.src = samplePage.image_url; } else { img.removeAttribute('src'); }
+                document.getElementById('heroEndText').textContent = samplePage.text || '';
+            }).catch(function () {});
+        }
+
+        function setSource() {
+            var want = srcWanted();
+            if (v.getAttribute('data-src') !== want) {
+                v.setAttribute('data-src', want);
+                v.poster = posterWanted();
+                v.src = want;
+            }
+        }
+
+        function play() {
+            endBox.classList.remove('show');
+            setSource();
+            var pr = v.play();
+            if (pr && pr.catch) pr.catch(function () { playBtn.style.display = 'flex'; });
+        }
+
+        v.addEventListener('playing', function () { playBtn.style.display = 'none'; started = true; });
+        v.addEventListener('ended', function () { endBox.classList.add('show'); });
+        v.addEventListener('error', function () { endBox.classList.add('show'); });
+        playBtn.addEventListener('click', function () { playBtn.style.display = 'none'; play(); });
+        sndBtn.addEventListener('click', function () {
+            v.muted = !v.muted;
+            if (!v.muted) { v.volume = 1; if (v.paused && !v.ended) play(); }
+            labels();
+        });
+        document.getElementById('heroReplay').addEventListener('click', function () {
+            v.currentTime = 0; play();
+        });
+
+        window.heroPause = function () { try { v.pause(); } catch (e) {} };
+        window.heroLang = function () { labels(); loadSamplePage(); };
+
+        // switching phone <-> desktop layout mid-session swaps the file only if the video hasn't been started yet
+        window.addEventListener('resize', function () { if (!started) setSource(); });
+
+        labels();
+        loadSamplePage();
+        setSource();
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce) { playBtn.style.display = 'flex'; }
+        else { play(); }
+    })();
 
     function hideProgress() {
         var box = document.getElementById('progressBox');
@@ -2457,6 +2602,7 @@
         setText('hero-title', d.heroTitle);
         setText('hero-desc', d.heroDesc);
         setText('hero-cta', d.heroCta);
+        if (window.heroLang) window.heroLang();
 
         setText('step1-title', d.step1Title);
         setText('step1-desc', d.step1Desc);
