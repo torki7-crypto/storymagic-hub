@@ -965,7 +965,7 @@ async def media_file(name: str):
                "hero-poster-wide.jpg": "image/jpeg", "hero-poster-square.jpg": "image/jpeg"}
     if name not in allowed:
         raise HTTPException(status_code=404, detail="Not found")
-    for base in ("media", "static/media", "templates/media"):
+    for base in ("media", "static/media", "templates/media", "templates", "."):
         path = os.path.join(base, name)
         if os.path.exists(path):
             return FileResponse(path, media_type=allowed[name], headers={"Cache-Control": "public, max-age=86400"})
